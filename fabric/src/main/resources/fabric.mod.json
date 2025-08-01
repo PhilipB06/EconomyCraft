@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "economycraft",
+  "version": "${version}",
+  "name": "EconomyCraft",
+  "description": "Simple server-side economy and shop mod.",
+  "authors": ["ReaZip"],
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["com.reazip.economycraft.fabric.EconomyCraftFabric"],
+    "client": ["com.reazip.economycraft.fabric.client.EconomyCraftFabricClient"]
+  },
+  "mixins": ["economycraft.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.16.4",
+    "minecraft": "~1.21.7",
+    "java": ">=21",
+    "architectury": ">=17.0.6",
+    "fabric-api": "*"
+  }
+}

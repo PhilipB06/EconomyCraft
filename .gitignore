@@ -1,0 +1,10 @@
+/.gradle/
+/build/
+/fabric/.gradle/
+/fabric/build/
+/common/.gradle/
+/common/build/
+/.idea/
+/neoforge/.gradle/
+/neoforge/build/
+/.architectury-transformer/
