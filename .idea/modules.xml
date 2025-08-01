@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/common/economycraft.common.iml" filepath="$PROJECT_DIR$/.idea/modules/common/economycraft.common.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/common/economycraft.common.main.iml" filepath="$PROJECT_DIR$/.idea/modules/common/economycraft.common.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/common/economycraft.common.test.iml" filepath="$PROJECT_DIR$/.idea/modules/common/economycraft.common.test.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/fabric/economycraft.fabric.main.iml" filepath="$PROJECT_DIR$/.idea/modules/fabric/economycraft.fabric.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/fabric/economycraft.fabric.test.iml" filepath="$PROJECT_DIR$/.idea/modules/fabric/economycraft.fabric.test.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/neoforge/economycraft.neoforge.main.iml" filepath="$PROJECT_DIR$/.idea/modules/neoforge/economycraft.neoforge.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/neoforge/economycraft.neoforge.test.iml" filepath="$PROJECT_DIR$/.idea/modules/neoforge/economycraft.neoforge.test.iml" />
+    </modules>
+  </component>
+</project>

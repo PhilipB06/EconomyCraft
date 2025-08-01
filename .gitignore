@@ -1,0 +1,6 @@
+/.gradle/
+/build/
+/fabric/.gradle/
+/fabric/build/
+/common/.gradle/
+/common/build/
