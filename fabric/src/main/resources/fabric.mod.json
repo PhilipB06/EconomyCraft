@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "economycraft",
+  "version": "${version}",
+  "name": "EconomyCraft",
+  "description": "Simple economy mod",
+  "authors": ["Codex"],
+  "contact": {},
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["com.economycraft.EconomyCraftFabric"]
+  },
+  "depends": {
+    "fabricloader": ">=0.15.0",
+    "minecraft": "${minecraft_version}",
+    "architectury": "${arch_api}"
+  }
+}

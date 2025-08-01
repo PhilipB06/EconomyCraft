@@ -1,0 +1,9 @@
+architectury {
+    platformSetupLoomIde()
+    neoForge()
+}
+
+dependencies {
+    modImplementation project(':common')
+    modImplementation "dev.architectury:architectury-neoforge:${rootProject.arch_api}"
+}

@@ -1,0 +1,15 @@
+modLoader="javafml"
+loaderVersion="[1,)"
+license="MIT"
+
+[[mods]]
+modId="economycraft"
+version="${version}"
+displayName="EconomyCraft"
+logoFile=""
+credits=""
+authors="Codex"
+
+description='''
+Simple economy mod.
+'''

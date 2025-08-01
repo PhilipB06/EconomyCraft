@@ -1,0 +1,23 @@
+plugins {
+    id 'dev.architectury.loom' version '1.5-SNAPSHOT' apply false
+    id 'architectury-plugin' version '3.4-SNAPSHOT' apply false
+}
+
+allprojects {
+    apply plugin: 'java'
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+
+    repositories {
+        mavenCentral()
+        maven { url = 'https://maven.architectury.dev/' }
+    }
+}
+
+subprojects {
+    apply plugin: 'dev.architectury.loom'
+}
+
+architectury {
+    minecraft = '1.21'
+}

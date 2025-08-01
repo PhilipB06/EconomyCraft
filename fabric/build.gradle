@@ -1,0 +1,9 @@
+architectury {
+    platformSetupLoomIde()
+    fabric()
+}
+
+dependencies {
+    modImplementation project(':common')
+    modImplementation "dev.architectury:architectury-fabric:${rootProject.arch_api}"
+}

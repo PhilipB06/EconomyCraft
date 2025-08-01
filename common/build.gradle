@@ -1,0 +1,11 @@
+plugins {
+    id 'architectury-plugin'
+}
+
+architectury {
+    common(project)
+}
+
+dependencies {
+    modImplementation "dev.architectury:architectury:${rootProject.arch_api}"
+}
