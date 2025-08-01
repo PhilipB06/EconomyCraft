@@ -31,7 +31,7 @@ public class ShopListing {
         l.price = obj.get("price").getAsLong();
         String itemId = obj.get("item").getAsString();
         int count = obj.get("count").getAsInt();
-        l.item = new ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId)), count);
+        BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId)).ifPresent(h -> l.item = new ItemStack(h.value(), count));
         return l;
     }
 }

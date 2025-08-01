@@ -30,7 +30,7 @@ public class MarketRequest {
         r.price = obj.get("price").getAsLong();
         String itemId = obj.get("item").getAsString();
         int count = obj.get("count").getAsInt();
-        r.item = new ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId)), count);
+        BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId)).ifPresent(h -> r.item = new ItemStack(h.value(), count));
         return r;
     }
 }

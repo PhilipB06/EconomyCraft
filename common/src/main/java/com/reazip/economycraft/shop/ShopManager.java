@@ -67,7 +67,7 @@ public class ShopManager {
                         JsonObject o = sEl.getAsJsonObject();
                         String itemId = o.get("item").getAsString();
                         int count = o.get("count").getAsInt();
-                        list.add(new ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId)), count));
+                        BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId)).ifPresent(h -> list.add(new ItemStack(h.value(), count)));
                     }
                     deliveries.put(id, list);
                 }

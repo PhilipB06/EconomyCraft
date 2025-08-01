@@ -110,7 +110,7 @@ public final class EconomyCommands {
             for (ShopListing l : shop.getListings()) {
                 String seller = source.getServer().getProfileCache().get(l.seller).map(p -> p.getName()).orElse(l.seller.toString());
                 Component msg = Component.literal("[" + l.id + "] " + seller + " - " + l.item.getHoverName().getString() + " for " + EconomyCraft.formatMoney(l.price))
-                        .append(Component.literal(" [Buy]").withStyle(style -> style.withUnderlined(true).withClickEvent(net.minecraft.network.chat.ClickEvent.runCommand("/eco shop buy " + l.id))));
+                        .append(Component.literal(" [Buy]").withStyle(style -> style.withUnderlined(true).withClickEvent(new net.minecraft.network.chat.ClickEvent.RunCommand("/eco shop buy " + l.id))));
                 source.sendSuccess(() -> msg, false);
             }
         }
@@ -166,12 +166,13 @@ public final class EconomyCommands {
             source.sendFailure(Component.literal("Not enough balance"));
             return 0;
         }
+        long price = listing.price;
         shop.removeListing(listing.id);
         if (!player.getInventory().add(listing.item.copy())) {
             shop.addDelivery(player.getUUID(), listing.item.copy());
             source.sendSuccess(() -> Component.literal("Item stored, use /eco market claim"), false);
         }
-        source.sendSuccess(() -> Component.literal("Purchased item for " + EconomyCraft.formatMoney(listing.price)), false);
+        source.sendSuccess(() -> Component.literal("Purchased item for " + EconomyCraft.formatMoney(price)), false);
         return 1;
     }
 
@@ -184,7 +185,7 @@ public final class EconomyCommands {
             for (MarketRequest r : market.getRequests()) {
                 String buyer = source.getServer().getProfileCache().get(r.requester).map(p -> p.getName()).orElse(r.requester.toString());
                 Component msg = Component.literal("[" + r.id + "] " + buyer + " wants " + r.item.getCount() + "x " + r.item.getHoverName().getString() + " for " + EconomyCraft.formatMoney(r.price))
-                        .append(Component.literal(" [Fulfill]").withStyle(style -> style.withUnderlined(true).withClickEvent(net.minecraft.network.chat.ClickEvent.runCommand("/eco market fulfill " + r.id))));
+                        .append(Component.literal(" [Fulfill]").withStyle(style -> style.withUnderlined(true).withClickEvent(new net.minecraft.network.chat.ClickEvent.RunCommand("/eco market fulfill " + r.id))));
                 source.sendSuccess(() -> msg, false);
             }
         }
