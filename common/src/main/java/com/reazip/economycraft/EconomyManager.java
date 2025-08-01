@@ -124,7 +124,7 @@ public class EconomyManager {
         int rank = 1;
         for (Map.Entry<UUID, Long> e : sorted.stream().limit(5).toList()) {
             String name = server.getProfileCache().get(e.getKey()).map(p -> p.getName()).orElse(e.getKey().toString());
-            board.getOrCreatePlayerScore(net.minecraft.world.scores.ScoreHolder.forNameOnly(name), objective).setScore(e.getValue().intValue());
+            board.getOrCreatePlayerScore(net.minecraft.world.scores.ScoreHolder.forNameOnly(name), objective).set(e.getValue().intValue());
             rank++;
         }
     }
