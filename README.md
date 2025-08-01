@@ -11,9 +11,8 @@ EconomyCraft provides a simple cross-platform economy system for Fabric and NeoF
 Balances are saved to `economycraft_balances.json` and a live leaderboard is shown on the sidebar sorted by balance. Your rank appears below the top players.
 
 ### Shop Commands
-- `/eco shop list` – List all items for sale with clickable purchase links.
+- `/eco shop` – Opens the chest-based shop UI.
 - `/eco shop sell <price>` – Sell the item in your hand.
-- `/eco shop buy <id>` – Start a purchase, then `/eco shop confirm <id>` to confirm.
 
 ### Market Commands
 - `/eco market list` – Show all player item requests.

@@ -10,13 +10,12 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.network.chat.ClickEvent;
 
 import java.util.Comparator;
-import java.util.Map;
 import java.util.UUID;
-import java.util.HashMap;
 import java.util.List;
 
 import com.reazip.economycraft.shop.ShopManager;
 import com.reazip.economycraft.shop.ShopListing;
+import com.reazip.economycraft.shop.ShopUi;
 import com.reazip.economycraft.market.MarketManager;
 import com.reazip.economycraft.market.MarketRequest;
 import net.minecraft.world.item.ItemStack;
@@ -25,7 +24,6 @@ import static net.minecraft.commands.Commands.argument;
 import static net.minecraft.commands.Commands.literal;
 
 public final class EconomyCommands {
-    private static final Map<UUID, Integer> pendingBuy = new HashMap<>();
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(literal("eco")
             .then(literal("balance")
@@ -49,16 +47,10 @@ public final class EconomyCommands {
                         .executes(ctx -> setMoney(EntityArgument.getPlayer(ctx, "player"),
                                 LongArgumentType.getLong(ctx, "amount"), ctx.getSource())))))
             .then(literal("shop")
-                .then(literal("list").executes(ctx -> listShop(ctx.getSource())))
+                .executes(ctx -> openShop(ctx.getSource().getPlayerOrException(), ctx.getSource()))
                 .then(literal("sell")
                     .then(argument("price", LongArgumentType.longArg(1))
-                        .executes(ctx -> sellItem(ctx.getSource().getPlayerOrException(), LongArgumentType.getLong(ctx, "price"), ctx.getSource()))))
-                .then(literal("buy")
-                    .then(argument("id", LongArgumentType.longArg(1))
-                        .executes(ctx -> initiateBuy(ctx.getSource().getPlayerOrException(), LongArgumentType.getLong(ctx, "id"), ctx.getSource()))))
-                .then(literal("confirm")
-                    .then(argument("id", LongArgumentType.longArg(1))
-                        .executes(ctx -> confirmBuy(ctx.getSource().getPlayerOrException(), LongArgumentType.getLong(ctx, "id"), ctx.getSource())))))
+                        .executes(ctx -> sellItem(ctx.getSource().getPlayerOrException(), LongArgumentType.getLong(ctx, "price"), ctx.getSource())))))
             .then(literal("market")
                 .then(literal("list").executes(ctx -> listMarket(ctx.getSource())))
                 .then(literal("request")
@@ -102,18 +94,8 @@ public final class EconomyCommands {
     }
 
     // --- shop commands ---
-    private static int listShop(CommandSourceStack source) {
-        ShopManager shop = EconomyCraft.getManager(source.getServer()).getShop();
-        if (shop.getListings().isEmpty()) {
-            source.sendSuccess(() -> Component.literal("Shop is empty"), false);
-        } else {
-            for (ShopListing l : shop.getListings()) {
-                String seller = source.getServer().getProfileCache().get(l.seller).map(p -> p.getName()).orElse(l.seller.toString());
-                Component msg = Component.literal("[" + l.id + "] " + seller + " - " + l.item.getHoverName().getString() + " for " + EconomyCraft.formatMoney(l.price))
-                        .append(Component.literal(" [Buy]").withStyle(style -> style.withUnderlined(true).withClickEvent(new net.minecraft.network.chat.ClickEvent.RunCommand("/eco shop buy " + l.id))));
-                source.sendSuccess(() -> msg, false);
-            }
-        }
+    private static int openShop(ServerPlayer player, CommandSourceStack source) {
+        ShopUi.open(player, EconomyCraft.getManager(source.getServer()).getShop());
         return 1;
     }
 
@@ -130,49 +112,6 @@ public final class EconomyCommands {
         player.getMainHandItem().setCount(0);
         shop.addListing(listing);
         source.sendSuccess(() -> Component.literal("Listed item for " + EconomyCraft.formatMoney(price)), false);
-        return 1;
-    }
-
-    private static int initiateBuy(ServerPlayer player, long id, CommandSourceStack source) {
-        ShopManager shop = EconomyCraft.getManager(source.getServer()).getShop();
-        for (ShopListing l : shop.getListings()) {
-            if (l.id == id) {
-                pendingBuy.put(player.getUUID(), l.id);
-                source.sendSuccess(() -> Component.literal("Run /eco shop confirm " + id + " to buy " + l.item.getHoverName().getString() + " for " + EconomyCraft.formatMoney(l.price)), false);
-                return 1;
-            }
-        }
-        source.sendFailure(Component.literal("Listing not found"));
-        return 0;
-    }
-
-    private static int confirmBuy(ServerPlayer player, long id, CommandSourceStack source) {
-        if (!pendingBuy.containsKey(player.getUUID()) || pendingBuy.get(player.getUUID()) != id) {
-            source.sendFailure(Component.literal("No pending purchase"));
-            return 0;
-        }
-        pendingBuy.remove(player.getUUID());
-        ShopManager shop = EconomyCraft.getManager(source.getServer()).getShop();
-        ShopListing listing = null;
-        for (ShopListing l : shop.getListings()) {
-            if (l.id == id) { listing = l; break; }
-        }
-        if (listing == null) {
-            source.sendFailure(Component.literal("Listing not found"));
-            return 0;
-        }
-        EconomyManager eco = EconomyCraft.getManager(source.getServer());
-        if (!eco.pay(player.getUUID(), listing.seller, listing.price)) {
-            source.sendFailure(Component.literal("Not enough balance"));
-            return 0;
-        }
-        long price = listing.price;
-        shop.removeListing(listing.id);
-        if (!player.getInventory().add(listing.item.copy())) {
-            shop.addDelivery(player.getUUID(), listing.item.copy());
-            source.sendSuccess(() -> Component.literal("Item stored, use /eco market claim"), false);
-        }
-        source.sendSuccess(() -> Component.literal("Purchased item for " + EconomyCraft.formatMoney(price)), false);
         return 1;
     }
 
