@@ -1,17 +1,15 @@
 modLoader = "javafml"
 loaderVersion = "[9,)"
-#issueTrackerURL = ""
-license = "Insert License Here"
+license = "MIT"
 
 [[mods]]
 modId = "economycraft"
 version = "${version}"
 displayName = "EconomyCraft"
-authors = "Me!"
+authors = "Codex"
 description = '''
-This is an example description! Tell everyone what your mod is about!
+Simple server-side economy and shop mod.
 '''
-#logoFile = ""
 
 [[dependencies.economycraft]]
 modId = "neoforge"
