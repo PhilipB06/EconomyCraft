@@ -1,8 +1,8 @@
 package com.reazip.economycraft.shop;
 
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NbtOps;
-import net.minecraft.nbt.Tag;
+import com.google.gson.JsonObject;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.UUID;
@@ -14,25 +14,24 @@ public class ShopListing {
     public ItemStack item;
     public long price;
 
-    public CompoundTag save() {
-        CompoundTag tag = new CompoundTag();
-        tag.putInt("id", id);
-        if (seller != null)
-            tag.putUUID("seller", seller);
-        tag.putLong("price", price);
-        CompoundTag itemTag = new CompoundTag();
-        item.save(itemTag);
-        tag.put("item", itemTag);
-        return tag;
+    public JsonObject save() {
+        JsonObject obj = new JsonObject();
+        obj.addProperty("id", id);
+        if (seller != null) obj.addProperty("seller", seller.toString());
+        obj.addProperty("price", price);
+        obj.addProperty("item", BuiltInRegistries.ITEM.getKey(item.getItem()).toString());
+        obj.addProperty("count", item.getCount());
+        return obj;
     }
 
-    public static ShopListing load(CompoundTag tag) {
+    public static ShopListing load(JsonObject obj) {
         ShopListing l = new ShopListing();
-        l.id = tag.getInt("id");
-        if (tag.hasUUID("seller"))
-            l.seller = tag.getUUID("seller");
-        l.price = tag.getLong("price");
-        l.item = ItemStack.of(tag.getCompound("item"));
+        l.id = obj.get("id").getAsInt();
+        if (obj.has("seller")) l.seller = UUID.fromString(obj.get("seller").getAsString());
+        l.price = obj.get("price").getAsLong();
+        String itemId = obj.get("item").getAsString();
+        int count = obj.get("count").getAsInt();
+        l.item = new ItemStack(BuiltInRegistries.ITEM.get(new ResourceLocation(itemId)), count);
         return l;
     }
 }

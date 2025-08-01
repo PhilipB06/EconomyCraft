@@ -1,6 +1,10 @@
 package com.reazip.economycraft.market;
 
-import net.minecraft.nbt.CompoundTag;
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.ItemStack;
 
@@ -11,6 +15,7 @@ import java.util.*;
 
 /** Manages market requests and deliveries. */
 public class MarketManager {
+    private static final Gson GSON = new Gson();
     private final MinecraftServer server;
     private final Path file;
     private final Map<Integer, MarketRequest> requests = new HashMap<>();
@@ -47,18 +52,22 @@ public class MarketManager {
     public void load() {
         if (Files.exists(file)) {
             try {
-                CompoundTag tag = com.mojang.serialization.TagParser.parseTag(Files.readString(file));
-                nextId = tag.getInt("nextId");
-                for (CompoundTag c : tag.getList("requests", 10)) {
-                    MarketRequest r = MarketRequest.load(c);
+                String json = Files.readString(file);
+                JsonObject root = GSON.fromJson(json, JsonObject.class);
+                nextId = root.get("nextId").getAsInt();
+                for (var el : root.getAsJsonArray("requests")) {
+                    MarketRequest r = MarketRequest.load(el.getAsJsonObject());
                     requests.put(r.id, r);
                 }
-                CompoundTag dTag = tag.getCompound("deliveries");
-                for (String key : dTag.getAllKeys()) {
+                JsonObject dObj = root.getAsJsonObject("deliveries");
+                for (String key : dObj.keySet()) {
                     UUID id = UUID.fromString(key);
                     List<ItemStack> list = new ArrayList<>();
-                    for (CompoundTag s : dTag.getList(key, 10)) {
-                        list.add(ItemStack.of(s));
+                    for (var sEl : dObj.getAsJsonArray(key)) {
+                        JsonObject o = sEl.getAsJsonObject();
+                        String itemId = o.get("item").getAsString();
+                        int count = o.get("count").getAsInt();
+                        list.add(new ItemStack(BuiltInRegistries.ITEM.get(new ResourceLocation(itemId)), count));
                     }
                     deliveries.put(id, list);
                 }
@@ -67,26 +76,27 @@ public class MarketManager {
     }
 
     public void save() {
-        CompoundTag tag = new CompoundTag();
-        tag.putInt("nextId", nextId);
-        net.minecraft.nbt.ListTag list = new net.minecraft.nbt.ListTag();
+        JsonObject root = new JsonObject();
+        root.addProperty("nextId", nextId);
+        JsonArray reqArr = new JsonArray();
         for (MarketRequest r : requests.values()) {
-            list.add(r.save());
+            reqArr.add(r.save());
         }
-        tag.put("requests", list);
-        CompoundTag dTag = new CompoundTag();
+        root.add("requests", reqArr);
+        JsonObject dObj = new JsonObject();
         for (Map.Entry<UUID, List<ItemStack>> e : deliveries.entrySet()) {
-            net.minecraft.nbt.ListTag l = new net.minecraft.nbt.ListTag();
+            JsonArray arr = new JsonArray();
             for (ItemStack s : e.getValue()) {
-                CompoundTag c = new CompoundTag();
-                s.save(c);
-                l.add(c);
+                JsonObject o = new JsonObject();
+                o.addProperty("item", BuiltInRegistries.ITEM.getKey(s.getItem()).toString());
+                o.addProperty("count", s.getCount());
+                arr.add(o);
             }
-            dTag.put(e.getKey().toString(), l);
+            dObj.add(e.getKey().toString(), arr);
         }
-        tag.put("deliveries", dTag);
+        root.add("deliveries", dObj);
         try {
-            Files.writeString(file, tag.toString());
+            Files.writeString(file, GSON.toJson(root));
         } catch (IOException ignored) {}
     }
 }

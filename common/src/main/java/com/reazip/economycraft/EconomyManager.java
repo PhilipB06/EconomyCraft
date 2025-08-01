@@ -106,7 +106,7 @@ public class EconomyManager {
         Scoreboard board = server.getScoreboard();
         objective = board.getObjective("eco_balance");
         if (objective == null) {
-            objective = board.addObjective("eco_balance", ObjectiveCriteria.DUMMY, Component.literal("Balance"), ObjectiveCriteria.RenderType.INTEGER);
+            objective = board.addObjective("eco_balance", ObjectiveCriteria.DUMMY, Component.literal("Balance"), ObjectiveCriteria.RenderType.INTEGER, true, net.minecraft.network.chat.numbers.StyledFormat.SIDEBAR_DEFAULT);
         }
         board.setDisplayObjective(DisplaySlot.SIDEBAR, objective);
         updateLeaderboard();
@@ -118,33 +118,14 @@ public class EconomyManager {
         List<Map.Entry<UUID, Long>> sorted = new ArrayList<>(balances.entrySet());
         sorted.sort(Map.Entry.<UUID, Long>comparingByValue().reversed());
 
-        for (ServerPlayer viewer : server.getPlayerList().getPlayers()) {
-            net.minecraft.server.ServerScoreboard board = new net.minecraft.server.ServerScoreboard(server);
-            Objective obj = board.addObjective("eco_balance", ObjectiveCriteria.DUMMY, Component.literal("Balance"), ObjectiveCriteria.RenderType.INTEGER);
-            board.setDisplayObjective(DisplaySlot.SIDEBAR, obj);
+        Scoreboard board = server.getScoreboard();
+        board.resetAllPlayerScores(net.minecraft.world.scores.ScoreHolder.WILDCARD);
 
-            int rank = 1;
-            for (Map.Entry<UUID, Long> e : sorted.stream().limit(5).toList()) {
-                String name = server.getProfileCache().get(e.getKey()).map(p -> p.getName()).orElse(e.getKey().toString());
-                board.getOrCreatePlayerScore(name, obj).setScore(e.getValue().intValue());
-                rank++;
-            }
-
-            int viewerRank = -1;
-            long viewerBal = getBalance(viewer.getUUID());
-            for (int i = 0; i < sorted.size(); i++) {
-                if (sorted.get(i).getKey().equals(viewer.getUUID())) {
-                    viewerRank = i + 1;
-                    break;
-                }
-            }
-
-            if (viewerRank > 5) {
-                board.getOrCreatePlayerScore("-----", obj).setScore(0);
-                board.getOrCreatePlayerScore(viewer.getName().getString() + " #" + viewerRank, obj).setScore((int) viewerBal);
-            }
-
-            viewer.setScoreboard(board);
+        int rank = 1;
+        for (Map.Entry<UUID, Long> e : sorted.stream().limit(5).toList()) {
+            String name = server.getProfileCache().get(e.getKey()).map(p -> p.getName()).orElse(e.getKey().toString());
+            board.getOrCreatePlayerScore(net.minecraft.world.scores.ScoreHolder.forNameOnly(name), objective).setScore(e.getValue().intValue());
+            rank++;
         }
     }
 }

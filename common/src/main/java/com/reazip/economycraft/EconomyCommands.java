@@ -110,7 +110,7 @@ public final class EconomyCommands {
             for (ShopListing l : shop.getListings()) {
                 String seller = source.getServer().getProfileCache().get(l.seller).map(p -> p.getName()).orElse(l.seller.toString());
                 Component msg = Component.literal("[" + l.id + "] " + seller + " - " + l.item.getHoverName().getString() + " for " + EconomyCraft.formatMoney(l.price))
-                        .append(Component.literal(" [Buy]").withStyle(s -> s.withUnderlined(true)).withClickEvent(new net.minecraft.network.chat.ClickEvent(net.minecraft.network.chat.ClickEvent.Action.RUN_COMMAND, "/eco shop buy " + l.id)));
+                        .append(Component.literal(" [Buy]").withStyle(s -> s.withUnderlined(true)).withClickEvent(new net.minecraft.network.chat.ClickEvent.RunCommand("/eco shop buy " + l.id)));
                 source.sendSuccess(() -> msg, false);
             }
         }
@@ -184,7 +184,7 @@ public final class EconomyCommands {
             for (MarketRequest r : market.getRequests()) {
                 String buyer = source.getServer().getProfileCache().get(r.requester).map(p -> p.getName()).orElse(r.requester.toString());
                 Component msg = Component.literal("[" + r.id + "] " + buyer + " wants " + r.item.getCount() + "x " + r.item.getHoverName().getString() + " for " + EconomyCraft.formatMoney(r.price))
-                        .append(Component.literal(" [Fulfill]").withStyle(s -> s.withUnderlined(true)).withClickEvent(new net.minecraft.network.chat.ClickEvent(net.minecraft.network.chat.ClickEvent.Action.RUN_COMMAND, "/eco market fulfill " + r.id)));
+                        .append(Component.literal(" [Fulfill]").withStyle(s -> s.withUnderlined(true)).withClickEvent(new net.minecraft.network.chat.ClickEvent.RunCommand("/eco market fulfill " + r.id)));
                 source.sendSuccess(() -> msg, false);
             }
         }
