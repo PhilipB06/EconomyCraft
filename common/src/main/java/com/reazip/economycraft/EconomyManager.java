@@ -148,21 +148,9 @@ public class EconomyManager {
     private void setupObjective() {
         Scoreboard board = server.getScoreboard();
         objective = board.getObjective("eco_balance");
-        net.minecraft.network.chat.numbers.NumberFormat fmt = new net.minecraft.network.chat.numbers.NumberFormat() {
-            @Override
-            public net.minecraft.network.chat.MutableComponent format(int value) {
-                return Component.literal(Integer.toString(value));
-            }
 
-            @Override
-            public net.minecraft.network.chat.numbers.NumberFormatType<?> type() {
-                return net.minecraft.network.chat.numbers.StyledFormat.TYPE;
-            }
-        };
         if (objective == null) {
-            objective = board.addObjective("eco_balance", ObjectiveCriteria.DUMMY, Component.literal("Balance"), ObjectiveCriteria.RenderType.INTEGER, true, fmt);
-        } else {
-            objective.setNumberFormat(fmt);
+            objective = board.addObjective("eco_balance", ObjectiveCriteria.DUMMY, Component.literal("Balance"), ObjectiveCriteria.RenderType.INTEGER, true, null);
         }
         board.setDisplayObjective(DisplaySlot.SIDEBAR, objective);
         updateLeaderboard();
@@ -173,18 +161,7 @@ public class EconomyManager {
         if (objective != null) {
             board.removeObjective(objective);
         }
-        net.minecraft.network.chat.numbers.NumberFormat fmt = new net.minecraft.network.chat.numbers.NumberFormat() {
-            @Override
-            public net.minecraft.network.chat.MutableComponent format(int value) {
-                return Component.literal(Integer.toString(value));
-            }
-
-            @Override
-            public net.minecraft.network.chat.numbers.NumberFormatType<?> type() {
-                return net.minecraft.network.chat.numbers.StyledFormat.TYPE;
-            }
-        };
-        objective = board.addObjective("eco_balance", ObjectiveCriteria.DUMMY, Component.literal("Balance"), ObjectiveCriteria.RenderType.INTEGER, true, fmt);
+        objective = board.addObjective("eco_balance", ObjectiveCriteria.DUMMY, Component.literal("Balance"), ObjectiveCriteria.RenderType.INTEGER, true, null);
         board.setDisplayObjective(DisplaySlot.SIDEBAR, objective);
         displayed.clear();
         List<Map.Entry<UUID, Long>> sorted = new ArrayList<>(balances.entrySet());
