@@ -21,6 +21,7 @@ public class MarketManager {
     private final Map<Integer, MarketRequest> requests = new HashMap<>();
     private final Map<UUID, List<ItemStack>> deliveries = new HashMap<>();
     private int nextId = 1;
+    private final List<Runnable> listeners = new ArrayList<>();
 
     public MarketManager(MinecraftServer server) {
         this.server = server;
@@ -35,10 +36,13 @@ public class MarketManager {
     public void addRequest(MarketRequest r) {
         r.id = nextId++;
         requests.put(r.id, r);
+        notifyListeners();
     }
 
     public MarketRequest removeRequest(int id) {
-        return requests.remove(id);
+        MarketRequest r = requests.remove(id);
+        if (r != null) notifyListeners();
+        return r;
     }
 
     public void addDelivery(UUID player, ItemStack stack) {
@@ -102,5 +106,19 @@ public class MarketManager {
         try {
             Files.writeString(file, GSON.toJson(root));
         } catch (IOException ignored) {}
+    }
+
+    public void addListener(Runnable run) {
+        listeners.add(run);
+    }
+
+    public void removeListener(Runnable run) {
+        listeners.remove(run);
+    }
+
+    private void notifyListeners() {
+        for (Runnable r : new ArrayList<>(listeners)) {
+            r.run();
+        }
     }
 }

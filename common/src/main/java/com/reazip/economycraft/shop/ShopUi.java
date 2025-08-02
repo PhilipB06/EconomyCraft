@@ -1,6 +1,7 @@
 package com.reazip.economycraft.shop;
 
 import com.reazip.economycraft.EconomyCraft;
+import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyManager;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -49,19 +50,34 @@ public final class ShopUi {
         });
     }
 
+    private static void openRemove(ServerPlayer player, ShopManager shop, ShopListing listing) {
+        player.openMenu(new MenuProvider() {
+            @Override
+            public Component getDisplayName() {
+                return Component.literal("Remove");
+            }
+
+            @Override
+            public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
+                return new RemoveMenu(id, inv, shop, listing, player);
+            }
+        });
+    }
+
     private static class ShopMenu extends AbstractContainerMenu {
         private final ShopManager shop;
         private final ServerPlayer viewer;
-        private final List<ShopListing> listings;
+        private List<ShopListing> listings = new ArrayList<>();
         private final SimpleContainer container = new SimpleContainer(54);
         private int page;
+        private final Runnable listener = this::updatePage;
 
         ShopMenu(int id, Inventory inv, ShopManager shop, ServerPlayer viewer) {
             super(MenuType.GENERIC_9x6, id);
             this.shop = shop;
             this.viewer = viewer;
-            this.listings = new ArrayList<>(shop.getListings());
             updatePage();
+            shop.addListener(listener);
             for (int i = 0; i < 54; i++) {
                 int r = i / 9;
                 int c = i % 9;
@@ -82,6 +98,7 @@ public final class ShopUi {
         }
 
         private void updatePage() {
+            listings = new ArrayList<>(shop.getListings());
             container.clearContent();
             int start = page * 45;
             int totalPages = (int)Math.ceil(listings.size() / 45.0);
@@ -119,16 +136,7 @@ public final class ShopUi {
                     if (index < listings.size()) {
                         ShopListing listing = listings.get(index);
                         if (listing.seller.equals(player.getUUID())) {
-                            shop.removeListing(listing.id);
-                            ItemStack stack = listing.item.copy();
-                            if (!player.getInventory().add(stack)) {
-                                shop.addDelivery(player.getUUID(), stack);
-                                ((ServerPlayer) player).sendSystemMessage(Component.literal("Item stored, use /eco market claim"));
-                            } else {
-                                ((ServerPlayer) player).sendSystemMessage(Component.literal("Listing removed"));
-                            }
-                            listings.remove(index);
-                            updatePage();
+                            openRemove((ServerPlayer) player, shop, listing);
                         } else {
                             ShopUi.openConfirm((ServerPlayer) player, shop, listing);
                         }
@@ -143,6 +151,12 @@ public final class ShopUi {
 
         @Override
         public boolean stillValid(Player player) { return true; }
+
+        @Override
+        public void removed(Player player) {
+            super.removed(player);
+            shop.removeListener(listener);
+        }
 
         @Override
         public ItemStack quickMoveStack(Player player, int index) { return ItemStack.EMPTY; }
@@ -198,9 +212,14 @@ public final class ShopUi {
             if (type == ClickType.PICKUP) {
                 if (slot == 2) {
                     EconomyManager eco = EconomyCraft.getManager(((ServerPlayer) player).getServer());
-                    if (!eco.pay(player.getUUID(), listing.seller, listing.price)) {
+                    long cost = listing.price;
+                    long bal = eco.getBalance(player.getUUID());
+                    if (bal < cost) {
                         ((ServerPlayer) player).sendSystemMessage(Component.literal("Not enough balance"));
                     } else {
+                        long tax = Math.round(cost * EconomyConfig.get().taxRate);
+                        eco.setMoney(player.getUUID(), bal - cost);
+                        eco.addMoney(listing.seller, cost - tax);
                         shop.removeListing(listing.id);
                         ItemStack stack = listing.item.copy();
                         int count = stack.getCount();
@@ -209,7 +228,7 @@ public final class ShopUi {
                             shop.addDelivery(player.getUUID(), stack);
                             ((ServerPlayer) player).sendSystemMessage(Component.literal("Item stored, use /eco market claim"));
                         } else {
-                            ((ServerPlayer) player).sendSystemMessage(Component.literal("Purchased " + count + "x " + name.getString() + " for " + EconomyCraft.formatMoney(listing.price)));
+                            ((ServerPlayer) player).sendSystemMessage(Component.literal("Purchased " + count + "x " + name.getString() + " for " + EconomyCraft.formatMoney(cost)));
                         }
                     }
                     player.closeContainer();
@@ -230,5 +249,76 @@ public final class ShopUi {
 
         @Override
         public ItemStack quickMoveStack(Player player, int index) { return ItemStack.EMPTY; }
+    }
+
+    private static class RemoveMenu extends AbstractContainerMenu {
+        private final ShopManager shop;
+        private final ShopListing listing;
+        private final ServerPlayer viewer;
+        private final SimpleContainer container = new SimpleContainer(9);
+
+        RemoveMenu(int id, Inventory inv, ShopManager shop, ShopListing listing, ServerPlayer viewer) {
+            super(MenuType.GENERIC_9x1, id);
+            this.shop = shop;
+            this.listing = listing;
+            this.viewer = viewer;
+
+            ItemStack confirm = new ItemStack(Items.BARRIER);
+            confirm.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Remove"));
+            container.setItem(2, confirm);
+
+            ItemStack item = listing.item.copy();
+            item.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
+                    Component.literal("Price: " + EconomyCraft.formatMoney(listing.price)),
+                    Component.literal("Seller: you"),
+                    Component.literal("This will remove the listing"))));
+            container.setItem(4, item);
+
+            ItemStack cancel = new ItemStack(Items.EMERALD_BLOCK);
+            cancel.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Cancel"));
+            container.setItem(6, cancel);
+
+            for (int i = 0; i < 9; i++) {
+                this.addSlot(new Slot(container, i, 8 + i * 18, 20) { @Override public boolean mayPickup(Player p) { return false; }});
+            }
+
+            int y = 40;
+            for (int r = 0; r < 3; r++) {
+                for (int c = 0; c < 9; c++) {
+                    this.addSlot(new Slot(inv, c + r * 9 + 9, 8 + c * 18, y + r * 18));
+                }
+            }
+            for (int c = 0; c < 9; c++) {
+                this.addSlot(new Slot(inv, c, 8 + c * 18, y + 58));
+            }
+        }
+
+        @Override
+        public void clicked(int slot, int dragType, ClickType type, Player player) {
+            if (type == ClickType.PICKUP) {
+                if (slot == 2) {
+                    shop.removeListing(listing.id);
+                    ItemStack stack = listing.item.copy();
+                    if (!player.getInventory().add(stack)) {
+                        shop.addDelivery(player.getUUID(), stack);
+                        viewer.sendSystemMessage(Component.literal("Item stored, use /eco market claim"));
+                    } else {
+                        viewer.sendSystemMessage(Component.literal("Listing removed"));
+                    }
+                    player.closeContainer();
+                    ShopUi.open((ServerPlayer) player, shop);
+                    return;
+                }
+                if (slot == 6) {
+                    player.closeContainer();
+                    ShopUi.open((ServerPlayer) player, shop);
+                    return;
+                }
+            }
+            super.clicked(slot, dragType, type, player);
+        }
+
+        @Override public boolean stillValid(Player player) { return true; }
+        @Override public ItemStack quickMoveStack(Player player, int idx) { return ItemStack.EMPTY; }
     }
 }

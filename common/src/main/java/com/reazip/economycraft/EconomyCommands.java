@@ -2,6 +2,7 @@ package com.reazip.economycraft;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.LongArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
@@ -42,9 +43,17 @@ public final class EconomyCommands {
                         .executes(ctx -> addMoney(EntityArgument.getPlayer(ctx, "player"),
                                 LongArgumentType.getLong(ctx, "amount"), ctx.getSource())))))
             .then(literal("setmoney").requires(s -> s.hasPermission(2))
-                .then(argument("player", EntityArgument.player())
+                .then(argument("target", StringArgumentType.word())
+                    .suggests((ctx, builder) -> {
+                        var server = ctx.getSource().getServer();
+                        for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+                            builder.suggest(p.getGameProfile().getName());
+                        }
+                        builder.suggest("@a");
+                        return builder.buildFuture();
+                    })
                     .then(argument("amount", LongArgumentType.longArg(0))
-                        .executes(ctx -> setMoney(EntityArgument.getPlayer(ctx, "player"),
+                        .executes(ctx -> setMoney(StringArgumentType.getString(ctx, "target"),
                                 LongArgumentType.getLong(ctx, "amount"), ctx.getSource())))))
             .then(literal("shop")
                 .executes(ctx -> openShop(ctx.getSource().getPlayerOrException(), ctx.getSource()))
@@ -63,6 +72,8 @@ public final class EconomyCommands {
                                         LongArgumentType.getLong(ctx, "price"),
                                         ctx.getSource()))))))
                 .then(literal("claim").executes(ctx -> claimMarket(ctx.getSource().getPlayerOrException(), ctx.getSource()))))
+            .then(literal("daily")
+                .executes(ctx -> daily(ctx.getSource().getPlayerOrException(), ctx.getSource())))
         );
     }
 
@@ -90,10 +101,25 @@ public final class EconomyCommands {
         return 1;
     }
 
-    private static int setMoney(ServerPlayer player, long amount, CommandSourceStack source) {
+    private static int setMoney(String target, long amount, CommandSourceStack source) {
         EconomyManager manager = EconomyCraft.getManager(source.getServer());
-        manager.setMoney(player.getUUID(), amount);
-        source.sendSuccess(() -> Component.literal("Set balance of " + player.getName().getString() + " to " + EconomyCraft.formatMoney(amount)), false);
+        if ("@a".equals(target)) {
+            for (UUID id : new java.util.ArrayList<>(manager.getBalances().keySet())) {
+                manager.setMoney(id, amount);
+            }
+            for (ServerPlayer p : source.getServer().getPlayerList().getPlayers()) {
+                manager.setMoney(p.getUUID(), amount);
+            }
+            source.sendSuccess(() -> Component.literal("Set balance of all players to " + EconomyCraft.formatMoney(amount)), true);
+            return 1;
+        }
+        var profile = source.getServer().getProfileCache().get(target);
+        if (profile.isEmpty()) {
+            source.sendFailure(Component.literal("Unknown player"));
+            return 0;
+        }
+        manager.setMoney(profile.get().getId(), amount);
+        source.sendSuccess(() -> Component.literal("Set balance of " + target + " to " + EconomyCraft.formatMoney(amount)), false);
         return 1;
     }
 
@@ -147,6 +173,16 @@ public final class EconomyCommands {
 
     private static int claimMarket(ServerPlayer player, CommandSourceStack source) {
         MarketUi.openClaims(player, EconomyCraft.getManager(source.getServer()).getMarket());
+        return 1;
+    }
+
+    private static int daily(ServerPlayer player, CommandSourceStack source) {
+        EconomyManager manager = EconomyCraft.getManager(source.getServer());
+        if (manager.claimDaily(player.getUUID())) {
+            source.sendSuccess(() -> Component.literal("Claimed " + EconomyCraft.formatMoney(EconomyConfig.get().dailyAmount)), false);
+        } else {
+            source.sendFailure(Component.literal("Already claimed today"));
+        }
         return 1;
     }
 }

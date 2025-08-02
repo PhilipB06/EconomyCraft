@@ -26,7 +26,9 @@ public class EconomyManager {
 
     private final MinecraftServer server;
     private final Path file;
+    private final Path dailyFile;
     private final Map<UUID, Long> balances = new HashMap<>();
+    private final Map<UUID, Long> lastDaily = new HashMap<>();
     private Objective objective;
     private final com.reazip.economycraft.shop.ShopManager shop;
     private final com.reazip.economycraft.market.MarketManager market;
@@ -34,7 +36,10 @@ public class EconomyManager {
     public EconomyManager(MinecraftServer server) {
         this.server = server;
         this.file = server.getFile("economycraft_balances.json");
+        this.dailyFile = server.getFile("economycraft_daily.json");
+        EconomyConfig.load(server);
         load();
+        loadDaily();
         this.shop = new com.reazip.economycraft.shop.ShopManager(server);
         this.market = new com.reazip.economycraft.market.MarketManager(server);
         setupObjective();
@@ -45,7 +50,7 @@ public class EconomyManager {
     }
 
     public long getBalance(UUID player) {
-        return balances.getOrDefault(player, 0L);
+        return balances.computeIfAbsent(player, id -> EconomyConfig.get().startingBalance);
     }
 
     public void addMoney(UUID player, long amount) {
@@ -88,6 +93,10 @@ public class EconomyManager {
             Files.writeString(file, json);
         } catch (IOException ignored) {
         }
+        try {
+            String json = GSON.toJson(lastDaily, new TypeToken<Map<UUID, Long>>(){}.getType());
+            Files.writeString(dailyFile, json);
+        } catch (IOException ignored) {}
     }
 
     public Map<UUID, Long> getBalances() {
@@ -100,6 +109,25 @@ public class EconomyManager {
 
     public com.reazip.economycraft.market.MarketManager getMarket() {
         return market;
+    }
+
+    public boolean claimDaily(UUID player) {
+        long today = java.time.LocalDate.now().toEpochDay();
+        long last = lastDaily.getOrDefault(player, -1L);
+        if (last == today) return false;
+        lastDaily.put(player, today);
+        addMoney(player, EconomyConfig.get().dailyAmount);
+        return true;
+    }
+
+    private void loadDaily() {
+        if (Files.exists(dailyFile)) {
+            try {
+                String json = Files.readString(dailyFile);
+                Map<UUID, Long> map = GSON.fromJson(json, new TypeToken<Map<UUID, Long>>(){}.getType());
+                if (map != null) lastDaily.putAll(map);
+            } catch (IOException ignored) {}
+        }
     }
 
     private void setupObjective() {

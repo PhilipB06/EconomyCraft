@@ -21,6 +21,7 @@ public class ShopManager {
     private final Map<Integer, ShopListing> listings = new HashMap<>();
     private final Map<UUID, List<ItemStack>> deliveries = new HashMap<>();
     private int nextId = 1;
+    private final List<Runnable> listeners = new ArrayList<>();
 
     public ShopManager(MinecraftServer server) {
         this.server = server;
@@ -35,10 +36,13 @@ public class ShopManager {
     public void addListing(ShopListing listing) {
         listing.id = nextId++;
         listings.put(listing.id, listing);
+        notifyListeners();
     }
 
     public ShopListing removeListing(int id) {
-        return listings.remove(id);
+        ShopListing l = listings.remove(id);
+        if (l != null) notifyListeners();
+        return l;
     }
 
     public MinecraftServer server() {
@@ -102,5 +106,19 @@ public class ShopManager {
         try {
             Files.writeString(file, GSON.toJson(root));
         } catch (IOException ignored) {}
+    }
+
+    public void addListener(Runnable run) {
+        listeners.add(run);
+    }
+
+    public void removeListener(Runnable run) {
+        listeners.remove(run);
+    }
+
+    private void notifyListeners() {
+        for (Runnable r : new ArrayList<>(listeners)) {
+            r.run();
+        }
     }
 }

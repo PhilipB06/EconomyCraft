@@ -1,6 +1,7 @@
 package com.reazip.economycraft.market;
 
 import com.reazip.economycraft.EconomyCraft;
+import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyManager;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -52,17 +53,18 @@ public final class MarketUi {
         private final MarketManager market;
         private final EconomyManager eco;
         private final ServerPlayer viewer;
-        private final List<MarketRequest> requests;
+        private List<MarketRequest> requests = new ArrayList<>();
         private final SimpleContainer container = new SimpleContainer(54);
         private int page;
+        private final Runnable listener = this::updatePage;
 
         RequestMenu(int id, Inventory inv, MarketManager market, EconomyManager eco, ServerPlayer viewer) {
             super(MenuType.GENERIC_9x6, id);
             this.market = market;
             this.eco = eco;
             this.viewer = viewer;
-            this.requests = new ArrayList<>(market.getRequests());
             updatePage();
+            market.addListener(listener);
             for (int i = 0; i < 54; i++) {
                 int r = i / 9;
                 int c = i % 9;
@@ -83,6 +85,7 @@ public final class MarketUi {
         }
 
         private void updatePage() {
+            requests = new ArrayList<>(market.getRequests());
             container.clearContent();
             int start = page * 45;
             int totalPages = (int)Math.ceil(requests.size() / 45.0);
@@ -122,15 +125,12 @@ public final class MarketUi {
                     if (index < requests.size()) {
                         MarketRequest req = requests.get(index);
                         if (req.requester.equals(player.getUUID())) {
-                            market.removeRequest(req.id);
-                            ((ServerPlayer) player).sendSystemMessage(Component.literal("Request removed"));
-                            requests.remove(index);
-                            updatePage();
+                            openRemove((ServerPlayer) player, req);
                         } else {
                             openConfirm((ServerPlayer) player, req);
                         }
                         return;
-                }
+                    }
                 }
                 if (slot == 45 && page > 0) { page--; updatePage(); return; }
                 if (slot == 53 && (page + 1) * 45 < requests.size()) { page++; updatePage(); return; }
@@ -172,7 +172,26 @@ public final class MarketUi {
             });
         }
 
+        private void openRemove(ServerPlayer player, MarketRequest req) {
+            player.openMenu(new MenuProvider() {
+                @Override
+                public Component getDisplayName() { return Component.literal("Remove"); }
+
+                @Override
+                public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
+                    return new RemoveMenu(id, inv, req, RequestMenu.this);
+                }
+            });
+        }
+
         @Override public boolean stillValid(Player player) { return true; }
+
+        @Override
+        public void removed(Player player) {
+            super.removed(player);
+            market.removeListener(listener);
+        }
+
         @Override public ItemStack quickMoveStack(Player player, int idx) { return ItemStack.EMPTY; }
     }
 
@@ -225,7 +244,11 @@ public final class MarketUi {
                         ((ServerPlayer) player).sendSystemMessage(Component.literal("Not enough items"));
                     } else {
                         parent.removeItems((ServerPlayer) player, request.item.copy());
-                        parent.eco.pay(request.requester, player.getUUID(), request.price);
+                        long cost = request.price;
+                        long tax = Math.round(cost * EconomyConfig.get().taxRate);
+                        long bal = parent.eco.getBalance(request.requester);
+                        parent.eco.setMoney(request.requester, bal - cost);
+                        parent.eco.addMoney(player.getUUID(), cost - tax);
                         parent.market.removeRequest(request.id);
                         parent.market.addDelivery(request.requester, request.item.copy());
                         ((ServerPlayer) player).sendSystemMessage(Component.literal("Fulfilled request"));
@@ -241,6 +264,69 @@ public final class MarketUi {
                         parent.requests.removeIf(r -> r.id == request.id);
                         parent.updatePage();
                     }
+                    player.closeContainer();
+                    MarketUi.openRequests((ServerPlayer) player, parent.eco);
+                    return;
+                }
+                if (slot == 6) {
+                    player.closeContainer();
+                    MarketUi.openRequests((ServerPlayer) player, parent.eco);
+                    return;
+                }
+            }
+            super.clicked(slot, drag, type, player);
+        }
+
+        @Override public boolean stillValid(Player player) { return true; }
+        @Override public ItemStack quickMoveStack(Player player, int idx) { return ItemStack.EMPTY; }
+    }
+
+    private static class RemoveMenu extends AbstractContainerMenu {
+        private final MarketRequest request;
+        private final RequestMenu parent;
+        private final SimpleContainer container = new SimpleContainer(9);
+
+        RemoveMenu(int id, Inventory inv, MarketRequest req, RequestMenu parent) {
+            super(MenuType.GENERIC_9x1, id);
+            this.request = req;
+            this.parent = parent;
+
+            ItemStack confirm = new ItemStack(Items.BARRIER);
+            confirm.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Remove"));
+            container.setItem(2, confirm);
+
+            ItemStack item = req.item.copy();
+            item.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
+                    Component.literal("Reward: " + EconomyCraft.formatMoney(req.price)),
+                    Component.literal("Amount: " + req.item.getCount()),
+                    Component.literal("This will remove the request"))));
+            container.setItem(4, item);
+
+            ItemStack cancel = new ItemStack(Items.EMERALD_BLOCK);
+            cancel.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Cancel"));
+            container.setItem(6, cancel);
+
+            for (int i = 0; i < 9; i++) {
+                this.addSlot(new Slot(container, i, 8 + i * 18, 20) { @Override public boolean mayPickup(Player p) { return false; }});
+            }
+
+            int y = 40;
+            for (int r = 0; r < 3; r++) {
+                for (int c = 0; c < 9; c++) {
+                    this.addSlot(new Slot(inv, c + r * 9 + 9, 8 + c * 18, y + r * 18));
+                }
+            }
+            for (int c = 0; c < 9; c++) {
+                this.addSlot(new Slot(inv, c, 8 + c * 18, y + 58));
+            }
+        }
+
+        @Override
+        public void clicked(int slot, int drag, ClickType type, Player player) {
+            if (type == ClickType.PICKUP) {
+                if (slot == 2) {
+                    parent.market.removeRequest(request.id);
+                    ((ServerPlayer) player).sendSystemMessage(Component.literal("Request removed"));
                     player.closeContainer();
                     MarketUi.openRequests((ServerPlayer) player, parent.eco);
                     return;

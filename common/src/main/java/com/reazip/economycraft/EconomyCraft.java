@@ -32,6 +32,7 @@ public final class EconomyCraft {
 
         PlayerEvent.PLAYER_JOIN.register(player -> {
             EconomyManager eco = getManager(player.getServer());
+            eco.getBalance(player.getUUID());
             if (eco.getMarket().hasDeliveries(player.getUUID())) {
                 Component msg = Component.literal("You have deliveries: ")
                         .append(Component.literal("[Claim]")
