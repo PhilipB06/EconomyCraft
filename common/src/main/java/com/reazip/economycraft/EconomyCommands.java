@@ -112,8 +112,10 @@ public final class EconomyCommands {
         ShopListing listing = new ShopListing();
         listing.seller = player.getUUID();
         listing.price = price;
-        listing.item = player.getMainHandItem().copy();
-        player.getMainHandItem().setCount(0);
+        ItemStack hand = player.getMainHandItem();
+        int count = Math.min(hand.getCount(), hand.getMaxStackSize());
+        listing.item = hand.copyWithCount(count);
+        hand.shrink(count);
         shop.addListing(listing);
         source.sendSuccess(() -> Component.literal("Listed item for " + EconomyCraft.formatMoney(price)), false);
         return 1;
@@ -131,6 +133,8 @@ public final class EconomyCommands {
             source.sendFailure(Component.literal("Invalid item"));
             return 0;
         }
+        ItemStack proto = new ItemStack(holder.get());
+        amount = Math.min(amount, proto.getMaxStackSize());
         MarketManager market = EconomyCraft.getManager(source.getServer()).getMarket();
         MarketRequest r = new MarketRequest();
         r.requester = player.getUUID();

@@ -117,7 +117,21 @@ public final class ShopUi {
                 if (slot < 45) {
                     int index = page * 45 + slot;
                     if (index < listings.size()) {
-                        ShopUi.openConfirm((ServerPlayer) player, shop, listings.get(index));
+                        ShopListing listing = listings.get(index);
+                        if (listing.seller.equals(player.getUUID())) {
+                            shop.removeListing(listing.id);
+                            ItemStack stack = listing.item.copy();
+                            if (!player.getInventory().add(stack)) {
+                                shop.addDelivery(player.getUUID(), stack);
+                                ((ServerPlayer) player).sendSystemMessage(Component.literal("Item stored, use /eco market claim"));
+                            } else {
+                                ((ServerPlayer) player).sendSystemMessage(Component.literal("Listing removed"));
+                            }
+                            listings.remove(index);
+                            updatePage();
+                        } else {
+                            ShopUi.openConfirm((ServerPlayer) player, shop, listing);
+                        }
                         return;
                     }
                 }
@@ -147,7 +161,7 @@ public final class ShopUi {
             this.viewer = viewer;
 
             ItemStack confirm = new ItemStack(Items.EMERALD_BLOCK);
-            confirm.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Confirm purchase"));
+            confirm.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Confirm"));
             container.setItem(2, confirm);
 
             ItemStack item = listing.item.copy();

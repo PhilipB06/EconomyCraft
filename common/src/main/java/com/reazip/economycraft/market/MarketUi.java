@@ -93,7 +93,7 @@ public final class MarketUi {
                 ItemStack display = r.item.copy();
                 String reqName = viewer.getServer().getProfileCache().get(r.requester).map(p -> p.getName()).orElse(r.requester.toString());
                 display.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
-                        Component.literal("Price: " + EconomyCraft.formatMoney(r.price)),
+                        Component.literal("Reward: " + EconomyCraft.formatMoney(r.price)),
                         Component.literal("Requester: " + reqName),
                         Component.literal("Amount: " + r.item.getCount()))));
                 display.setCount(Math.min(r.item.getCount(), display.getMaxStackSize()));
@@ -121,7 +121,14 @@ public final class MarketUi {
                     int index = page * 45 + slot;
                     if (index < requests.size()) {
                         MarketRequest req = requests.get(index);
-                        openConfirm((ServerPlayer) player, req);
+                        if (req.requester.equals(player.getUUID())) {
+                            market.removeRequest(req.id);
+                            ((ServerPlayer) player).sendSystemMessage(Component.literal("Request removed"));
+                            requests.remove(index);
+                            updatePage();
+                        } else {
+                            openConfirm((ServerPlayer) player, req);
+                        }
                         return;
                 }
                 }
@@ -186,7 +193,7 @@ public final class MarketUi {
             ItemStack item = req.item.copy();
             String name = parent.viewer.getServer().getProfileCache().get(req.requester).map(p -> p.getName()).orElse(req.requester.toString());
             item.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
-                    Component.literal("Price: " + EconomyCraft.formatMoney(req.price)),
+                    Component.literal("Reward: " + EconomyCraft.formatMoney(req.price)),
                     Component.literal("Requester: " + name),
                     Component.literal("Amount: " + req.item.getCount()))));
             container.setItem(4, item);
@@ -218,10 +225,19 @@ public final class MarketUi {
                         ((ServerPlayer) player).sendSystemMessage(Component.literal("Not enough items"));
                     } else {
                         parent.removeItems((ServerPlayer) player, request.item.copy());
-                        parent.eco.pay(player.getUUID(), request.requester, request.price);
+                        parent.eco.pay(request.requester, player.getUUID(), request.price);
                         parent.market.removeRequest(request.id);
                         parent.market.addDelivery(request.requester, request.item.copy());
                         ((ServerPlayer) player).sendSystemMessage(Component.literal("Fulfilled request"));
+                        var requesterPlayer = parent.viewer.getServer().getPlayerList().getPlayer(request.requester);
+                        if (requesterPlayer != null) {
+                            ItemStack stack = request.item;
+                            Component msg = Component.literal("Your request for " + stack.getCount() + "x " + stack.getHoverName().getString() + " has been fulfilled. ")
+                                    .append(Component.literal("[Claim]")
+                                            .withStyle(s -> s.withUnderlined(true)
+                                                    .withClickEvent(new net.minecraft.network.chat.ClickEvent.RunCommand("/eco market claim"))));
+                            requesterPlayer.sendSystemMessage(msg);
+                        }
                         parent.requests.removeIf(r -> r.id == request.id);
                         parent.updatePage();
                     }
@@ -264,6 +280,15 @@ public final class MarketUi {
                     @Override public boolean mayPlace(ItemStack stack) { return false; }
                 });
             }
+            int y = 18 + 6 * 18 + 14;
+            for (int r = 0; r < 3; r++) {
+                for (int c = 0; c < 9; c++) {
+                    this.addSlot(new Slot(inv, c + r * 9 + 9, 8 + c * 18, y + r * 18));
+                }
+            }
+            for (int c = 0; c < 9; c++) {
+                this.addSlot(new Slot(inv, c, 8 + c * 18, y + 58));
+            }
         }
 
         @Override
@@ -280,6 +305,21 @@ public final class MarketUi {
         }
 
         @Override public boolean stillValid(Player player) { return true; }
-        @Override public ItemStack quickMoveStack(Player player, int idx) { return ItemStack.EMPTY; }
+
+        @Override
+        public ItemStack quickMoveStack(Player player, int idx) {
+            Slot slot = this.slots.get(idx);
+            if (!slot.hasItem()) return ItemStack.EMPTY;
+            ItemStack stack = slot.getItem();
+            ItemStack copy = stack.copy();
+            if (idx < 54) {
+                if (player.getInventory().add(stack)) {
+                    slot.set(ItemStack.EMPTY);
+                    return copy;
+                }
+                return ItemStack.EMPTY;
+            }
+            return ItemStack.EMPTY;
+        }
     }
 }
