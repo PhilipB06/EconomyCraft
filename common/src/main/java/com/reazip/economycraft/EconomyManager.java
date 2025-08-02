@@ -151,7 +151,7 @@ public class EconomyManager {
         net.minecraft.network.chat.numbers.NumberFormat fmt = new net.minecraft.network.chat.numbers.NumberFormat() {
             @Override
             public net.minecraft.network.chat.MutableComponent format(int value) {
-                return Component.literal(EconomyCraft.formatMoney(value));
+                return Component.literal(Integer.toString(value));
             }
 
             @Override
@@ -176,7 +176,7 @@ public class EconomyManager {
         net.minecraft.network.chat.numbers.NumberFormat fmt = new net.minecraft.network.chat.numbers.NumberFormat() {
             @Override
             public net.minecraft.network.chat.MutableComponent format(int value) {
-                return Component.literal(EconomyCraft.formatMoney(value));
+                return Component.literal(Integer.toString(value));
             }
 
             @Override
