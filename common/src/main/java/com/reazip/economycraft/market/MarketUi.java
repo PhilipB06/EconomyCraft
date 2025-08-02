@@ -1,0 +1,189 @@
+package com.reazip.economycraft.market;
+
+import com.reazip.economycraft.EconomyCraft;
+import com.reazip.economycraft.EconomyManager;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.MenuProvider;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+public final class MarketUi {
+    private MarketUi() {}
+
+    public static void openRequests(ServerPlayer player, EconomyManager eco) {
+        player.openMenu(new MenuProvider() {
+            @Override
+            public Component getDisplayName() {
+                return Component.literal("Market");
+            }
+
+            @Override
+            public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
+                return new RequestMenu(id, inv, eco.getMarket(), eco);
+            }
+        });
+    }
+
+    public static void openClaims(ServerPlayer player, MarketManager market) {
+        player.openMenu(new MenuProvider() {
+            @Override
+            public Component getDisplayName() { return Component.literal("Deliveries"); }
+
+            @Override
+            public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
+                return new ClaimMenu(id, inv, market, player.getUUID());
+            }
+        });
+    }
+
+    private static class RequestMenu extends AbstractContainerMenu {
+        private final MarketManager market;
+        private final EconomyManager eco;
+        private final List<MarketRequest> requests;
+        private final SimpleContainer container = new SimpleContainer(54);
+        private int page;
+
+        RequestMenu(int id, Inventory inv, MarketManager market, EconomyManager eco) {
+            super(MenuType.GENERIC_9x6, id);
+            this.market = market;
+            this.eco = eco;
+            this.requests = new ArrayList<>(market.getRequests());
+            updatePage();
+            for (int i = 0; i < 54; i++) {
+                int r = i / 9;
+                int c = i % 9;
+                this.addSlot(new Slot(container, i, 8 + c * 18, 18 + r * 18) {
+                    @Override public boolean mayPickup(Player player) { return false; }
+                    @Override public boolean mayPlace(ItemStack stack) { return false; }
+                });
+            }
+            int y = 18 + 6 * 18 + 14;
+            for (int r = 0; r < 3; r++) {
+                for (int c = 0; c < 9; c++) {
+                    this.addSlot(new Slot(inv, c + r * 9 + 9, 8 + c * 18, y + r * 18));
+                }
+            }
+            for (int c = 0; c < 9; c++) {
+                this.addSlot(new Slot(inv, c, 8 + c * 18, y + 58));
+            }
+        }
+
+        private void updatePage() {
+            container.clearContent();
+            int start = page * 45;
+            for (int i = 0; i < 45; i++) {
+                int index = start + i;
+                if (index >= requests.size()) break;
+                MarketRequest r = requests.get(index);
+                ItemStack display = r.item.copy();
+                container.setItem(i, display);
+            }
+            if (page > 0) {
+                ItemStack prev = new ItemStack(Items.ARROW);
+                container.setItem(45, prev);
+            }
+            if (start + 45 < requests.size()) {
+                ItemStack next = new ItemStack(Items.ARROW);
+                container.setItem(53, next);
+            }
+            ItemStack paper = new ItemStack(Items.PAPER);
+            container.setItem(49, paper);
+        }
+
+        @Override
+        public void clicked(int slot, int dragType, ClickType type, Player player) {
+            if (type == ClickType.PICKUP) {
+                if (slot < 45) {
+                    int index = page * 45 + slot;
+                    if (index < requests.size()) {
+                        MarketRequest req = requests.get(index);
+                        if (removeFromInventory((ServerPlayer) player, req.item.copy())) {
+                            eco.pay(req.requester, player.getUUID(), req.price);
+                            market.removeRequest(req.id);
+                            market.addDelivery(req.requester, req.item.copy());
+                            ((ServerPlayer) player).sendSystemMessage(Component.literal("Fulfilled request"));
+                            requests.remove(index);
+                            updatePage();
+                        } else {
+                            ((ServerPlayer) player).sendSystemMessage(Component.literal("Not enough items"));
+                        }
+                        return;
+                    }
+                }
+                if (slot == 45 && page > 0) { page--; updatePage(); return; }
+                if (slot == 53 && (page + 1) * 45 < requests.size()) { page++; updatePage(); return; }
+            }
+            super.clicked(slot, dragType, type, player);
+        }
+
+        private boolean removeFromInventory(ServerPlayer player, ItemStack wanted) {
+            int remaining = wanted.getCount();
+            for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+                ItemStack s = player.getInventory().getItem(i);
+                if (s.is(wanted.getItem())) {
+                    int take = Math.min(s.getCount(), remaining);
+                    s.shrink(take);
+                    remaining -= take;
+                    if (remaining <= 0) return true;
+                }
+            }
+            return remaining <= 0;
+        }
+
+        @Override public boolean stillValid(Player player) { return true; }
+        @Override public ItemStack quickMoveStack(Player player, int idx) { return ItemStack.EMPTY; }
+    }
+
+    private static class ClaimMenu extends AbstractContainerMenu {
+        private final MarketManager market;
+        private final UUID owner;
+        private final SimpleContainer container = new SimpleContainer(54);
+
+        ClaimMenu(int id, Inventory inv, MarketManager market, UUID owner) {
+            super(MenuType.GENERIC_9x6, id);
+            this.market = market;
+            this.owner = owner;
+            List<ItemStack> items = market.claimDeliveries(owner);
+            if (items != null) {
+                for (int i = 0; i < items.size() && i < 54; i++) {
+                    container.setItem(i, items.get(i));
+                }
+            }
+            for (int i = 0; i < 54; i++) {
+                int r = i / 9;
+                int c = i % 9;
+                this.addSlot(new Slot(container, i, 8 + c * 18, 18 + r * 18) {
+                    @Override public boolean mayPlace(ItemStack stack) { return false; }
+                });
+            }
+        }
+
+        @Override
+        public void removed(Player player) {
+            for (int i = 0; i < container.getContainerSize(); i++) {
+                ItemStack s = container.getItem(i);
+                if (!s.isEmpty()) {
+                    if (!player.getInventory().add(s)) {
+                        ((ServerPlayer)player).drop(s, false);
+                    }
+                }
+            }
+            super.removed(player);
+        }
+
+        @Override public boolean stillValid(Player player) { return true; }
+        @Override public ItemStack quickMoveStack(Player player, int idx) { return ItemStack.EMPTY; }
+    }
+}

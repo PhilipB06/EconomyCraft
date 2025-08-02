@@ -7,17 +7,17 @@ import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.commands.arguments.ResourceLocationArgument;
+import net.minecraft.resources.ResourceLocation;
 
-import java.util.Comparator;
 import java.util.UUID;
-import java.util.List;
 
 import com.reazip.economycraft.shop.ShopManager;
 import com.reazip.economycraft.shop.ShopListing;
 import com.reazip.economycraft.shop.ShopUi;
 import com.reazip.economycraft.market.MarketManager;
 import com.reazip.economycraft.market.MarketRequest;
+import com.reazip.economycraft.market.MarketUi;
 import net.minecraft.world.item.ItemStack;
 
 import static net.minecraft.commands.Commands.argument;
@@ -52,13 +52,16 @@ public final class EconomyCommands {
                     .then(argument("price", LongArgumentType.longArg(1))
                         .executes(ctx -> sellItem(ctx.getSource().getPlayerOrException(), LongArgumentType.getLong(ctx, "price"), ctx.getSource())))))
             .then(literal("market")
-                .then(literal("list").executes(ctx -> listMarket(ctx.getSource())))
+                .executes(ctx -> openMarket(ctx.getSource().getPlayerOrException(), ctx.getSource()))
                 .then(literal("request")
-                    .then(argument("price", LongArgumentType.longArg(1))
-                        .executes(ctx -> requestItem(ctx.getSource().getPlayerOrException(), LongArgumentType.getLong(ctx, "price"), ctx.getSource()))))
-                .then(literal("fulfill")
-                    .then(argument("id", LongArgumentType.longArg(1))
-                        .executes(ctx -> fulfillRequest(ctx.getSource().getPlayerOrException(), LongArgumentType.getLong(ctx, "id"), ctx.getSource()))))
+                    .then(argument("item", ResourceLocationArgument.id())
+                        .then(argument("amount", LongArgumentType.longArg(1))
+                            .then(argument("price", LongArgumentType.longArg(1))
+                                .executes(ctx -> requestItem(ctx.getSource().getPlayerOrException(),
+                                        ResourceLocationArgument.getId(ctx, "item"),
+                                        (int)LongArgumentType.getLong(ctx, "amount"),
+                                        LongArgumentType.getLong(ctx, "price"),
+                                        ctx.getSource()))))))
                 .then(literal("claim").executes(ctx -> claimMarket(ctx.getSource().getPlayerOrException(), ctx.getSource()))))
         );
     }
@@ -116,74 +119,29 @@ public final class EconomyCommands {
     }
 
     // --- market commands ---
-    private static int listMarket(CommandSourceStack source) {
-        MarketManager market = EconomyCraft.getManager(source.getServer()).getMarket();
-        if (market.getRequests().isEmpty()) {
-            source.sendSuccess(() -> Component.literal("No requests"), false);
-        } else {
-            for (MarketRequest r : market.getRequests()) {
-                String buyer = source.getServer().getProfileCache().get(r.requester).map(p -> p.getName()).orElse(r.requester.toString());
-                Component msg = Component.literal("[" + r.id + "] " + buyer + " wants " + r.item.getCount() + "x " + r.item.getHoverName().getString() + " for " + EconomyCraft.formatMoney(r.price))
-                        .append(Component.literal(" [Fulfill]").withStyle(style -> style.withUnderlined(true).withClickEvent(new net.minecraft.network.chat.ClickEvent.RunCommand("/eco market fulfill " + r.id))));
-                source.sendSuccess(() -> msg, false);
-            }
-        }
+    private static int openMarket(ServerPlayer player, CommandSourceStack source) {
+        MarketUi.openRequests(player, EconomyCraft.getManager(source.getServer()));
         return 1;
     }
 
-    private static int requestItem(ServerPlayer player, long price, CommandSourceStack source) {
-        if (player.getMainHandItem().isEmpty()) {
-            source.sendFailure(Component.literal("Hold the requested item in your hand"));
+    private static int requestItem(ServerPlayer player, ResourceLocation item, int amount, long price, CommandSourceStack source) {
+        var holder = net.minecraft.core.registries.BuiltInRegistries.ITEM.getOptional(item);
+        if (holder.isEmpty()) {
+            source.sendFailure(Component.literal("Invalid item"));
             return 0;
         }
         MarketManager market = EconomyCraft.getManager(source.getServer()).getMarket();
         MarketRequest r = new MarketRequest();
         r.requester = player.getUUID();
         r.price = price;
-        r.item = player.getMainHandItem().copy();
-        r.item.setCount(player.getMainHandItem().getCount());
-        player.getMainHandItem().setCount(0);
+        r.item = new ItemStack(holder.get(), amount);
         market.addRequest(r);
         source.sendSuccess(() -> Component.literal("Created request"), false);
         return 1;
     }
 
-    private static int fulfillRequest(ServerPlayer player, long id, CommandSourceStack source) {
-        MarketManager market = EconomyCraft.getManager(source.getServer()).getMarket();
-        MarketRequest req = null;
-        for (MarketRequest r : market.getRequests()) {
-            if (r.id == id) { req = r; break; }
-        }
-        if (req == null) {
-            source.sendFailure(Component.literal("Request not found"));
-            return 0;
-        }
-        if (!player.getMainHandItem().is(req.item.getItem()) || player.getMainHandItem().getCount() < req.item.getCount()) {
-            source.sendFailure(Component.literal("Hold the required items"));
-            return 0;
-        }
-        player.getMainHandItem().shrink(req.item.getCount());
-        EconomyManager eco = EconomyCraft.getManager(source.getServer());
-        eco.pay(req.requester, player.getUUID(), req.price);
-        market.removeRequest(req.id);
-        market.addDelivery(req.requester, req.item.copy());
-        source.sendSuccess(() -> Component.literal("Fulfilled request"), false);
-        return 1;
-    }
-
     private static int claimMarket(ServerPlayer player, CommandSourceStack source) {
-        MarketManager market = EconomyCraft.getManager(source.getServer()).getMarket();
-        List<ItemStack> list = market.claimDeliveries(player.getUUID());
-        if (list == null || list.isEmpty()) {
-            source.sendSuccess(() -> Component.literal("No items to claim"), false);
-        } else {
-            for (ItemStack s : list) {
-                if (!player.getInventory().add(s)) {
-                    player.drop(s, false);
-                }
-            }
-            source.sendSuccess(() -> Component.literal("Claimed items"), false);
-        }
+        MarketUi.openClaims(player, EconomyCraft.getManager(source.getServer()).getMarket());
         return 1;
     }
 }

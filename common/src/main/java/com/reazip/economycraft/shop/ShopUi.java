@@ -52,30 +52,23 @@ public final class ShopUi {
     private static class ShopMenu extends AbstractContainerMenu {
         private final ShopManager shop;
         private final List<ShopListing> listings;
-        private final SimpleContainer container;
-        private final int rows;
+        private final SimpleContainer container = new SimpleContainer(54);
+        private int page;
 
         ShopMenu(int id, Inventory inv, ShopManager shop) {
             super(MenuType.GENERIC_9x6, id);
             this.shop = shop;
             this.listings = new ArrayList<>(shop.getListings());
-            this.rows = Math.min(6, (listings.size() + 8) / 9);
-            this.container = new SimpleContainer(rows * 9);
-            for (int i = 0; i < listings.size() && i < container.getContainerSize(); i++) {
-                ShopListing l = listings.get(i);
-                ItemStack display = l.item.copy();
-                container.setItem(i, display);
+            updatePage();
+            for (int i = 0; i < 54; i++) {
+                int r = i / 9;
+                int c = i % 9;
+                this.addSlot(new Slot(container, i, 8 + c * 18, 18 + r * 18) {
+                    @Override public boolean mayPickup(Player player) { return false; }
+                    @Override public boolean mayPlace(ItemStack stack) { return false; }
+                });
             }
-            for (int r = 0; r < rows; r++) {
-                for (int c = 0; c < 9; c++) {
-                    int slot = r * 9 + c;
-                    this.addSlot(new Slot(container, slot, 8 + c * 18, 18 + r * 18) {
-                        @Override
-                        public boolean mayPickup(Player player) { return false; }
-                    });
-                }
-            }
-            int y = 18 + rows * 18 + 14;
+            int y = 18 + 6 * 18 + 14;
             for (int r = 0; r < 3; r++) {
                 for (int c = 0; c < 9; c++) {
                     this.addSlot(new Slot(inv, c + r * 9 + 9, 8 + c * 18, y + r * 18));
@@ -86,12 +79,33 @@ public final class ShopUi {
             }
         }
 
+        private void updatePage() {
+            container.clearContent();
+            int start = page * 45;
+            for (int i = 0; i < 45; i++) {
+                int idx = start + i;
+                if (idx >= listings.size()) break;
+                ShopListing l = listings.get(idx);
+                ItemStack display = l.item.copy();
+                container.setItem(i, display);
+            }
+            if (page > 0) container.setItem(45, new ItemStack(Items.ARROW));
+            if (start + 45 < listings.size()) container.setItem(53, new ItemStack(Items.ARROW));
+            container.setItem(49, new ItemStack(Items.PAPER));
+        }
+
         @Override
         public void clicked(int slot, int dragType, ClickType type, Player player) {
-            if (slot >= 0 && slot < listings.size() && type == ClickType.PICKUP) {
-                ShopListing listing = listings.get(slot);
-                ShopUi.openConfirm((ServerPlayer) player, shop, listing);
-                return;
+            if (type == ClickType.PICKUP) {
+                if (slot < 45) {
+                    int index = page * 45 + slot;
+                    if (index < listings.size()) {
+                        ShopUi.openConfirm((ServerPlayer) player, shop, listings.get(index));
+                        return;
+                    }
+                }
+                if (slot == 45 && page > 0) { page--; updatePage(); return; }
+                if (slot == 53 && (page + 1) * 45 < listings.size()) { page++; updatePage(); return; }
             }
             super.clicked(slot, dragType, type, player);
         }
@@ -154,14 +168,16 @@ public final class ShopUi {
                             shop.addDelivery(player.getUUID(), stack);
                             ((ServerPlayer) player).sendSystemMessage(Component.literal("Item stored, use /eco market claim"));
                         } else {
-                            ((ServerPlayer) player).sendSystemMessage(Component.literal("Purchased for " + EconomyCraft.formatMoney(listing.price)));
+                            ((ServerPlayer) player).sendSystemMessage(Component.literal("Purchased " + stack.getCount() + "x " + stack.getHoverName().getString() + " for " + EconomyCraft.formatMoney(listing.price)));
                         }
                     }
                     player.closeContainer();
+                    ShopUi.open((ServerPlayer) player, shop);
                     return;
                 }
                 if (slot == 6) {
                     player.closeContainer();
+                    ShopUi.open((ServerPlayer) player, shop);
                     return;
                 }
             }

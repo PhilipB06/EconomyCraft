@@ -49,6 +49,10 @@ public class MarketManager {
         return deliveries.remove(player);
     }
 
+    public boolean hasDeliveries(UUID player) {
+        return deliveries.containsKey(player);
+    }
+
     public void load() {
         if (Files.exists(file)) {
             try {
