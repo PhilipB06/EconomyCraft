@@ -76,6 +76,7 @@ public final class EconomyCommands {
         EconomyManager manager = EconomyCraft.getManager(source.getServer());
         if (manager.pay(from.getUUID(), to.getUUID(), amount)) {
             source.sendSuccess(() -> Component.literal("Paid " + EconomyCraft.formatMoney(amount) + " to " + to.getName().getString()), false);
+            to.sendSystemMessage(Component.literal(from.getName().getString() + " sent you " + EconomyCraft.formatMoney(amount)));
         } else {
             source.sendFailure(Component.literal("Not enough balance"));
         }

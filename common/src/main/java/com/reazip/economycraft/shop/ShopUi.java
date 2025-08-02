@@ -30,7 +30,7 @@ public final class ShopUi {
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                return new ShopMenu(id, inv, shop);
+                return new ShopMenu(id, inv, shop, player);
             }
         });
     }
@@ -44,20 +44,22 @@ public final class ShopUi {
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                return new ConfirmMenu(id, inv, shop, listing);
+                return new ConfirmMenu(id, inv, shop, listing, player);
             }
         });
     }
 
     private static class ShopMenu extends AbstractContainerMenu {
         private final ShopManager shop;
+        private final ServerPlayer viewer;
         private final List<ShopListing> listings;
         private final SimpleContainer container = new SimpleContainer(54);
         private int page;
 
-        ShopMenu(int id, Inventory inv, ShopManager shop) {
+        ShopMenu(int id, Inventory inv, ShopManager shop, ServerPlayer viewer) {
             super(MenuType.GENERIC_9x6, id);
             this.shop = shop;
+            this.viewer = viewer;
             this.listings = new ArrayList<>(shop.getListings());
             updatePage();
             for (int i = 0; i < 54; i++) {
@@ -82,16 +84,31 @@ public final class ShopUi {
         private void updatePage() {
             container.clearContent();
             int start = page * 45;
+            int totalPages = (int)Math.ceil(listings.size() / 45.0);
             for (int i = 0; i < 45; i++) {
                 int idx = start + i;
                 if (idx >= listings.size()) break;
                 ShopListing l = listings.get(idx);
                 ItemStack display = l.item.copy();
+                String sellerName = viewer.getServer().getProfileCache().get(l.seller).map(p -> p.getName()).orElse(l.seller.toString());
+                display.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
+                        Component.literal("Price: " + EconomyCraft.formatMoney(l.price)),
+                        Component.literal("Seller: " + sellerName))));
                 container.setItem(i, display);
             }
-            if (page > 0) container.setItem(45, new ItemStack(Items.ARROW));
-            if (start + 45 < listings.size()) container.setItem(53, new ItemStack(Items.ARROW));
-            container.setItem(49, new ItemStack(Items.PAPER));
+            if (page > 0) {
+                ItemStack prev = new ItemStack(Items.ARROW);
+                prev.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Previous page"));
+                container.setItem(45, prev);
+            }
+            if (start + 45 < listings.size()) {
+                ItemStack next = new ItemStack(Items.ARROW);
+                next.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Next page"));
+                container.setItem(53, next);
+            }
+            ItemStack paper = new ItemStack(Items.PAPER);
+            paper.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)));
+            container.setItem(49, paper);
         }
 
         @Override
@@ -120,20 +137,28 @@ public final class ShopUi {
     private static class ConfirmMenu extends AbstractContainerMenu {
         private final ShopManager shop;
         private final ShopListing listing;
+        private final ServerPlayer viewer;
         private final SimpleContainer container = new SimpleContainer(9);
 
-        ConfirmMenu(int id, Inventory inv, ShopManager shop, ShopListing listing) {
+        ConfirmMenu(int id, Inventory inv, ShopManager shop, ShopListing listing, ServerPlayer viewer) {
             super(MenuType.GENERIC_9x1, id);
             this.shop = shop;
             this.listing = listing;
+            this.viewer = viewer;
 
             ItemStack confirm = new ItemStack(Items.EMERALD_BLOCK);
+            confirm.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Confirm purchase"));
             container.setItem(2, confirm);
 
             ItemStack item = listing.item.copy();
+            String sellerName = viewer.getServer().getProfileCache().get(listing.seller).map(p -> p.getName()).orElse(listing.seller.toString());
+            item.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
+                    Component.literal("Price: " + EconomyCraft.formatMoney(listing.price)),
+                    Component.literal("Seller: " + sellerName))));
             container.setItem(4, item);
 
             ItemStack cancel = new ItemStack(Items.BARRIER);
+            cancel.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Cancel"));
             container.setItem(6, cancel);
 
             for (int i = 0; i < 9; i++) {
@@ -164,11 +189,13 @@ public final class ShopUi {
                     } else {
                         shop.removeListing(listing.id);
                         ItemStack stack = listing.item.copy();
+                        int count = stack.getCount();
+                        Component name = stack.getHoverName();
                         if (!player.getInventory().add(stack)) {
                             shop.addDelivery(player.getUUID(), stack);
                             ((ServerPlayer) player).sendSystemMessage(Component.literal("Item stored, use /eco market claim"));
                         } else {
-                            ((ServerPlayer) player).sendSystemMessage(Component.literal("Purchased " + stack.getCount() + "x " + stack.getHoverName().getString() + " for " + EconomyCraft.formatMoney(listing.price)));
+                            ((ServerPlayer) player).sendSystemMessage(Component.literal("Purchased " + count + "x " + name.getString() + " for " + EconomyCraft.formatMoney(listing.price)));
                         }
                     }
                     player.closeContainer();

@@ -31,7 +31,7 @@ public final class MarketUi {
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                return new RequestMenu(id, inv, eco.getMarket(), eco);
+                return new RequestMenu(id, inv, eco.getMarket(), eco, player);
             }
         });
     }
@@ -51,14 +51,16 @@ public final class MarketUi {
     private static class RequestMenu extends AbstractContainerMenu {
         private final MarketManager market;
         private final EconomyManager eco;
+        private final ServerPlayer viewer;
         private final List<MarketRequest> requests;
         private final SimpleContainer container = new SimpleContainer(54);
         private int page;
 
-        RequestMenu(int id, Inventory inv, MarketManager market, EconomyManager eco) {
+        RequestMenu(int id, Inventory inv, MarketManager market, EconomyManager eco, ServerPlayer viewer) {
             super(MenuType.GENERIC_9x6, id);
             this.market = market;
             this.eco = eco;
+            this.viewer = viewer;
             this.requests = new ArrayList<>(market.getRequests());
             updatePage();
             for (int i = 0; i < 54; i++) {
@@ -83,22 +85,32 @@ public final class MarketUi {
         private void updatePage() {
             container.clearContent();
             int start = page * 45;
+            int totalPages = (int)Math.ceil(requests.size() / 45.0);
             for (int i = 0; i < 45; i++) {
                 int index = start + i;
                 if (index >= requests.size()) break;
                 MarketRequest r = requests.get(index);
                 ItemStack display = r.item.copy();
+                String reqName = viewer.getServer().getProfileCache().get(r.requester).map(p -> p.getName()).orElse(r.requester.toString());
+                display.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
+                        Component.literal("Price: " + EconomyCraft.formatMoney(r.price)),
+                        Component.literal("Requester: " + reqName),
+                        Component.literal("Amount: " + r.item.getCount()))));
+                display.setCount(Math.min(r.item.getCount(), display.getMaxStackSize()));
                 container.setItem(i, display);
             }
             if (page > 0) {
                 ItemStack prev = new ItemStack(Items.ARROW);
+                prev.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Previous page"));
                 container.setItem(45, prev);
             }
             if (start + 45 < requests.size()) {
                 ItemStack next = new ItemStack(Items.ARROW);
+                next.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Next page"));
                 container.setItem(53, next);
             }
             ItemStack paper = new ItemStack(Items.PAPER);
+            paper.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)));
             container.setItem(49, paper);
         }
 
@@ -109,18 +121,9 @@ public final class MarketUi {
                     int index = page * 45 + slot;
                     if (index < requests.size()) {
                         MarketRequest req = requests.get(index);
-                        if (removeFromInventory((ServerPlayer) player, req.item.copy())) {
-                            eco.pay(req.requester, player.getUUID(), req.price);
-                            market.removeRequest(req.id);
-                            market.addDelivery(req.requester, req.item.copy());
-                            ((ServerPlayer) player).sendSystemMessage(Component.literal("Fulfilled request"));
-                            requests.remove(index);
-                            updatePage();
-                        } else {
-                            ((ServerPlayer) player).sendSystemMessage(Component.literal("Not enough items"));
-                        }
+                        openConfirm((ServerPlayer) player, req);
                         return;
-                    }
+                }
                 }
                 if (slot == 45 && page > 0) { page--; updatePage(); return; }
                 if (slot == 53 && (page + 1) * 45 < requests.size()) { page++; updatePage(); return; }
@@ -128,7 +131,16 @@ public final class MarketUi {
             super.clicked(slot, dragType, type, player);
         }
 
-        private boolean removeFromInventory(ServerPlayer player, ItemStack wanted) {
+        private boolean hasItems(ServerPlayer player, ItemStack wanted) {
+            int total = 0;
+            for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+                ItemStack s = player.getInventory().getItem(i);
+                if (s.is(wanted.getItem())) total += s.getCount();
+            }
+            return total >= wanted.getCount();
+        }
+
+        private void removeItems(ServerPlayer player, ItemStack wanted) {
             int remaining = wanted.getCount();
             for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
                 ItemStack s = player.getInventory().getItem(i);
@@ -136,10 +148,94 @@ public final class MarketUi {
                     int take = Math.min(s.getCount(), remaining);
                     s.shrink(take);
                     remaining -= take;
-                    if (remaining <= 0) return true;
+                    if (remaining <= 0) return;
                 }
             }
-            return remaining <= 0;
+        }
+
+        private void openConfirm(ServerPlayer player, MarketRequest req) {
+            player.openMenu(new MenuProvider() {
+                @Override
+                public Component getDisplayName() { return Component.literal("Confirm"); }
+
+                @Override
+                public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
+                    return new ConfirmMenu(id, inv, req, RequestMenu.this);
+                }
+            });
+        }
+
+        @Override public boolean stillValid(Player player) { return true; }
+        @Override public ItemStack quickMoveStack(Player player, int idx) { return ItemStack.EMPTY; }
+    }
+
+    private static class ConfirmMenu extends AbstractContainerMenu {
+        private final MarketRequest request;
+        private final RequestMenu parent;
+        private final SimpleContainer container = new SimpleContainer(9);
+
+        ConfirmMenu(int id, Inventory inv, MarketRequest req, RequestMenu parent) {
+            super(MenuType.GENERIC_9x1, id);
+            this.request = req;
+            this.parent = parent;
+
+            ItemStack confirm = new ItemStack(Items.EMERALD_BLOCK);
+            confirm.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Confirm"));
+            container.setItem(2, confirm);
+
+            ItemStack item = req.item.copy();
+            String name = parent.viewer.getServer().getProfileCache().get(req.requester).map(p -> p.getName()).orElse(req.requester.toString());
+            item.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
+                    Component.literal("Price: " + EconomyCraft.formatMoney(req.price)),
+                    Component.literal("Requester: " + name),
+                    Component.literal("Amount: " + req.item.getCount()))));
+            container.setItem(4, item);
+
+            ItemStack cancel = new ItemStack(Items.BARRIER);
+            cancel.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Cancel"));
+            container.setItem(6, cancel);
+
+            for (int i = 0; i < 9; i++) {
+                this.addSlot(new Slot(container, i, 8 + i * 18, 20) { @Override public boolean mayPickup(Player p) { return false; }});
+            }
+
+            int y = 40;
+            for (int r = 0; r < 3; r++) {
+                for (int c = 0; c < 9; c++) {
+                    this.addSlot(new Slot(inv, c + r * 9 + 9, 8 + c * 18, y + r * 18));
+                }
+            }
+            for (int c = 0; c < 9; c++) {
+                this.addSlot(new Slot(inv, c, 8 + c * 18, y + 58));
+            }
+        }
+
+        @Override
+        public void clicked(int slot, int drag, ClickType type, Player player) {
+            if (type == ClickType.PICKUP) {
+                if (slot == 2) {
+                    if (!parent.hasItems((ServerPlayer) player, request.item)) {
+                        ((ServerPlayer) player).sendSystemMessage(Component.literal("Not enough items"));
+                    } else {
+                        parent.removeItems((ServerPlayer) player, request.item.copy());
+                        parent.eco.pay(player.getUUID(), request.requester, request.price);
+                        parent.market.removeRequest(request.id);
+                        parent.market.addDelivery(request.requester, request.item.copy());
+                        ((ServerPlayer) player).sendSystemMessage(Component.literal("Fulfilled request"));
+                        parent.requests.removeIf(r -> r.id == request.id);
+                        parent.updatePage();
+                    }
+                    player.closeContainer();
+                    MarketUi.openRequests((ServerPlayer) player, parent.eco);
+                    return;
+                }
+                if (slot == 6) {
+                    player.closeContainer();
+                    MarketUi.openRequests((ServerPlayer) player, parent.eco);
+                    return;
+                }
+            }
+            super.clicked(slot, drag, type, player);
         }
 
         @Override public boolean stillValid(Player player) { return true; }

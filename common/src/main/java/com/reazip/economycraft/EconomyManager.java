@@ -106,7 +106,18 @@ public class EconomyManager {
         Scoreboard board = server.getScoreboard();
         objective = board.getObjective("eco_balance");
         if (objective == null) {
-            objective = board.addObjective("eco_balance", ObjectiveCriteria.DUMMY, Component.literal("Balance"), ObjectiveCriteria.RenderType.INTEGER, true, net.minecraft.network.chat.numbers.StyledFormat.SIDEBAR_DEFAULT);
+            net.minecraft.network.chat.numbers.NumberFormat fmt = new net.minecraft.network.chat.numbers.NumberFormat() {
+                @Override
+                public net.minecraft.network.chat.MutableComponent format(int value) {
+                    return Component.literal(EconomyCraft.formatMoney(value));
+                }
+
+                @Override
+                public net.minecraft.network.chat.numbers.NumberFormatType<?> type() {
+                    return net.minecraft.network.chat.numbers.StyledFormat.TYPE;
+                }
+            };
+            objective = board.addObjective("eco_balance", ObjectiveCriteria.DUMMY, Component.literal("Balance"), ObjectiveCriteria.RenderType.INTEGER, true, fmt);
         }
         board.setDisplayObjective(DisplaySlot.SIDEBAR, objective);
         updateLeaderboard();

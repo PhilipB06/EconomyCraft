@@ -41,6 +41,10 @@ public class ShopManager {
         return listings.remove(id);
     }
 
+    public MinecraftServer server() {
+        return server;
+    }
+
     public void addDelivery(UUID player, ItemStack stack) {
         deliveries.computeIfAbsent(player, k -> new ArrayList<>()).add(stack);
     }
