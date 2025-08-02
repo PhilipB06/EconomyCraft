@@ -35,8 +35,10 @@ public class EconomyManager {
 
     public EconomyManager(MinecraftServer server) {
         this.server = server;
-        this.file = server.getFile("economycraft_balances.json");
-        this.dailyFile = server.getFile("economycraft_daily.json");
+        Path dir = server.getFile("config/EconomyCraft");
+        try { Files.createDirectories(dir); } catch (IOException ignored) {}
+        this.file = dir.resolve("balances.json");
+        this.dailyFile = dir.resolve("daily.json");
         EconomyConfig.load(server);
         load();
         loadDaily();
@@ -56,11 +58,13 @@ public class EconomyManager {
     public void addMoney(UUID player, long amount) {
         balances.put(player, getBalance(player) + amount);
         updateLeaderboard();
+        save();
     }
 
     public void setMoney(UUID player, long amount) {
         balances.put(player, amount);
         updateLeaderboard();
+        save();
     }
 
     public boolean pay(UUID from, UUID to, long amount) {
@@ -101,6 +105,12 @@ public class EconomyManager {
 
     public Map<UUID, Long> getBalances() {
         return balances;
+    }
+
+    public void removePlayer(UUID id) {
+        balances.remove(id);
+        updateLeaderboard();
+        save();
     }
 
     public com.reazip.economycraft.shop.ShopManager getShop() {

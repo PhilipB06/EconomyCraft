@@ -25,7 +25,9 @@ public class MarketManager {
 
     public MarketManager(MinecraftServer server) {
         this.server = server;
-        this.file = server.getFile("economycraft_market.json");
+        Path dir = server.getFile("config/EconomyCraft");
+        try { Files.createDirectories(dir); } catch (IOException ignored) {}
+        this.file = dir.resolve("market.json");
         load();
     }
 
@@ -33,24 +35,35 @@ public class MarketManager {
         return requests.values();
     }
 
+    public MarketRequest getRequest(int id) {
+        return requests.get(id);
+    }
+
     public void addRequest(MarketRequest r) {
         r.id = nextId++;
         requests.put(r.id, r);
         notifyListeners();
+        save();
     }
 
     public MarketRequest removeRequest(int id) {
         MarketRequest r = requests.remove(id);
-        if (r != null) notifyListeners();
+        if (r != null) {
+            notifyListeners();
+            save();
+        }
         return r;
     }
 
     public void addDelivery(UUID player, ItemStack stack) {
         deliveries.computeIfAbsent(player, k -> new ArrayList<>()).add(stack);
+        save();
     }
 
     public List<ItemStack> claimDeliveries(UUID player) {
-        return deliveries.remove(player);
+        List<ItemStack> list = deliveries.remove(player);
+        if (list != null) save();
+        return list;
     }
 
     public boolean hasDeliveries(UUID player) {

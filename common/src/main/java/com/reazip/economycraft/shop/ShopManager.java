@@ -25,7 +25,9 @@ public class ShopManager {
 
     public ShopManager(MinecraftServer server) {
         this.server = server;
-        this.file = server.getFile("economycraft_shop.json");
+        Path dir = server.getFile("config/EconomyCraft");
+        try { Files.createDirectories(dir); } catch (IOException ignored) {}
+        this.file = dir.resolve("shop.json");
         load();
     }
 
@@ -33,15 +35,23 @@ public class ShopManager {
         return listings.values();
     }
 
+    public ShopListing getListing(int id) {
+        return listings.get(id);
+    }
+
     public void addListing(ShopListing listing) {
         listing.id = nextId++;
         listings.put(listing.id, listing);
         notifyListeners();
+        save();
     }
 
     public ShopListing removeListing(int id) {
         ShopListing l = listings.remove(id);
-        if (l != null) notifyListeners();
+        if (l != null) {
+            notifyListeners();
+            save();
+        }
         return l;
     }
 
@@ -51,10 +61,13 @@ public class ShopManager {
 
     public void addDelivery(UUID player, ItemStack stack) {
         deliveries.computeIfAbsent(player, k -> new ArrayList<>()).add(stack);
+        save();
     }
 
     public List<ItemStack> claimDeliveries(UUID player) {
-        return deliveries.remove(player);
+        List<ItemStack> list = deliveries.remove(player);
+        if (list != null) save();
+        return list;
     }
 
     public void load() {

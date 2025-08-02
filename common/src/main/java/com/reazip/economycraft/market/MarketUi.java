@@ -95,10 +95,13 @@ public final class MarketUi {
                 MarketRequest r = requests.get(index);
                 ItemStack display = r.item.copy();
                 String reqName = viewer.getServer().getProfileCache().get(r.requester).map(p -> p.getName()).orElse(r.requester.toString());
+                long tax = Math.round(r.price * EconomyConfig.get().taxRate);
                 display.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
                         Component.literal("Reward: " + EconomyCraft.formatMoney(r.price)),
                         Component.literal("Requester: " + reqName),
-                        Component.literal("Amount: " + r.item.getCount()))));
+                        Component.literal("Amount: " + r.item.getCount()),
+                        Component.literal("Tax: " + EconomyCraft.formatMoney(tax))
+                )));
                 display.setCount(Math.min(r.item.getCount(), display.getMaxStackSize()));
                 container.setItem(i, display);
             }
@@ -205,19 +208,22 @@ public final class MarketUi {
             this.request = req;
             this.parent = parent;
 
-            ItemStack confirm = new ItemStack(Items.EMERALD_BLOCK);
+            ItemStack confirm = new ItemStack(Items.LIME_STAINED_GLASS_PANE);
             confirm.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Confirm"));
             container.setItem(2, confirm);
 
             ItemStack item = req.item.copy();
             String name = parent.viewer.getServer().getProfileCache().get(req.requester).map(p -> p.getName()).orElse(req.requester.toString());
+            long tax = Math.round(req.price * EconomyConfig.get().taxRate);
             item.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
                     Component.literal("Reward: " + EconomyCraft.formatMoney(req.price)),
                     Component.literal("Requester: " + name),
-                    Component.literal("Amount: " + req.item.getCount()))));
+                    Component.literal("Amount: " + req.item.getCount()),
+                    Component.literal("Tax: " + EconomyCraft.formatMoney(tax))
+            )));
             container.setItem(4, item);
 
-            ItemStack cancel = new ItemStack(Items.BARRIER);
+            ItemStack cancel = new ItemStack(Items.RED_STAINED_GLASS_PANE);
             cancel.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Cancel"));
             container.setItem(6, cancel);
 
@@ -240,28 +246,31 @@ public final class MarketUi {
         public void clicked(int slot, int drag, ClickType type, Player player) {
             if (type == ClickType.PICKUP) {
                 if (slot == 2) {
-                    if (!parent.hasItems((ServerPlayer) player, request.item)) {
+                    MarketRequest current = parent.market.getRequest(request.id);
+                    if (current == null) {
+                        ((ServerPlayer) player).sendSystemMessage(Component.literal("Request no longer available"));
+                    } else if (!parent.hasItems((ServerPlayer) player, current.item)) {
                         ((ServerPlayer) player).sendSystemMessage(Component.literal("Not enough items"));
                     } else {
-                        parent.removeItems((ServerPlayer) player, request.item.copy());
-                        long cost = request.price;
+                        parent.removeItems((ServerPlayer) player, current.item.copy());
+                        long cost = current.price;
                         long tax = Math.round(cost * EconomyConfig.get().taxRate);
-                        long bal = parent.eco.getBalance(request.requester);
-                        parent.eco.setMoney(request.requester, bal - cost);
+                        long bal = parent.eco.getBalance(current.requester);
+                        parent.eco.setMoney(current.requester, bal - cost);
                         parent.eco.addMoney(player.getUUID(), cost - tax);
-                        parent.market.removeRequest(request.id);
-                        parent.market.addDelivery(request.requester, request.item.copy());
+                        parent.market.removeRequest(current.id);
+                        parent.market.addDelivery(current.requester, current.item.copy());
                         ((ServerPlayer) player).sendSystemMessage(Component.literal("Fulfilled request"));
-                        var requesterPlayer = parent.viewer.getServer().getPlayerList().getPlayer(request.requester);
+                        var requesterPlayer = parent.viewer.getServer().getPlayerList().getPlayer(current.requester);
                         if (requesterPlayer != null) {
-                            ItemStack stack = request.item;
+                            ItemStack stack = current.item;
                             Component msg = Component.literal("Your request for " + stack.getCount() + "x " + stack.getHoverName().getString() + " has been fulfilled. ")
                                     .append(Component.literal("[Claim]")
                                             .withStyle(s -> s.withUnderlined(true)
                                                     .withClickEvent(new net.minecraft.network.chat.ClickEvent.RunCommand("/eco market claim"))));
                             requesterPlayer.sendSystemMessage(msg);
                         }
-                        parent.requests.removeIf(r -> r.id == request.id);
+                        parent.requests.removeIf(r -> r.id == current.id);
                         parent.updatePage();
                     }
                     player.closeContainer();
@@ -291,18 +300,20 @@ public final class MarketUi {
             this.request = req;
             this.parent = parent;
 
-            ItemStack confirm = new ItemStack(Items.BARRIER);
-            confirm.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Remove"));
+            ItemStack confirm = new ItemStack(Items.LIME_STAINED_GLASS_PANE);
+            confirm.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Confirm"));
             container.setItem(2, confirm);
 
             ItemStack item = req.item.copy();
+            long tax = Math.round(req.price * EconomyConfig.get().taxRate);
             item.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
                     Component.literal("Reward: " + EconomyCraft.formatMoney(req.price)),
                     Component.literal("Amount: " + req.item.getCount()),
+                    Component.literal("Tax: " + EconomyCraft.formatMoney(tax)),
                     Component.literal("This will remove the request"))));
             container.setItem(4, item);
 
-            ItemStack cancel = new ItemStack(Items.EMERALD_BLOCK);
+            ItemStack cancel = new ItemStack(Items.RED_STAINED_GLASS_PANE);
             cancel.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Cancel"));
             container.setItem(6, cancel);
 
@@ -325,8 +336,12 @@ public final class MarketUi {
         public void clicked(int slot, int drag, ClickType type, Player player) {
             if (type == ClickType.PICKUP) {
                 if (slot == 2) {
-                    parent.market.removeRequest(request.id);
-                    ((ServerPlayer) player).sendSystemMessage(Component.literal("Request removed"));
+                    MarketRequest removed = parent.market.removeRequest(request.id);
+                    if (removed != null) {
+                        ((ServerPlayer) player).sendSystemMessage(Component.literal("Request removed"));
+                    } else {
+                        ((ServerPlayer) player).sendSystemMessage(Component.literal("Request no longer available"));
+                    }
                     player.closeContainer();
                     MarketUi.openRequests((ServerPlayer) player, parent.eco);
                     return;

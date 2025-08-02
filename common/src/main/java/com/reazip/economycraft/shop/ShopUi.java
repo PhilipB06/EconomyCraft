@@ -108,9 +108,11 @@ public final class ShopUi {
                 ShopListing l = listings.get(idx);
                 ItemStack display = l.item.copy();
                 String sellerName = viewer.getServer().getProfileCache().get(l.seller).map(p -> p.getName()).orElse(l.seller.toString());
+                long tax = Math.round(l.price * EconomyConfig.get().taxRate);
                 display.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
                         Component.literal("Price: " + EconomyCraft.formatMoney(l.price)),
-                        Component.literal("Seller: " + sellerName))));
+                        Component.literal("Seller: " + sellerName),
+                        Component.literal("Tax: " + EconomyCraft.formatMoney(tax)))));
                 container.setItem(i, display);
             }
             if (page > 0) {
@@ -174,18 +176,20 @@ public final class ShopUi {
             this.listing = listing;
             this.viewer = viewer;
 
-            ItemStack confirm = new ItemStack(Items.EMERALD_BLOCK);
+            ItemStack confirm = new ItemStack(Items.LIME_STAINED_GLASS_PANE);
             confirm.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Confirm"));
             container.setItem(2, confirm);
 
             ItemStack item = listing.item.copy();
             String sellerName = viewer.getServer().getProfileCache().get(listing.seller).map(p -> p.getName()).orElse(listing.seller.toString());
+            long tax = Math.round(listing.price * EconomyConfig.get().taxRate);
             item.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
                     Component.literal("Price: " + EconomyCraft.formatMoney(listing.price)),
-                    Component.literal("Seller: " + sellerName))));
+                    Component.literal("Seller: " + sellerName),
+                    Component.literal("Tax: " + EconomyCraft.formatMoney(tax)))));
             container.setItem(4, item);
 
-            ItemStack cancel = new ItemStack(Items.BARRIER);
+            ItemStack cancel = new ItemStack(Items.RED_STAINED_GLASS_PANE);
             cancel.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Cancel"));
             container.setItem(6, cancel);
 
@@ -211,24 +215,29 @@ public final class ShopUi {
         public void clicked(int slot, int dragType, ClickType type, Player player) {
             if (type == ClickType.PICKUP) {
                 if (slot == 2) {
-                    EconomyManager eco = EconomyCraft.getManager(((ServerPlayer) player).getServer());
-                    long cost = listing.price;
-                    long bal = eco.getBalance(player.getUUID());
-                    if (bal < cost) {
-                        ((ServerPlayer) player).sendSystemMessage(Component.literal("Not enough balance"));
+                    ShopListing current = shop.getListing(listing.id);
+                    if (current == null) {
+                        ((ServerPlayer) player).sendSystemMessage(Component.literal("Listing no longer available"));
                     } else {
-                        long tax = Math.round(cost * EconomyConfig.get().taxRate);
-                        eco.setMoney(player.getUUID(), bal - cost);
-                        eco.addMoney(listing.seller, cost - tax);
-                        shop.removeListing(listing.id);
-                        ItemStack stack = listing.item.copy();
-                        int count = stack.getCount();
-                        Component name = stack.getHoverName();
-                        if (!player.getInventory().add(stack)) {
-                            shop.addDelivery(player.getUUID(), stack);
-                            ((ServerPlayer) player).sendSystemMessage(Component.literal("Item stored, use /eco market claim"));
+                        EconomyManager eco = EconomyCraft.getManager(((ServerPlayer) player).getServer());
+                        long cost = current.price;
+                        long bal = eco.getBalance(player.getUUID());
+                        if (bal < cost) {
+                            ((ServerPlayer) player).sendSystemMessage(Component.literal("Not enough balance"));
                         } else {
-                            ((ServerPlayer) player).sendSystemMessage(Component.literal("Purchased " + count + "x " + name.getString() + " for " + EconomyCraft.formatMoney(cost)));
+                            long tax = Math.round(cost * EconomyConfig.get().taxRate);
+                            eco.setMoney(player.getUUID(), bal - cost);
+                            eco.addMoney(current.seller, cost - tax);
+                            shop.removeListing(current.id);
+                            ItemStack stack = current.item.copy();
+                            int count = stack.getCount();
+                            Component name = stack.getHoverName();
+                            if (!player.getInventory().add(stack)) {
+                                shop.addDelivery(player.getUUID(), stack);
+                                ((ServerPlayer) player).sendSystemMessage(Component.literal("Item stored, use /eco market claim"));
+                            } else {
+                                ((ServerPlayer) player).sendSystemMessage(Component.literal("Purchased " + count + "x " + name.getString() + " for " + EconomyCraft.formatMoney(cost)));
+                            }
                         }
                     }
                     player.closeContainer();
@@ -263,18 +272,20 @@ public final class ShopUi {
             this.listing = listing;
             this.viewer = viewer;
 
-            ItemStack confirm = new ItemStack(Items.BARRIER);
-            confirm.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Remove"));
+            ItemStack confirm = new ItemStack(Items.LIME_STAINED_GLASS_PANE);
+            confirm.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Confirm"));
             container.setItem(2, confirm);
 
             ItemStack item = listing.item.copy();
+            long tax = Math.round(listing.price * EconomyConfig.get().taxRate);
             item.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
                     Component.literal("Price: " + EconomyCraft.formatMoney(listing.price)),
                     Component.literal("Seller: you"),
+                    Component.literal("Tax: " + EconomyCraft.formatMoney(tax)),
                     Component.literal("This will remove the listing"))));
             container.setItem(4, item);
 
-            ItemStack cancel = new ItemStack(Items.EMERALD_BLOCK);
+            ItemStack cancel = new ItemStack(Items.RED_STAINED_GLASS_PANE);
             cancel.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Cancel"));
             container.setItem(6, cancel);
 
@@ -297,13 +308,17 @@ public final class ShopUi {
         public void clicked(int slot, int dragType, ClickType type, Player player) {
             if (type == ClickType.PICKUP) {
                 if (slot == 2) {
-                    shop.removeListing(listing.id);
-                    ItemStack stack = listing.item.copy();
-                    if (!player.getInventory().add(stack)) {
-                        shop.addDelivery(player.getUUID(), stack);
-                        viewer.sendSystemMessage(Component.literal("Item stored, use /eco market claim"));
+                    ShopListing removed = shop.removeListing(listing.id);
+                    if (removed != null) {
+                        ItemStack stack = removed.item.copy();
+                        if (!player.getInventory().add(stack)) {
+                            shop.addDelivery(player.getUUID(), stack);
+                            viewer.sendSystemMessage(Component.literal("Item stored, use /eco market claim"));
+                        } else {
+                            viewer.sendSystemMessage(Component.literal("Listing removed"));
+                        }
                     } else {
-                        viewer.sendSystemMessage(Component.literal("Listing removed"));
+                        viewer.sendSystemMessage(Component.literal("Listing no longer available"));
                     }
                     player.closeContainer();
                     ShopUi.open((ServerPlayer) player, shop);

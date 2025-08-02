@@ -23,7 +23,9 @@ public class EconomyConfig {
 
     /** Loads the config from disk, creating it with defaults if necessary. */
     public static void load(MinecraftServer server) {
-        Path file = server.getFile("economycraft_config.json");
+        Path dir = server.getFile("config/EconomyCraft");
+        try { Files.createDirectories(dir); } catch (IOException ignored) {}
+        Path file = dir.resolve("config.json");
         if (Files.exists(file)) {
             try {
                 INSTANCE = GSON.fromJson(Files.readString(file), EconomyConfig.class);
