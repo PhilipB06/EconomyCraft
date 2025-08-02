@@ -70,6 +70,10 @@ public class ShopManager {
         return list;
     }
 
+    public boolean hasDeliveries(UUID player) {
+        return deliveries.containsKey(player);
+    }
+
     public void load() {
         if (Files.exists(file)) {
             try {

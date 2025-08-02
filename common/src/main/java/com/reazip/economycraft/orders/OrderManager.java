@@ -1,4 +1,4 @@
-package com.reazip.economycraft.market;
+package com.reazip.economycraft.orders;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -13,41 +13,41 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 
-/** Manages market requests and deliveries. */
-public class MarketManager {
+/** Manages order requests and deliveries. */
+public class OrderManager {
     private static final Gson GSON = new Gson();
     private final MinecraftServer server;
     private final Path file;
-    private final Map<Integer, MarketRequest> requests = new HashMap<>();
+    private final Map<Integer, OrderRequest> requests = new HashMap<>();
     private final Map<UUID, List<ItemStack>> deliveries = new HashMap<>();
     private int nextId = 1;
     private final List<Runnable> listeners = new ArrayList<>();
 
-    public MarketManager(MinecraftServer server) {
+    public OrderManager(MinecraftServer server) {
         this.server = server;
         Path dir = server.getFile("config/EconomyCraft");
         try { Files.createDirectories(dir); } catch (IOException ignored) {}
-        this.file = dir.resolve("market.json");
+        this.file = dir.resolve("orders.json");
         load();
     }
 
-    public Collection<MarketRequest> getRequests() {
+    public Collection<OrderRequest> getRequests() {
         return requests.values();
     }
 
-    public MarketRequest getRequest(int id) {
+    public OrderRequest getRequest(int id) {
         return requests.get(id);
     }
 
-    public void addRequest(MarketRequest r) {
+    public void addRequest(OrderRequest r) {
         r.id = nextId++;
         requests.put(r.id, r);
         notifyListeners();
         save();
     }
 
-    public MarketRequest removeRequest(int id) {
-        MarketRequest r = requests.remove(id);
+    public OrderRequest removeRequest(int id) {
+        OrderRequest r = requests.remove(id);
         if (r != null) {
             notifyListeners();
             save();
@@ -77,7 +77,7 @@ public class MarketManager {
                 JsonObject root = GSON.fromJson(json, JsonObject.class);
                 nextId = root.get("nextId").getAsInt();
                 for (var el : root.getAsJsonArray("requests")) {
-                    MarketRequest r = MarketRequest.load(el.getAsJsonObject());
+                    OrderRequest r = OrderRequest.load(el.getAsJsonObject());
                     requests.put(r.id, r);
                 }
                 JsonObject dObj = root.getAsJsonObject("deliveries");
@@ -100,7 +100,7 @@ public class MarketManager {
         JsonObject root = new JsonObject();
         root.addProperty("nextId", nextId);
         JsonArray reqArr = new JsonArray();
-        for (MarketRequest r : requests.values()) {
+        for (OrderRequest r : requests.values()) {
             reqArr.add(r.save());
         }
         root.add("requests", reqArr);

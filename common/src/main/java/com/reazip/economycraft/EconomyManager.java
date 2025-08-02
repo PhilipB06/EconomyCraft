@@ -19,6 +19,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.HashSet;
+import java.util.Set;
 
 public class EconomyManager {
     private static final Gson GSON = new Gson();
@@ -31,7 +33,10 @@ public class EconomyManager {
     private final Map<UUID, Long> lastDaily = new HashMap<>();
     private Objective objective;
     private final com.reazip.economycraft.shop.ShopManager shop;
-    private final com.reazip.economycraft.market.MarketManager market;
+    private final com.reazip.economycraft.orders.OrderManager orders;
+    private final Set<UUID> displayed = new HashSet<>();
+
+    public static final long MAX = 999_999_999L;
 
     public EconomyManager(MinecraftServer server) {
         this.server = server;
@@ -43,7 +48,7 @@ public class EconomyManager {
         load();
         loadDaily();
         this.shop = new com.reazip.economycraft.shop.ShopManager(server);
-        this.market = new com.reazip.economycraft.market.MarketManager(server);
+        this.orders = new com.reazip.economycraft.orders.OrderManager(server);
         setupObjective();
     }
 
@@ -52,17 +57,17 @@ public class EconomyManager {
     }
 
     public long getBalance(UUID player) {
-        return balances.computeIfAbsent(player, id -> EconomyConfig.get().startingBalance);
+        return balances.computeIfAbsent(player, id -> clamp(EconomyConfig.get().startingBalance));
     }
 
     public void addMoney(UUID player, long amount) {
-        balances.put(player, getBalance(player) + amount);
+        balances.put(player, clamp(getBalance(player) + amount));
         updateLeaderboard();
         save();
     }
 
     public void setMoney(UUID player, long amount) {
-        balances.put(player, amount);
+        balances.put(player, clamp(amount));
         updateLeaderboard();
         save();
     }
@@ -82,7 +87,7 @@ public class EconomyManager {
                 Map<UUID, Double> map = GSON.fromJson(json, new TypeToken<Map<UUID, Double>>(){}.getType());
                 if (map != null) {
                     for (Map.Entry<UUID, Double> e : map.entrySet()) {
-                        balances.put(e.getKey(), e.getValue().longValue());
+                        balances.put(e.getKey(), Math.min(e.getValue().longValue(), MAX));
                     }
                 }
             } catch (IOException ignored) {
@@ -117,8 +122,8 @@ public class EconomyManager {
         return shop;
     }
 
-    public com.reazip.economycraft.market.MarketManager getMarket() {
-        return market;
+    public com.reazip.economycraft.orders.OrderManager getOrders() {
+        return orders;
     }
 
     public boolean claimDaily(UUID player) {
@@ -143,38 +148,55 @@ public class EconomyManager {
     private void setupObjective() {
         Scoreboard board = server.getScoreboard();
         objective = board.getObjective("eco_balance");
-        if (objective == null) {
-            net.minecraft.network.chat.numbers.NumberFormat fmt = new net.minecraft.network.chat.numbers.NumberFormat() {
-                @Override
-                public net.minecraft.network.chat.MutableComponent format(int value) {
-                    return Component.literal(EconomyCraft.formatMoney(value));
-                }
+        net.minecraft.network.chat.numbers.NumberFormat fmt = new net.minecraft.network.chat.numbers.NumberFormat() {
+            @Override
+            public net.minecraft.network.chat.MutableComponent format(int value) {
+                return Component.literal(EconomyCraft.formatMoney(value));
+            }
 
-                @Override
-                public net.minecraft.network.chat.numbers.NumberFormatType<?> type() {
-                    return net.minecraft.network.chat.numbers.StyledFormat.TYPE;
-                }
-            };
+            @Override
+            public net.minecraft.network.chat.numbers.NumberFormatType<?> type() {
+                return net.minecraft.network.chat.numbers.StyledFormat.TYPE;
+            }
+        };
+        if (objective == null) {
             objective = board.addObjective("eco_balance", ObjectiveCriteria.DUMMY, Component.literal("Balance"), ObjectiveCriteria.RenderType.INTEGER, true, fmt);
+        } else {
+            objective.setNumberFormat(fmt);
         }
         board.setDisplayObjective(DisplaySlot.SIDEBAR, objective);
         updateLeaderboard();
     }
 
     private void updateLeaderboard() {
-        if (objective == null) return;
-        // sort balances
+        Scoreboard board = server.getScoreboard();
+        if (objective != null) {
+            board.removeObjective(objective);
+        }
+        net.minecraft.network.chat.numbers.NumberFormat fmt = new net.minecraft.network.chat.numbers.NumberFormat() {
+            @Override
+            public net.minecraft.network.chat.MutableComponent format(int value) {
+                return Component.literal(EconomyCraft.formatMoney(value));
+            }
+
+            @Override
+            public net.minecraft.network.chat.numbers.NumberFormatType<?> type() {
+                return net.minecraft.network.chat.numbers.StyledFormat.TYPE;
+            }
+        };
+        objective = board.addObjective("eco_balance", ObjectiveCriteria.DUMMY, Component.literal("Balance"), ObjectiveCriteria.RenderType.INTEGER, true, fmt);
+        board.setDisplayObjective(DisplaySlot.SIDEBAR, objective);
+        displayed.clear();
         List<Map.Entry<UUID, Long>> sorted = new ArrayList<>(balances.entrySet());
         sorted.sort(Map.Entry.<UUID, Long>comparingByValue().reversed());
-
-        Scoreboard board = server.getScoreboard();
-        board.resetAllPlayerScores(net.minecraft.world.scores.ScoreHolder.WILDCARD);
-
-        int rank = 1;
         for (Map.Entry<UUID, Long> e : sorted.stream().limit(5).toList()) {
             String name = server.getProfileCache().get(e.getKey()).map(p -> p.getName()).orElse(e.getKey().toString());
             board.getOrCreatePlayerScore(net.minecraft.world.scores.ScoreHolder.forNameOnly(name), objective).set(e.getValue().intValue());
-            rank++;
+            displayed.add(e.getKey());
         }
+    }
+
+    private long clamp(long value) {
+        return Math.max(0, Math.min(MAX, value));
     }
 }

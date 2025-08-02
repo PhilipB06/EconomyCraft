@@ -1,4 +1,4 @@
-package com.reazip.economycraft.market;
+package com.reazip.economycraft.orders;
 
 import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyConfig;
@@ -20,45 +20,45 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-public final class MarketUi {
-    private MarketUi() {}
+public final class OrdersUi {
+    private OrdersUi() {}
 
-    public static void openRequests(ServerPlayer player, EconomyManager eco) {
+    public static void open(ServerPlayer player, EconomyManager eco) {
         player.openMenu(new MenuProvider() {
             @Override
             public Component getDisplayName() {
-                return Component.literal("Market");
+                return Component.literal("Orders");
             }
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                return new RequestMenu(id, inv, eco.getMarket(), eco, player);
+                return new RequestMenu(id, inv, eco.getOrders(), eco, player);
             }
         });
     }
 
-    public static void openClaims(ServerPlayer player, MarketManager market) {
+    public static void openClaims(ServerPlayer player, EconomyManager eco) {
         player.openMenu(new MenuProvider() {
             @Override
             public Component getDisplayName() { return Component.literal("Deliveries"); }
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                return new ClaimMenu(id, inv, market, player.getUUID());
+                return new ClaimMenu(id, inv, eco, player.getUUID());
             }
         });
     }
 
     private static class RequestMenu extends AbstractContainerMenu {
-        private final MarketManager market;
+        private final OrderManager market;
         private final EconomyManager eco;
         private final ServerPlayer viewer;
-        private List<MarketRequest> requests = new ArrayList<>();
+        private List<OrderRequest> requests = new ArrayList<>();
         private final SimpleContainer container = new SimpleContainer(54);
         private int page;
         private final Runnable listener = this::updatePage;
 
-        RequestMenu(int id, Inventory inv, MarketManager market, EconomyManager eco, ServerPlayer viewer) {
+        RequestMenu(int id, Inventory inv, OrderManager market, EconomyManager eco, ServerPlayer viewer) {
             super(MenuType.GENERIC_9x6, id);
             this.market = market;
             this.eco = eco;
@@ -92,17 +92,16 @@ public final class MarketUi {
             for (int i = 0; i < 45; i++) {
                 int index = start + i;
                 if (index >= requests.size()) break;
-                MarketRequest r = requests.get(index);
+                OrderRequest r = requests.get(index);
                 ItemStack display = r.item.copy();
                 String reqName = viewer.getServer().getProfileCache().get(r.requester).map(p -> p.getName()).orElse(r.requester.toString());
                 long tax = Math.round(r.price * EconomyConfig.get().taxRate);
                 display.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
-                        Component.literal("Reward: " + EconomyCraft.formatMoney(r.price)),
+                        Component.literal("Reward: " + EconomyCraft.formatMoney(r.price) + " (-" + EconomyCraft.formatMoney(tax) + " tax)"),
                         Component.literal("Requester: " + reqName),
-                        Component.literal("Amount: " + r.item.getCount()),
-                        Component.literal("Tax: " + EconomyCraft.formatMoney(tax))
+                        Component.literal("Amount: " + r.amount)
                 )));
-                display.setCount(Math.min(r.item.getCount(), display.getMaxStackSize()));
+                display.setCount(1);
                 container.setItem(i, display);
             }
             if (page > 0) {
@@ -126,7 +125,7 @@ public final class MarketUi {
                 if (slot < 45) {
                     int index = page * 45 + slot;
                     if (index < requests.size()) {
-                        MarketRequest req = requests.get(index);
+                        OrderRequest req = requests.get(index);
                         if (req.requester.equals(player.getUUID())) {
                             openRemove((ServerPlayer) player, req);
                         } else {
@@ -141,20 +140,20 @@ public final class MarketUi {
             super.clicked(slot, dragType, type, player);
         }
 
-        private boolean hasItems(ServerPlayer player, ItemStack wanted) {
+        private boolean hasItems(ServerPlayer player, ItemStack proto, int amount) {
             int total = 0;
             for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
                 ItemStack s = player.getInventory().getItem(i);
-                if (s.is(wanted.getItem())) total += s.getCount();
+                if (s.is(proto.getItem())) total += s.getCount();
             }
-            return total >= wanted.getCount();
+            return total >= amount;
         }
 
-        private void removeItems(ServerPlayer player, ItemStack wanted) {
-            int remaining = wanted.getCount();
+        private void removeItems(ServerPlayer player, ItemStack proto, int amount) {
+            int remaining = amount;
             for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
                 ItemStack s = player.getInventory().getItem(i);
-                if (s.is(wanted.getItem())) {
+                if (s.is(proto.getItem())) {
                     int take = Math.min(s.getCount(), remaining);
                     s.shrink(take);
                     remaining -= take;
@@ -163,7 +162,7 @@ public final class MarketUi {
             }
         }
 
-        private void openConfirm(ServerPlayer player, MarketRequest req) {
+        private void openConfirm(ServerPlayer player, OrderRequest req) {
             player.openMenu(new MenuProvider() {
                 @Override
                 public Component getDisplayName() { return Component.literal("Confirm"); }
@@ -175,7 +174,7 @@ public final class MarketUi {
             });
         }
 
-        private void openRemove(ServerPlayer player, MarketRequest req) {
+        private void openRemove(ServerPlayer player, OrderRequest req) {
             player.openMenu(new MenuProvider() {
                 @Override
                 public Component getDisplayName() { return Component.literal("Remove"); }
@@ -199,11 +198,11 @@ public final class MarketUi {
     }
 
     private static class ConfirmMenu extends AbstractContainerMenu {
-        private final MarketRequest request;
+        private final OrderRequest request;
         private final RequestMenu parent;
         private final SimpleContainer container = new SimpleContainer(9);
 
-        ConfirmMenu(int id, Inventory inv, MarketRequest req, RequestMenu parent) {
+        ConfirmMenu(int id, Inventory inv, OrderRequest req, RequestMenu parent) {
             super(MenuType.GENERIC_9x1, id);
             this.request = req;
             this.parent = parent;
@@ -216,10 +215,9 @@ public final class MarketUi {
             String name = parent.viewer.getServer().getProfileCache().get(req.requester).map(p -> p.getName()).orElse(req.requester.toString());
             long tax = Math.round(req.price * EconomyConfig.get().taxRate);
             item.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
-                    Component.literal("Reward: " + EconomyCraft.formatMoney(req.price)),
+                    Component.literal("Reward: " + EconomyCraft.formatMoney(req.price) + " (-" + EconomyCraft.formatMoney(tax) + " tax)"),
                     Component.literal("Requester: " + name),
-                    Component.literal("Amount: " + req.item.getCount()),
-                    Component.literal("Tax: " + EconomyCraft.formatMoney(tax))
+                    Component.literal("Amount: " + req.amount)
             )));
             container.setItem(4, item);
 
@@ -246,40 +244,44 @@ public final class MarketUi {
         public void clicked(int slot, int drag, ClickType type, Player player) {
             if (type == ClickType.PICKUP) {
                 if (slot == 2) {
-                    MarketRequest current = parent.market.getRequest(request.id);
+                    OrderRequest current = parent.market.getRequest(request.id);
                     if (current == null) {
                         ((ServerPlayer) player).sendSystemMessage(Component.literal("Request no longer available"));
-                    } else if (!parent.hasItems((ServerPlayer) player, current.item)) {
+                    } else if (!parent.hasItems((ServerPlayer) player, current.item, current.amount)) {
                         ((ServerPlayer) player).sendSystemMessage(Component.literal("Not enough items"));
                     } else {
-                        parent.removeItems((ServerPlayer) player, current.item.copy());
+                        parent.removeItems((ServerPlayer) player, current.item.copy(), current.amount);
                         long cost = current.price;
                         long tax = Math.round(cost * EconomyConfig.get().taxRate);
                         long bal = parent.eco.getBalance(current.requester);
                         parent.eco.setMoney(current.requester, bal - cost);
                         parent.eco.addMoney(player.getUUID(), cost - tax);
                         parent.market.removeRequest(current.id);
-                        parent.market.addDelivery(current.requester, current.item.copy());
+                        int remaining = current.amount;
+                        while (remaining > 0) {
+                            int c = Math.min(current.item.getMaxStackSize(), remaining);
+                            parent.market.addDelivery(current.requester, new ItemStack(current.item.getItem(), c));
+                            remaining -= c;
+                        }
                         ((ServerPlayer) player).sendSystemMessage(Component.literal("Fulfilled request"));
                         var requesterPlayer = parent.viewer.getServer().getPlayerList().getPlayer(current.requester);
                         if (requesterPlayer != null) {
-                            ItemStack stack = current.item;
-                            Component msg = Component.literal("Your request for " + stack.getCount() + "x " + stack.getHoverName().getString() + " has been fulfilled. ")
+                            Component msg = Component.literal("Your request for " + current.amount + "x " + current.item.getHoverName().getString() + " has been fulfilled. ")
                                     .append(Component.literal("[Claim]")
                                             .withStyle(s -> s.withUnderlined(true)
-                                                    .withClickEvent(new net.minecraft.network.chat.ClickEvent.RunCommand("/eco market claim"))));
+                                                    .withClickEvent(new net.minecraft.network.chat.ClickEvent.RunCommand("/eco orders claim"))));
                             requesterPlayer.sendSystemMessage(msg);
                         }
                         parent.requests.removeIf(r -> r.id == current.id);
                         parent.updatePage();
                     }
                     player.closeContainer();
-                    MarketUi.openRequests((ServerPlayer) player, parent.eco);
+                    OrdersUi.open((ServerPlayer) player, parent.eco);
                     return;
                 }
                 if (slot == 6) {
                     player.closeContainer();
-                    MarketUi.openRequests((ServerPlayer) player, parent.eco);
+                    OrdersUi.open((ServerPlayer) player, parent.eco);
                     return;
                 }
             }
@@ -291,11 +293,11 @@ public final class MarketUi {
     }
 
     private static class RemoveMenu extends AbstractContainerMenu {
-        private final MarketRequest request;
+        private final OrderRequest request;
         private final RequestMenu parent;
         private final SimpleContainer container = new SimpleContainer(9);
 
-        RemoveMenu(int id, Inventory inv, MarketRequest req, RequestMenu parent) {
+        RemoveMenu(int id, Inventory inv, OrderRequest req, RequestMenu parent) {
             super(MenuType.GENERIC_9x1, id);
             this.request = req;
             this.parent = parent;
@@ -307,9 +309,8 @@ public final class MarketUi {
             ItemStack item = req.item.copy();
             long tax = Math.round(req.price * EconomyConfig.get().taxRate);
             item.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
-                    Component.literal("Reward: " + EconomyCraft.formatMoney(req.price)),
-                    Component.literal("Amount: " + req.item.getCount()),
-                    Component.literal("Tax: " + EconomyCraft.formatMoney(tax)),
+                    Component.literal("Reward: " + EconomyCraft.formatMoney(req.price) + " (-" + EconomyCraft.formatMoney(tax) + " tax)"),
+                    Component.literal("Amount: " + req.amount),
                     Component.literal("This will remove the request"))));
             container.setItem(4, item);
 
@@ -336,19 +337,19 @@ public final class MarketUi {
         public void clicked(int slot, int drag, ClickType type, Player player) {
             if (type == ClickType.PICKUP) {
                 if (slot == 2) {
-                    MarketRequest removed = parent.market.removeRequest(request.id);
+                    OrderRequest removed = parent.market.removeRequest(request.id);
                     if (removed != null) {
                         ((ServerPlayer) player).sendSystemMessage(Component.literal("Request removed"));
                     } else {
                         ((ServerPlayer) player).sendSystemMessage(Component.literal("Request no longer available"));
                     }
                     player.closeContainer();
-                    MarketUi.openRequests((ServerPlayer) player, parent.eco);
+                    OrdersUi.open((ServerPlayer) player, parent.eco);
                     return;
                 }
                 if (slot == 6) {
                     player.closeContainer();
-                    MarketUi.openRequests((ServerPlayer) player, parent.eco);
+                    OrdersUi.open((ServerPlayer) player, parent.eco);
                     return;
                 }
             }
@@ -360,15 +361,19 @@ public final class MarketUi {
     }
 
     private static class ClaimMenu extends AbstractContainerMenu {
-        private final MarketManager market;
+        private final EconomyManager eco;
         private final UUID owner;
         private final SimpleContainer container = new SimpleContainer(54);
 
-        ClaimMenu(int id, Inventory inv, MarketManager market, UUID owner) {
+        ClaimMenu(int id, Inventory inv, EconomyManager eco, UUID owner) {
             super(MenuType.GENERIC_9x6, id);
-            this.market = market;
+            this.eco = eco;
             this.owner = owner;
-            List<ItemStack> items = market.claimDeliveries(owner);
+            List<ItemStack> items = new ArrayList<>();
+            List<ItemStack> o = eco.getOrders().claimDeliveries(owner);
+            if (o != null) items.addAll(o);
+            List<ItemStack> s = eco.getShop().claimDeliveries(owner);
+            if (s != null) items.addAll(s);
             if (items != null) {
                 for (int i = 0; i < items.size() && i < 54; i++) {
                     container.setItem(i, items.get(i));
@@ -395,10 +400,10 @@ public final class MarketUi {
         @Override
         public void removed(Player player) {
             for (int i = 0; i < container.getContainerSize(); i++) {
-                ItemStack s = container.getItem(i);
-                if (!s.isEmpty()) {
-                    if (!player.getInventory().add(s)) {
-                        ((ServerPlayer)player).drop(s, false);
+                ItemStack s2 = container.getItem(i);
+                if (!s2.isEmpty()) {
+                    if (!player.getInventory().add(s2)) {
+                        ((ServerPlayer)player).drop(s2, false);
                     }
                 }
             }

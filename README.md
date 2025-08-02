@@ -16,9 +16,9 @@ Balances and configuration live in `config/EconomyCraft/` (`balances.json`, `dai
 - `/eco shop` – Opens the chest-based shop UI.
 - `/eco shop sell <price>` – Sell the item in your hand.
 
-### Market Commands
-- `/eco market` – Opens the market UI to browse and fulfill requests.
-- `/eco market request <item> <amount> <price>` – Create an item request.
-- `/eco market claim` – Claim items bought or requested while offline.
+### Orders Commands
+- `/eco orders` – Opens the orders UI to browse and fulfill requests.
+- `/eco orders request <item> <amount> <price>` – Create an item request.
+- `/eco orders claim` – Claim items bought or requested while offline.
 
 Server-side only.

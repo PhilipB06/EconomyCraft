@@ -110,9 +110,8 @@ public final class ShopUi {
                 String sellerName = viewer.getServer().getProfileCache().get(l.seller).map(p -> p.getName()).orElse(l.seller.toString());
                 long tax = Math.round(l.price * EconomyConfig.get().taxRate);
                 display.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
-                        Component.literal("Price: " + EconomyCraft.formatMoney(l.price)),
-                        Component.literal("Seller: " + sellerName),
-                        Component.literal("Tax: " + EconomyCraft.formatMoney(tax)))));
+                        Component.literal("Price: " + EconomyCraft.formatMoney(l.price) + " (+" + EconomyCraft.formatMoney(tax) + " tax)"),
+                        Component.literal("Seller: " + sellerName))));
                 container.setItem(i, display);
             }
             if (page > 0) {
@@ -184,9 +183,8 @@ public final class ShopUi {
             String sellerName = viewer.getServer().getProfileCache().get(listing.seller).map(p -> p.getName()).orElse(listing.seller.toString());
             long tax = Math.round(listing.price * EconomyConfig.get().taxRate);
             item.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
-                    Component.literal("Price: " + EconomyCraft.formatMoney(listing.price)),
-                    Component.literal("Seller: " + sellerName),
-                    Component.literal("Tax: " + EconomyCraft.formatMoney(tax)))));
+                    Component.literal("Price: " + EconomyCraft.formatMoney(listing.price) + " (+" + EconomyCraft.formatMoney(tax) + " tax)"),
+                    Component.literal("Seller: " + sellerName))));
             container.setItem(4, item);
 
             ItemStack cancel = new ItemStack(Items.RED_STAINED_GLASS_PANE);
@@ -221,22 +219,23 @@ public final class ShopUi {
                     } else {
                         EconomyManager eco = EconomyCraft.getManager(((ServerPlayer) player).getServer());
                         long cost = current.price;
+                        long tax = Math.round(cost * EconomyConfig.get().taxRate);
+                        long total = cost + tax;
                         long bal = eco.getBalance(player.getUUID());
-                        if (bal < cost) {
+                        if (bal < total) {
                             ((ServerPlayer) player).sendSystemMessage(Component.literal("Not enough balance"));
                         } else {
-                            long tax = Math.round(cost * EconomyConfig.get().taxRate);
-                            eco.setMoney(player.getUUID(), bal - cost);
-                            eco.addMoney(current.seller, cost - tax);
+                            eco.setMoney(player.getUUID(), bal - total);
+                            eco.addMoney(current.seller, cost);
                             shop.removeListing(current.id);
                             ItemStack stack = current.item.copy();
                             int count = stack.getCount();
                             Component name = stack.getHoverName();
                             if (!player.getInventory().add(stack)) {
                                 shop.addDelivery(player.getUUID(), stack);
-                                ((ServerPlayer) player).sendSystemMessage(Component.literal("Item stored, use /eco market claim"));
+                                ((ServerPlayer) player).sendSystemMessage(Component.literal("Item stored, use /eco orders claim"));
                             } else {
-                                ((ServerPlayer) player).sendSystemMessage(Component.literal("Purchased " + count + "x " + name.getString() + " for " + EconomyCraft.formatMoney(cost)));
+                                ((ServerPlayer) player).sendSystemMessage(Component.literal("Purchased " + count + "x " + name.getString() + " for " + EconomyCraft.formatMoney(total)));
                             }
                         }
                     }
@@ -279,9 +278,8 @@ public final class ShopUi {
             ItemStack item = listing.item.copy();
             long tax = Math.round(listing.price * EconomyConfig.get().taxRate);
             item.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
-                    Component.literal("Price: " + EconomyCraft.formatMoney(listing.price)),
+                    Component.literal("Price: " + EconomyCraft.formatMoney(listing.price) + " (+" + EconomyCraft.formatMoney(tax) + " tax)"),
                     Component.literal("Seller: you"),
-                    Component.literal("Tax: " + EconomyCraft.formatMoney(tax)),
                     Component.literal("This will remove the listing"))));
             container.setItem(4, item);
 
@@ -313,7 +311,7 @@ public final class ShopUi {
                         ItemStack stack = removed.item.copy();
                         if (!player.getInventory().add(stack)) {
                             shop.addDelivery(player.getUUID(), stack);
-                            viewer.sendSystemMessage(Component.literal("Item stored, use /eco market claim"));
+                            viewer.sendSystemMessage(Component.literal("Item stored, use /eco orders claim"));
                         } else {
                             viewer.sendSystemMessage(Component.literal("Listing removed"));
                         }

@@ -16,9 +16,9 @@ import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.shop.ShopManager;
 import com.reazip.economycraft.shop.ShopListing;
 import com.reazip.economycraft.shop.ShopUi;
-import com.reazip.economycraft.market.MarketManager;
-import com.reazip.economycraft.market.MarketRequest;
-import com.reazip.economycraft.market.MarketUi;
+import com.reazip.economycraft.orders.OrderManager;
+import com.reazip.economycraft.orders.OrderRequest;
+import com.reazip.economycraft.orders.OrdersUi;
 import net.minecraft.world.item.ItemStack;
 
 import static net.minecraft.commands.Commands.argument;
@@ -34,20 +34,20 @@ public final class EconomyCommands {
                     .executes(ctx -> showBalance(StringArgumentType.getString(ctx, "player"), ctx.getSource()))))
             .then(literal("pay")
                 .then(argument("player", EntityArgument.player())
-                    .then(argument("amount", LongArgumentType.longArg(1))
+                    .then(argument("amount", LongArgumentType.longArg(1, EconomyManager.MAX))
                         .executes(ctx -> pay(ctx.getSource().getPlayerOrException(),
                                 EntityArgument.getPlayer(ctx, "player"),
                                 LongArgumentType.getLong(ctx, "amount"), ctx.getSource())))))
             .then(literal("addmoney").requires(s -> s.hasPermission(2))
                 .then(argument("player", StringArgumentType.word())
                     .suggests((ctx, builder) -> suggestPlayers(ctx.getSource(), builder))
-                    .then(argument("amount", LongArgumentType.longArg(1))
+                    .then(argument("amount", LongArgumentType.longArg(1, EconomyManager.MAX))
                         .executes(ctx -> addMoney(StringArgumentType.getString(ctx, "player"),
                                 LongArgumentType.getLong(ctx, "amount"), ctx.getSource())))))
             .then(literal("setmoney").requires(s -> s.hasPermission(2))
                 .then(argument("player", StringArgumentType.word())
                     .suggests((ctx, builder) -> suggestPlayers(ctx.getSource(), builder))
-                    .then(argument("amount", LongArgumentType.longArg(0))
+                    .then(argument("amount", LongArgumentType.longArg(0, EconomyManager.MAX))
                         .executes(ctx -> setMoney(StringArgumentType.getString(ctx, "player"),
                                 LongArgumentType.getLong(ctx, "amount"), ctx.getSource())))))
             .then(literal("removeplayer").requires(s -> s.hasPermission(2))
@@ -57,20 +57,20 @@ public final class EconomyCommands {
             .then(literal("shop")
                 .executes(ctx -> openShop(ctx.getSource().getPlayerOrException(), ctx.getSource()))
                 .then(literal("sell")
-                    .then(argument("price", LongArgumentType.longArg(1))
+                    .then(argument("price", LongArgumentType.longArg(1, EconomyManager.MAX))
                         .executes(ctx -> sellItem(ctx.getSource().getPlayerOrException(), LongArgumentType.getLong(ctx, "price"), ctx.getSource())))))
-            .then(literal("market")
-                .executes(ctx -> openMarket(ctx.getSource().getPlayerOrException(), ctx.getSource()))
+            .then(literal("orders")
+                .executes(ctx -> openOrders(ctx.getSource().getPlayerOrException(), ctx.getSource()))
                 .then(literal("request")
                     .then(argument("item", ResourceLocationArgument.id())
-                        .then(argument("amount", LongArgumentType.longArg(1))
-                            .then(argument("price", LongArgumentType.longArg(1))
+                        .then(argument("amount", LongArgumentType.longArg(1, EconomyManager.MAX))
+                            .then(argument("price", LongArgumentType.longArg(1, EconomyManager.MAX))
                                 .executes(ctx -> requestItem(ctx.getSource().getPlayerOrException(),
                                         ResourceLocationArgument.getId(ctx, "item"),
-                                        (int)LongArgumentType.getLong(ctx, "amount"),
+                                        (int)Math.min(LongArgumentType.getLong(ctx, "amount"), EconomyManager.MAX),
                                         LongArgumentType.getLong(ctx, "price"),
                                         ctx.getSource()))))))
-                .then(literal("claim").executes(ctx -> claimMarket(ctx.getSource().getPlayerOrException(), ctx.getSource()))))
+                .then(literal("claim").executes(ctx -> claimOrders(ctx.getSource().getPlayerOrException(), ctx.getSource()))))
             .then(literal("daily")
                 .executes(ctx -> daily(ctx.getSource().getPlayerOrException(), ctx.getSource())))
         );
@@ -173,13 +173,13 @@ public final class EconomyCommands {
         hand.shrink(count);
         shop.addListing(listing);
         long tax = Math.round(price * EconomyConfig.get().taxRate);
-        source.sendSuccess(() -> Component.literal("Listed item for " + EconomyCraft.formatMoney(price) + " (you receive " + EconomyCraft.formatMoney(price - tax) + ")"), false);
+        source.sendSuccess(() -> Component.literal("Listed item for " + EconomyCraft.formatMoney(price) + " (buyers pay " + EconomyCraft.formatMoney(price + tax) + ")"), false);
         return 1;
     }
 
-    // --- market commands ---
-    private static int openMarket(ServerPlayer player, CommandSourceStack source) {
-        MarketUi.openRequests(player, EconomyCraft.getManager(source.getServer()));
+    // --- orders commands ---
+    private static int openOrders(ServerPlayer player, CommandSourceStack source) {
+        OrdersUi.open(player, EconomyCraft.getManager(source.getServer()));
         return 1;
     }
 
@@ -189,21 +189,20 @@ public final class EconomyCommands {
             source.sendFailure(Component.literal("Invalid item"));
             return 0;
         }
-        ItemStack proto = new ItemStack(holder.get());
-        amount = Math.min(amount, proto.getMaxStackSize());
-        MarketManager market = EconomyCraft.getManager(source.getServer()).getMarket();
-        MarketRequest r = new MarketRequest();
+        OrderManager market = EconomyCraft.getManager(source.getServer()).getOrders();
+        OrderRequest r = new OrderRequest();
         r.requester = player.getUUID();
         r.price = price;
-        r.item = new ItemStack(holder.get(), amount);
+        r.item = new ItemStack(holder.get());
+        r.amount = amount;
         market.addRequest(r);
         long tax = Math.round(price * EconomyConfig.get().taxRate);
         source.sendSuccess(() -> Component.literal("Created request (fulfiller receives " + EconomyCraft.formatMoney(price - tax) + ")"), false);
         return 1;
     }
 
-    private static int claimMarket(ServerPlayer player, CommandSourceStack source) {
-        MarketUi.openClaims(player, EconomyCraft.getManager(source.getServer()).getMarket());
+    private static int claimOrders(ServerPlayer player, CommandSourceStack source) {
+        OrdersUi.openClaims(player, EconomyCraft.getManager(source.getServer()));
         return 1;
     }
 

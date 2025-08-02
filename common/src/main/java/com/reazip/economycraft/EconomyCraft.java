@@ -33,11 +33,11 @@ public final class EconomyCraft {
         PlayerEvent.PLAYER_JOIN.register(player -> {
             EconomyManager eco = getManager(player.getServer());
             eco.getBalance(player.getUUID());
-            if (eco.getMarket().hasDeliveries(player.getUUID())) {
+            if (eco.getOrders().hasDeliveries(player.getUUID()) || eco.getShop().hasDeliveries(player.getUUID())) {
                 Component msg = Component.literal("You have deliveries: ")
                         .append(Component.literal("[Claim]")
                                 .withStyle(s -> s.withUnderlined(true)
-                                        .withClickEvent(new ClickEvent.RunCommand("/eco market claim"))));
+                                        .withClickEvent(new ClickEvent.RunCommand("/eco orders claim"))));
                 player.sendSystemMessage(msg);
             }
         });
