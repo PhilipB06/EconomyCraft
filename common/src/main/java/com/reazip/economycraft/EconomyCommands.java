@@ -9,6 +9,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.ChatFormatting;
 
 import java.util.UUID;
 
@@ -90,28 +91,28 @@ public final class EconomyCommands {
 
     private static int showBalance(ServerPlayer player, CommandSourceStack source) {
         long bal = EconomyCraft.getManager(source.getServer()).getBalance(player.getUUID());
-        source.sendSuccess(() -> Component.literal(player.getName().getString() + " balance: " + EconomyCraft.formatMoney(bal)), false);
+        source.sendSuccess(() -> Component.literal(player.getName().getString() + " balance: " + EconomyCraft.formatMoney(bal)).withStyle(ChatFormatting.YELLOW), false);
         return 1;
     }
 
     private static int showBalance(String name, CommandSourceStack source) {
         var profile = source.getServer().getProfileCache().get(name);
         if (profile.isEmpty()) {
-            source.sendFailure(Component.literal("Unknown player"));
+            source.sendFailure(Component.literal("Unknown player").withStyle(ChatFormatting.RED));
             return 0;
         }
         long bal = EconomyCraft.getManager(source.getServer()).getBalance(profile.get().getId());
-        source.sendSuccess(() -> Component.literal(profile.get().getName() + " balance: " + EconomyCraft.formatMoney(bal)), false);
+        source.sendSuccess(() -> Component.literal(profile.get().getName() + " balance: " + EconomyCraft.formatMoney(bal)).withStyle(ChatFormatting.YELLOW), false);
         return 1;
     }
 
     private static int pay(ServerPlayer from, ServerPlayer to, long amount, CommandSourceStack source) {
         EconomyManager manager = EconomyCraft.getManager(source.getServer());
         if (manager.pay(from.getUUID(), to.getUUID(), amount)) {
-            source.sendSuccess(() -> Component.literal("Paid " + EconomyCraft.formatMoney(amount) + " to " + to.getName().getString()), false);
-            to.sendSystemMessage(Component.literal(from.getName().getString() + " sent you " + EconomyCraft.formatMoney(amount)));
+            source.sendSuccess(() -> Component.literal("Paid " + EconomyCraft.formatMoney(amount) + " to " + to.getName().getString()).withStyle(ChatFormatting.GREEN), false);
+            to.sendSystemMessage(Component.literal(from.getName().getString() + " sent you " + EconomyCraft.formatMoney(amount)).withStyle(ChatFormatting.GREEN));
         } else {
-            source.sendFailure(Component.literal("Not enough balance"));
+            source.sendFailure(Component.literal("Not enough balance").withStyle(ChatFormatting.RED));
         }
         return 1;
     }
@@ -119,36 +120,36 @@ public final class EconomyCommands {
     private static int addMoney(String target, long amount, CommandSourceStack source) {
         var profile = source.getServer().getProfileCache().get(target);
         if (profile.isEmpty()) {
-            source.sendFailure(Component.literal("Unknown player"));
+            source.sendFailure(Component.literal("Unknown player").withStyle(ChatFormatting.RED));
             return 0;
         }
         EconomyManager manager = EconomyCraft.getManager(source.getServer());
         manager.addMoney(profile.get().getId(), amount);
-        source.sendSuccess(() -> Component.literal("Added " + EconomyCraft.formatMoney(amount) + " to " + profile.get().getName()), false);
+        source.sendSuccess(() -> Component.literal("Added " + EconomyCraft.formatMoney(amount) + " to " + profile.get().getName()).withStyle(ChatFormatting.GREEN), false);
         return 1;
     }
 
     private static int setMoney(String target, long amount, CommandSourceStack source) {
         var profile = source.getServer().getProfileCache().get(target);
         if (profile.isEmpty()) {
-            source.sendFailure(Component.literal("Unknown player"));
+            source.sendFailure(Component.literal("Unknown player").withStyle(ChatFormatting.RED));
             return 0;
         }
         EconomyManager manager = EconomyCraft.getManager(source.getServer());
         manager.setMoney(profile.get().getId(), amount);
-        source.sendSuccess(() -> Component.literal("Set balance of " + profile.get().getName() + " to " + EconomyCraft.formatMoney(amount)), false);
+        source.sendSuccess(() -> Component.literal("Set balance of " + profile.get().getName() + " to " + EconomyCraft.formatMoney(amount)).withStyle(ChatFormatting.GREEN), false);
         return 1;
     }
 
     private static int removePlayer(String target, CommandSourceStack source) {
         var profile = source.getServer().getProfileCache().get(target);
         if (profile.isEmpty()) {
-            source.sendFailure(Component.literal("Unknown player"));
+            source.sendFailure(Component.literal("Unknown player").withStyle(ChatFormatting.RED));
             return 0;
         }
         EconomyManager manager = EconomyCraft.getManager(source.getServer());
         manager.removePlayer(profile.get().getId());
-        source.sendSuccess(() -> Component.literal("Removed " + profile.get().getName() + " from economy"), false);
+        source.sendSuccess(() -> Component.literal("Removed " + profile.get().getName() + " from economy").withStyle(ChatFormatting.GREEN), false);
         return 1;
     }
 
@@ -160,7 +161,7 @@ public final class EconomyCommands {
 
     private static int sellItem(ServerPlayer player, long price, CommandSourceStack source) {
         if (player.getMainHandItem().isEmpty()) {
-            source.sendFailure(Component.literal("Hold the item to sell in your hand"));
+            source.sendFailure(Component.literal("Hold the item to sell in your hand").withStyle(ChatFormatting.RED));
             return 0;
         }
         ShopManager shop = EconomyCraft.getManager(source.getServer()).getShop();
@@ -173,7 +174,7 @@ public final class EconomyCommands {
         hand.shrink(count);
         shop.addListing(listing);
         long tax = Math.round(price * EconomyConfig.get().taxRate);
-        source.sendSuccess(() -> Component.literal("Listed item for " + EconomyCraft.formatMoney(price) + " (buyers pay " + EconomyCraft.formatMoney(price + tax) + ")"), false);
+        source.sendSuccess(() -> Component.literal("Listed item for " + EconomyCraft.formatMoney(price) + " (buyers pay " + EconomyCraft.formatMoney(price + tax) + ")").withStyle(ChatFormatting.GREEN), false);
         return 1;
     }
 
@@ -186,7 +187,7 @@ public final class EconomyCommands {
     private static int requestItem(ServerPlayer player, ResourceLocation item, int amount, long price, CommandSourceStack source) {
         var holder = net.minecraft.core.registries.BuiltInRegistries.ITEM.getOptional(item);
         if (holder.isEmpty()) {
-            source.sendFailure(Component.literal("Invalid item"));
+            source.sendFailure(Component.literal("Invalid item").withStyle(ChatFormatting.RED));
             return 0;
         }
         OrderManager market = EconomyCraft.getManager(source.getServer()).getOrders();
@@ -196,13 +197,13 @@ public final class EconomyCommands {
         r.item = new ItemStack(holder.get());
         int maxAmount = 36 * r.item.getMaxStackSize();
         if (amount > maxAmount) {
-            source.sendFailure(Component.literal("Amount exceeds 36 stacks (max " + maxAmount + ")"));
+            source.sendFailure(Component.literal("Amount exceeds 36 stacks (max " + maxAmount + ")").withStyle(ChatFormatting.RED));
             return 0;
         }
         r.amount = amount;
         market.addRequest(r);
         long tax = Math.round(price * EconomyConfig.get().taxRate);
-        source.sendSuccess(() -> Component.literal("Created request (fulfiller receives " + EconomyCraft.formatMoney(price - tax) + ")"), false);
+        source.sendSuccess(() -> Component.literal("Created request (fulfiller receives " + EconomyCraft.formatMoney(price - tax) + ")").withStyle(ChatFormatting.GREEN), false);
         return 1;
     }
 
@@ -214,9 +215,9 @@ public final class EconomyCommands {
     private static int daily(ServerPlayer player, CommandSourceStack source) {
         EconomyManager manager = EconomyCraft.getManager(source.getServer());
         if (manager.claimDaily(player.getUUID())) {
-            source.sendSuccess(() -> Component.literal("Claimed " + EconomyCraft.formatMoney(EconomyConfig.get().dailyAmount)), false);
+            source.sendSuccess(() -> Component.literal("Claimed " + EconomyCraft.formatMoney(EconomyConfig.get().dailyAmount)).withStyle(ChatFormatting.GREEN), false);
         } else {
-            source.sendFailure(Component.literal("Already claimed today"));
+            source.sendFailure(Component.literal("Already claimed today").withStyle(ChatFormatting.RED));
         }
         return 1;
     }

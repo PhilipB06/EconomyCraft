@@ -35,7 +35,7 @@ public final class EconomyCraft {
             EconomyManager eco = getManager(player.getServer());
             eco.getBalance(player.getUUID());
             if (eco.getOrders().hasDeliveries(player.getUUID()) || eco.getShop().hasDeliveries(player.getUUID())) {
-                Component msg = Component.literal("You have unclaimed items ")
+                Component msg = Component.literal("You have unclaimed items: ")
                         .withStyle(ChatFormatting.YELLOW)
                         .append(Component.literal("[Claim]")
                                 .withStyle(s -> s.withUnderlined(true)

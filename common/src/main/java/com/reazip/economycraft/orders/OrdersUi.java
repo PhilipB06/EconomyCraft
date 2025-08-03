@@ -3,6 +3,8 @@ package com.reazip.economycraft.orders;
 import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyManager;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.MenuProvider;
@@ -246,17 +248,14 @@ public final class OrdersUi {
                 if (slot == 2) {
                     OrderRequest current = parent.market.getRequest(request.id);
                     if (current == null) {
-                        ((ServerPlayer) player).sendSystemMessage(Component.literal("Request no longer available"));
+                        ((ServerPlayer) player).sendSystemMessage(Component.literal("Request no longer available").withStyle(ChatFormatting.RED));
                     } else if (!parent.hasItems((ServerPlayer) player, current.item, current.amount)) {
-                        ((ServerPlayer) player).sendSystemMessage(Component.literal("Not enough items"));
+                        ((ServerPlayer) player).sendSystemMessage(Component.literal("Not enough items").withStyle(ChatFormatting.RED));
                     } else {
                         long cost = current.price;
                         long bal = parent.eco.getBalance(current.requester);
                         if (bal < cost) {
-                            ((ServerPlayer) player).sendSystemMessage(Component.literal("Requester can't pay"));
-                            parent.market.removeRequest(current.id);
-                            parent.requests.removeIf(r -> r.id == current.id);
-                            parent.updatePage();
+                            ((ServerPlayer) player).sendSystemMessage(Component.literal("Requester can't pay").withStyle(ChatFormatting.RED));
                         } else {
                             parent.removeItems((ServerPlayer) player, current.item.copy(), current.amount);
                             long tax = Math.round(cost * EconomyConfig.get().taxRate);
@@ -269,13 +268,15 @@ public final class OrdersUi {
                                 parent.market.addDelivery(current.requester, new ItemStack(current.item.getItem(), c));
                                 remaining -= c;
                             }
-                            ((ServerPlayer) player).sendSystemMessage(Component.literal("Fulfilled request"));
+                            ((ServerPlayer) player).sendSystemMessage(Component.literal("Fulfilled request for " + current.amount + "x " + current.item.getHoverName().getString() + " and earned " + EconomyCraft.formatMoney(cost - tax)).withStyle(ChatFormatting.GREEN));
                             var requesterPlayer = parent.viewer.getServer().getPlayerList().getPlayer(current.requester);
                             if (requesterPlayer != null) {
-                                Component msg = Component.literal("Your request for " + current.amount + "x " + current.item.getHoverName().getString() + " has been fulfilled. ")
+                                Component msg = Component.literal("Your request for " + current.amount + "x " + current.item.getHoverName().getString() + " has been fulfilled: ")
+                                        .withStyle(ChatFormatting.YELLOW)
                                         .append(Component.literal("[Claim]")
                                                 .withStyle(s -> s.withUnderlined(true)
-                                                        .withClickEvent(new net.minecraft.network.chat.ClickEvent.RunCommand("/eco orders claim"))));
+                                                        .withColor(ChatFormatting.GREEN)
+                                                        .withClickEvent(new ClickEvent.RunCommand("/eco orders claim"))));
                                 requesterPlayer.sendSystemMessage(msg);
                             }
                             parent.requests.removeIf(r -> r.id == current.id);
@@ -346,9 +347,9 @@ public final class OrdersUi {
                 if (slot == 2) {
                     OrderRequest removed = parent.market.removeRequest(request.id);
                     if (removed != null) {
-                        ((ServerPlayer) player).sendSystemMessage(Component.literal("Request removed"));
+                        ((ServerPlayer) player).sendSystemMessage(Component.literal("Request removed").withStyle(ChatFormatting.GREEN));
                     } else {
-                        ((ServerPlayer) player).sendSystemMessage(Component.literal("Request no longer available"));
+                        ((ServerPlayer) player).sendSystemMessage(Component.literal("Request no longer available").withStyle(ChatFormatting.RED));
                     }
                     player.closeContainer();
                     OrdersUi.open((ServerPlayer) player, parent.eco);
