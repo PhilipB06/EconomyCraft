@@ -194,6 +194,11 @@ public final class EconomyCommands {
         r.requester = player.getUUID();
         r.price = price;
         r.item = new ItemStack(holder.get());
+        int maxAmount = 36 * r.item.getMaxStackSize();
+        if (amount > maxAmount) {
+            source.sendFailure(Component.literal("Amount exceeds 36 stacks (max " + maxAmount + ")"));
+            return 0;
+        }
         r.amount = amount;
         market.addRequest(r);
         long tax = Math.round(price * EconomyConfig.get().taxRate);

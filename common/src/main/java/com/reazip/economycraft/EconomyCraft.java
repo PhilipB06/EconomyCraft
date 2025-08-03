@@ -5,6 +5,7 @@ import dev.architectury.event.events.common.LifecycleEvent;
 import dev.architectury.event.events.common.PlayerEvent;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.ChatFormatting;
 import net.minecraft.server.MinecraftServer;
 
 import java.text.NumberFormat;
@@ -34,9 +35,11 @@ public final class EconomyCraft {
             EconomyManager eco = getManager(player.getServer());
             eco.getBalance(player.getUUID());
             if (eco.getOrders().hasDeliveries(player.getUUID()) || eco.getShop().hasDeliveries(player.getUUID())) {
-                Component msg = Component.literal("You have deliveries: ")
+                Component msg = Component.literal("You have unclaimed items ")
+                        .withStyle(ChatFormatting.YELLOW)
                         .append(Component.literal("[Claim]")
                                 .withStyle(s -> s.withUnderlined(true)
+                                        .withColor(ChatFormatting.GREEN)
                                         .withClickEvent(new ClickEvent.RunCommand("/eco orders claim"))));
                 player.sendSystemMessage(msg);
             }

@@ -250,30 +250,37 @@ public final class OrdersUi {
                     } else if (!parent.hasItems((ServerPlayer) player, current.item, current.amount)) {
                         ((ServerPlayer) player).sendSystemMessage(Component.literal("Not enough items"));
                     } else {
-                        parent.removeItems((ServerPlayer) player, current.item.copy(), current.amount);
                         long cost = current.price;
-                        long tax = Math.round(cost * EconomyConfig.get().taxRate);
                         long bal = parent.eco.getBalance(current.requester);
-                        parent.eco.setMoney(current.requester, bal - cost);
-                        parent.eco.addMoney(player.getUUID(), cost - tax);
-                        parent.market.removeRequest(current.id);
-                        int remaining = current.amount;
-                        while (remaining > 0) {
-                            int c = Math.min(current.item.getMaxStackSize(), remaining);
-                            parent.market.addDelivery(current.requester, new ItemStack(current.item.getItem(), c));
-                            remaining -= c;
+                        if (bal < cost) {
+                            ((ServerPlayer) player).sendSystemMessage(Component.literal("Requester can't pay"));
+                            parent.market.removeRequest(current.id);
+                            parent.requests.removeIf(r -> r.id == current.id);
+                            parent.updatePage();
+                        } else {
+                            parent.removeItems((ServerPlayer) player, current.item.copy(), current.amount);
+                            long tax = Math.round(cost * EconomyConfig.get().taxRate);
+                            parent.eco.setMoney(current.requester, bal - cost);
+                            parent.eco.addMoney(player.getUUID(), cost - tax);
+                            parent.market.removeRequest(current.id);
+                            int remaining = current.amount;
+                            while (remaining > 0) {
+                                int c = Math.min(current.item.getMaxStackSize(), remaining);
+                                parent.market.addDelivery(current.requester, new ItemStack(current.item.getItem(), c));
+                                remaining -= c;
+                            }
+                            ((ServerPlayer) player).sendSystemMessage(Component.literal("Fulfilled request"));
+                            var requesterPlayer = parent.viewer.getServer().getPlayerList().getPlayer(current.requester);
+                            if (requesterPlayer != null) {
+                                Component msg = Component.literal("Your request for " + current.amount + "x " + current.item.getHoverName().getString() + " has been fulfilled. ")
+                                        .append(Component.literal("[Claim]")
+                                                .withStyle(s -> s.withUnderlined(true)
+                                                        .withClickEvent(new net.minecraft.network.chat.ClickEvent.RunCommand("/eco orders claim"))));
+                                requesterPlayer.sendSystemMessage(msg);
+                            }
+                            parent.requests.removeIf(r -> r.id == current.id);
+                            parent.updatePage();
                         }
-                        ((ServerPlayer) player).sendSystemMessage(Component.literal("Fulfilled request"));
-                        var requesterPlayer = parent.viewer.getServer().getPlayerList().getPlayer(current.requester);
-                        if (requesterPlayer != null) {
-                            Component msg = Component.literal("Your request for " + current.amount + "x " + current.item.getHoverName().getString() + " has been fulfilled. ")
-                                    .append(Component.literal("[Claim]")
-                                            .withStyle(s -> s.withUnderlined(true)
-                                                    .withClickEvent(new net.minecraft.network.chat.ClickEvent.RunCommand("/eco orders claim"))));
-                            requesterPlayer.sendSystemMessage(msg);
-                        }
-                        parent.requests.removeIf(r -> r.id == current.id);
-                        parent.updatePage();
                     }
                     player.closeContainer();
                     OrdersUi.open((ServerPlayer) player, parent.eco);
@@ -363,27 +370,26 @@ public final class OrdersUi {
     private static class ClaimMenu extends AbstractContainerMenu {
         private final EconomyManager eco;
         private final UUID owner;
+        private final List<ItemStack> orderItems;
+        private final List<ItemStack> shopItems;
         private final SimpleContainer container = new SimpleContainer(54);
+        private final List<ItemStack> items = new ArrayList<>();
+        private int page;
 
         ClaimMenu(int id, Inventory inv, EconomyManager eco, UUID owner) {
             super(MenuType.GENERIC_9x6, id);
             this.eco = eco;
             this.owner = owner;
-            List<ItemStack> items = new ArrayList<>();
-            List<ItemStack> o = eco.getOrders().claimDeliveries(owner);
-            if (o != null) items.addAll(o);
-            List<ItemStack> s = eco.getShop().claimDeliveries(owner);
-            if (s != null) items.addAll(s);
-            if (items != null) {
-                for (int i = 0; i < items.size() && i < 54; i++) {
-                    container.setItem(i, items.get(i));
-                }
-            }
+            this.orderItems = eco.getOrders().getDeliveries(owner);
+            this.shopItems = eco.getShop().getDeliveries(owner);
+            updatePage();
             for (int i = 0; i < 54; i++) {
                 int r = i / 9;
                 int c = i % 9;
+                int idx = i;
                 this.addSlot(new Slot(container, i, 8 + c * 18, 18 + r * 18) {
                     @Override public boolean mayPlace(ItemStack stack) { return false; }
+                    @Override public boolean mayPickup(Player player) { return idx < 45 && super.mayPickup(player); }
                 });
             }
             int y = 18 + 6 * 18 + 14;
@@ -397,20 +403,60 @@ public final class OrdersUi {
             }
         }
 
-        @Override
-        public void removed(Player player) {
-            for (int i = 0; i < container.getContainerSize(); i++) {
-                ItemStack s2 = container.getItem(i);
-                if (!s2.isEmpty()) {
-                    if (!player.getInventory().add(s2)) {
-                        ((ServerPlayer)player).drop(s2, false);
-                    }
-                }
+        private void updatePage() {
+            items.clear();
+            items.addAll(orderItems);
+            items.addAll(shopItems);
+            container.clearContent();
+            int start = page * 45;
+            int totalPages = (int)Math.ceil(items.size() / 45.0);
+            for (int i = 0; i < 45; i++) {
+                int index = start + i;
+                if (index >= items.size()) break;
+                container.setItem(i, items.get(index));
             }
-            super.removed(player);
+            if (page > 0) {
+                ItemStack prev = new ItemStack(Items.ARROW);
+                prev.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Previous page"));
+                container.setItem(45, prev);
+            }
+            if (start + 45 < items.size()) {
+                ItemStack next = new ItemStack(Items.ARROW);
+                next.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Next page"));
+                container.setItem(53, next);
+            }
+            ItemStack paper = new ItemStack(Items.PAPER);
+            paper.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)));
+            container.setItem(49, paper);
+        }
+
+        private void removeStack(ItemStack stack) {
+            eco.getOrders().removeDelivery(owner, stack);
+            eco.getShop().removeDelivery(owner, stack);
         }
 
         @Override public boolean stillValid(Player player) { return true; }
+
+        @Override
+        public void clicked(int slot, int dragType, ClickType type, Player player) {
+            if (type == ClickType.PICKUP) {
+                if (slot < 45) {
+                    Slot s = this.slots.get(slot);
+                    if (s.hasItem()) {
+                        ItemStack stack = s.getItem();
+                        ItemStack copy = stack.copy();
+                        if (player.getInventory().add(copy)) {
+                            removeStack(stack);
+                            updatePage();
+                        }
+                    }
+                    return;
+                }
+                if (slot == 45 && page > 0) { page--; updatePage(); return; }
+                if (slot == 53 && (page + 1) * 45 < items.size()) { page++; updatePage(); return; }
+            }
+            super.clicked(slot, dragType, type, player);
+        }
 
         @Override
         public ItemStack quickMoveStack(Player player, int idx) {
@@ -418,9 +464,10 @@ public final class OrdersUi {
             if (!slot.hasItem()) return ItemStack.EMPTY;
             ItemStack stack = slot.getItem();
             ItemStack copy = stack.copy();
-            if (idx < 54) {
-                if (player.getInventory().add(stack)) {
-                    slot.set(ItemStack.EMPTY);
+            if (idx < 45) {
+                if (player.getInventory().add(copy)) {
+                    removeStack(stack);
+                    updatePage();
                     return copy;
                 }
                 return ItemStack.EMPTY;

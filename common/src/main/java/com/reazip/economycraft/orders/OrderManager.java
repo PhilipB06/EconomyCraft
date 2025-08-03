@@ -60,6 +60,20 @@ public class OrderManager {
         save();
     }
 
+    /** Returns deliveries for the player without removing them. */
+    public List<ItemStack> getDeliveries(UUID player) {
+        return deliveries.computeIfAbsent(player, k -> new ArrayList<>());
+    }
+
+    public void removeDelivery(UUID player, ItemStack stack) {
+        List<ItemStack> list = deliveries.get(player);
+        if (list != null) {
+            list.remove(stack);
+            if (list.isEmpty()) deliveries.remove(player);
+            save();
+        }
+    }
+
     public List<ItemStack> claimDeliveries(UUID player) {
         List<ItemStack> list = deliveries.remove(player);
         if (list != null) save();
@@ -67,7 +81,8 @@ public class OrderManager {
     }
 
     public boolean hasDeliveries(UUID player) {
-        return deliveries.containsKey(player);
+        List<ItemStack> list = deliveries.get(player);
+        return list != null && !list.isEmpty();
     }
 
     public void load() {
