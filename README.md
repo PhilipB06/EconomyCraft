@@ -8,8 +8,17 @@ EconomyCraft provides a simple cross-platform economy system for Fabric and NeoF
 - `/eco pay <player> <amount>` – Transfer money.
 - `/eco addmoney <player> <amount>` – Admin command.
 - `/eco setmoney <player> <amount>` – Admin command.
-- `/eco top` – Show the richest players.
+- `/eco removeplayer <player>` – Admin command to drop a player from the economy.
+- `/eco daily` – Claim a daily login bonus.
+Balances and configuration live in `config/EconomyCraft/` (`balances.json`, `daily.json`, `config.json`, etc.) and a live leaderboard is shown on the sidebar sorted by balance. Your rank appears below the top players.
 
-Balances are saved to `economycraft_balances.json`.
+### Shop Commands
+- `/eco shop` – Opens the chest-based shop UI.
+- `/eco shop sell <price>` – Sell the item in your hand.
 
-Server-side only. Shop and blackboard commands are stubbed for future work.
+### Orders Commands
+- `/eco orders` – Opens the orders UI to browse and fulfill requests.
+- `/eco orders request <item> <amount> <price>` – Create an item request.
+- `/eco orders claim` – Claim items bought or requested while offline.
+
+Server-side only.

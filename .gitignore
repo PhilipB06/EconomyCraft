@@ -4,5 +4,6 @@
 /fabric/build/
 /common/.gradle/
 /common/build/
-/.architectury-transformer/
 /.idea/
+/neoforge/.gradle/
+/neoforge/build/

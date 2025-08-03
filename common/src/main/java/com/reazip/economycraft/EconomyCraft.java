@@ -2,12 +2,19 @@ package com.reazip.economycraft;
 
 import dev.architectury.event.events.common.CommandRegistrationEvent;
 import dev.architectury.event.events.common.LifecycleEvent;
+import dev.architectury.event.events.common.PlayerEvent;
+import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
+
+import java.text.NumberFormat;
+import java.util.Locale;
 
 public final class EconomyCraft {
     public static final String MOD_ID = "economycraft";
     private static EconomyManager manager;
     private static MinecraftServer lastServer;
+    private static final NumberFormat FORMAT = NumberFormat.getInstance(Locale.GERMANY);
 
     public static void init() {
         CommandRegistrationEvent.EVENT.register((dispatcher, registry, selection) -> {
@@ -22,6 +29,18 @@ public final class EconomyCraft {
                 manager.save();
             }
         });
+
+        PlayerEvent.PLAYER_JOIN.register(player -> {
+            EconomyManager eco = getManager(player.getServer());
+            eco.getBalance(player.getUUID());
+            if (eco.getOrders().hasDeliveries(player.getUUID()) || eco.getShop().hasDeliveries(player.getUUID())) {
+                Component msg = Component.literal("You have deliveries: ")
+                        .append(Component.literal("[Claim]")
+                                .withStyle(s -> s.withUnderlined(true)
+                                        .withClickEvent(new ClickEvent.RunCommand("/eco orders claim"))));
+                player.sendSystemMessage(msg);
+            }
+        });
     }
 
     public static EconomyManager getManager(MinecraftServer server) {
@@ -30,5 +49,9 @@ public final class EconomyCraft {
             lastServer = server;
         }
         return manager;
+    }
+
+    public static String formatMoney(long amount) {
+        return "$" + FORMAT.format(amount);
     }
 }
