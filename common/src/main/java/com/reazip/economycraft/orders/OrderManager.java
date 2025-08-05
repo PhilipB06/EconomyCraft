@@ -25,9 +25,10 @@ public class OrderManager {
 
     public OrderManager(MinecraftServer server) {
         this.server = server;
-        Path dir = server.getFile("config/EconomyCraft");
-        try { Files.createDirectories(dir); } catch (IOException ignored) {}
-        this.file = dir.resolve("orders.json");
+        Path dir = server.getFile("config/economycraft");
+        Path dataDir = dir.resolve("data");
+        try { Files.createDirectories(dataDir); } catch (IOException ignored) {}
+        this.file = dataDir.resolve("orders.json");
         load();
     }
 

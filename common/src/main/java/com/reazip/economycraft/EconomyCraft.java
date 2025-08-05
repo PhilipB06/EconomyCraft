@@ -18,6 +18,7 @@ public final class EconomyCraft {
     private static final NumberFormat FORMAT = NumberFormat.getInstance(Locale.GERMANY);
 
     public static void init() {
+        EconomyConfig.load(null);
         CommandRegistrationEvent.EVENT.register((dispatcher, registry, selection) -> {
             EconomyCommands.register(dispatcher);
         });
