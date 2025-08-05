@@ -35,21 +35,25 @@ public class EconomyManager {
     private final com.reazip.economycraft.shop.ShopManager shop;
     private final com.reazip.economycraft.orders.OrderManager orders;
     private final Set<UUID> displayed = new HashSet<>();
+    private boolean scoreboardEnabled = true;
 
     public static final long MAX = 999_999_999L;
 
     public EconomyManager(MinecraftServer server) {
         this.server = server;
-        Path dir = server.getFile("config/EconomyCraft");
-        try { Files.createDirectories(dir); } catch (IOException ignored) {}
-        this.file = dir.resolve("balances.json");
-        this.dailyFile = dir.resolve("daily.json");
+        Path dir = server.getFile("config/economycraft");
+        Path dataDir = dir.resolve("data");
+        try { Files.createDirectories(dataDir); } catch (IOException ignored) {}
+        this.file = dataDir.resolve("balances.json");
+        this.dailyFile = dataDir.resolve("daily.json");
         EconomyConfig.load(server);
         load();
         loadDaily();
         this.shop = new com.reazip.economycraft.shop.ShopManager(server);
         this.orders = new com.reazip.economycraft.orders.OrderManager(server);
-        setupObjective();
+        if (scoreboardEnabled) {
+            setupObjective();
+        }
     }
 
     public MinecraftServer getServer() {
@@ -157,6 +161,7 @@ public class EconomyManager {
     }
 
     private void updateLeaderboard() {
+        if (!scoreboardEnabled) return;
         Scoreboard board = server.getScoreboard();
         if (objective != null) {
             board.removeObjective(objective);
@@ -175,5 +180,20 @@ public class EconomyManager {
 
     private long clamp(long value) {
         return Math.max(0, Math.min(MAX, value));
+    }
+
+    public boolean toggleScoreboard() {
+        Scoreboard board = server.getScoreboard();
+        scoreboardEnabled = !scoreboardEnabled;
+        if (scoreboardEnabled) {
+            setupObjective();
+        } else {
+            board.setDisplayObjective(DisplaySlot.SIDEBAR, null);
+            if (objective != null) {
+                board.removeObjective(objective);
+                objective = null;
+            }
+        }
+        return scoreboardEnabled;
     }
 }

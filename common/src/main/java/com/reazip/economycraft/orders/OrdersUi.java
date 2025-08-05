@@ -52,7 +52,7 @@ public final class OrdersUi {
     }
 
     private static class RequestMenu extends AbstractContainerMenu {
-        private final OrderManager market;
+        private final OrderManager orders;
         private final EconomyManager eco;
         private final ServerPlayer viewer;
         private List<OrderRequest> requests = new ArrayList<>();
@@ -60,13 +60,13 @@ public final class OrdersUi {
         private int page;
         private final Runnable listener = this::updatePage;
 
-        RequestMenu(int id, Inventory inv, OrderManager market, EconomyManager eco, ServerPlayer viewer) {
+        RequestMenu(int id, Inventory inv, OrderManager orders, EconomyManager eco, ServerPlayer viewer) {
             super(MenuType.GENERIC_9x6, id);
-            this.market = market;
+            this.orders = orders;
             this.eco = eco;
             this.viewer = viewer;
             updatePage();
-            market.addListener(listener);
+            orders.addListener(listener);
             for (int i = 0; i < 54; i++) {
                 int r = i / 9;
                 int c = i % 9;
@@ -87,7 +87,7 @@ public final class OrdersUi {
         }
 
         private void updatePage() {
-            requests = new ArrayList<>(market.getRequests());
+            requests = new ArrayList<>(orders.getRequests());
             container.clearContent();
             int start = page * 45;
             int totalPages = (int)Math.ceil(requests.size() / 45.0);
@@ -193,7 +193,7 @@ public final class OrdersUi {
         @Override
         public void removed(Player player) {
             super.removed(player);
-            market.removeListener(listener);
+            orders.removeListener(listener);
         }
 
         @Override public ItemStack quickMoveStack(Player player, int idx) { return ItemStack.EMPTY; }
@@ -246,7 +246,7 @@ public final class OrdersUi {
         public void clicked(int slot, int drag, ClickType type, Player player) {
             if (type == ClickType.PICKUP) {
                 if (slot == 2) {
-                    OrderRequest current = parent.market.getRequest(request.id);
+                    OrderRequest current = parent.orders.getRequest(request.id);
                     if (current == null) {
                         ((ServerPlayer) player).sendSystemMessage(Component.literal("Request no longer available").withStyle(ChatFormatting.RED));
                     } else if (!parent.hasItems((ServerPlayer) player, current.item, current.amount)) {
@@ -261,11 +261,11 @@ public final class OrdersUi {
                             long tax = Math.round(cost * EconomyConfig.get().taxRate);
                             parent.eco.setMoney(current.requester, bal - cost);
                             parent.eco.addMoney(player.getUUID(), cost - tax);
-                            parent.market.removeRequest(current.id);
+                            parent.orders.removeRequest(current.id);
                             int remaining = current.amount;
                             while (remaining > 0) {
                                 int c = Math.min(current.item.getMaxStackSize(), remaining);
-                                parent.market.addDelivery(current.requester, new ItemStack(current.item.getItem(), c));
+                                parent.orders.addDelivery(current.requester, new ItemStack(current.item.getItem(), c));
                                 remaining -= c;
                             }
                             ((ServerPlayer) player).sendSystemMessage(Component.literal("Fulfilled request for " + current.amount + "x " + current.item.getHoverName().getString() + " and earned " + EconomyCraft.formatMoney(cost - tax)).withStyle(ChatFormatting.GREEN));
@@ -345,7 +345,7 @@ public final class OrdersUi {
         public void clicked(int slot, int drag, ClickType type, Player player) {
             if (type == ClickType.PICKUP) {
                 if (slot == 2) {
-                    OrderRequest removed = parent.market.removeRequest(request.id);
+                    OrderRequest removed = parent.orders.removeRequest(request.id);
                     if (removed != null) {
                         ((ServerPlayer) player).sendSystemMessage(Component.literal("Request removed").withStyle(ChatFormatting.GREEN));
                     } else {

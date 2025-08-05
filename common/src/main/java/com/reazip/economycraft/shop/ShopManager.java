@@ -25,9 +25,10 @@ public class ShopManager {
 
     public ShopManager(MinecraftServer server) {
         this.server = server;
-        Path dir = server.getFile("config/EconomyCraft");
-        try { Files.createDirectories(dir); } catch (IOException ignored) {}
-        this.file = dir.resolve("shop.json");
+        Path dir = server.getFile("config/economycraft");
+        Path dataDir = dir.resolve("data");
+        try { Files.createDirectories(dataDir); } catch (IOException ignored) {}
+        this.file = dataDir.resolve("shop.json");
         load();
     }
 
