@@ -115,8 +115,8 @@ public class ShopManager {
                         } else {
                             String itemId = o.get("item").getAsString();
                             int count = o.get("count").getAsInt();
-                            var holder = BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId));
-                            if (holder.isPresent()) stack = new ItemStack(holder.get().value(), count);
+                            var item = BuiltInRegistries.ITEM.getOptional(ResourceLocation.parse(itemId));
+                            if (item.isPresent()) stack = new ItemStack(item.get(), count);
                         }
                         if (!stack.isEmpty()) list.add(stack);
                     }

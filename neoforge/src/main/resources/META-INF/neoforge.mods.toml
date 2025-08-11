@@ -14,14 +14,14 @@ Simple server-side economy and shop mod.
 [[dependencies.economycraft]]
 modId = "neoforge"
 type = "required"
-versionRange = "[21.7,)"
+versionRange = "[21,)"
 ordering = "NONE"
 side = "BOTH"
 
 [[dependencies.economycraft]]
 modId = "minecraft"
 type = "required"
-versionRange = "[1.21.7,)"
+versionRange = "[1.21,)"
 ordering = "NONE"
 side = "BOTH"
 

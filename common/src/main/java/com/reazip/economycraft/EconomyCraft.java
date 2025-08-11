@@ -41,7 +41,7 @@ public final class EconomyCraft {
                         .append(Component.literal("[Claim]")
                                 .withStyle(s -> s.withUnderlined(true)
                                         .withColor(ChatFormatting.GREEN)
-                                        .withClickEvent(new ClickEvent.RunCommand("/eco orders claim"))));
+                                        .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/eco orders claim"))));
                 player.sendSystemMessage(msg);
             }
         });

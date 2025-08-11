@@ -276,7 +276,7 @@ public final class OrdersUi {
                                         .append(Component.literal("[Claim]")
                                                 .withStyle(s -> s.withUnderlined(true)
                                                         .withColor(ChatFormatting.GREEN)
-                                                        .withClickEvent(new ClickEvent.RunCommand("/eco orders claim"))));
+                                                        .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/eco orders claim"))));
                                 requesterPlayer.sendSystemMessage(msg);
                             }
                             parent.requests.removeIf(r -> r.id == current.id);

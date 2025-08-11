@@ -42,7 +42,7 @@ public class ShopListing {
         if (l.item == null || l.item.isEmpty()) {
             String itemId = obj.get("item").getAsString();
             int count = obj.get("count").getAsInt();
-            BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId)).ifPresent(h -> l.item = new ItemStack(h.value(), count));
+            BuiltInRegistries.ITEM.getOptional(ResourceLocation.parse(itemId)).ifPresent(i -> l.item = new ItemStack(i, count));
         }
         return l;
     }

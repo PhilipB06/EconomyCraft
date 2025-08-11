@@ -42,7 +42,7 @@ public class OrderRequest {
         }
         if (r.item == null || r.item.isEmpty()) {
             String itemId = obj.get("item").getAsString();
-            BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId)).ifPresent(h -> r.item = new ItemStack(h.value()));
+            BuiltInRegistries.ITEM.getOptional(ResourceLocation.parse(itemId)).ifPresent(i -> r.item = new ItemStack(i));
         }
         return r;
     }
