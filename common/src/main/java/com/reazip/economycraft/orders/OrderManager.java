@@ -2,8 +2,11 @@ package com.reazip.economycraft.orders;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.mojang.serialization.JsonOps;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.ItemStack;
@@ -93,7 +96,7 @@ public class OrderManager {
                 JsonObject root = GSON.fromJson(json, JsonObject.class);
                 nextId = root.get("nextId").getAsInt();
                 for (var el : root.getAsJsonArray("requests")) {
-                    OrderRequest r = OrderRequest.load(el.getAsJsonObject());
+                    OrderRequest r = OrderRequest.load(el.getAsJsonObject(), server.registryAccess());
                     requests.put(r.id, r);
                 }
                 JsonObject dObj = root.getAsJsonObject("deliveries");
@@ -102,9 +105,16 @@ public class OrderManager {
                     List<ItemStack> list = new ArrayList<>();
                     for (var sEl : dObj.getAsJsonArray(key)) {
                         JsonObject o = sEl.getAsJsonObject();
-                        String itemId = o.get("item").getAsString();
-                        int count = o.get("count").getAsInt();
-                        BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId)).ifPresent(h -> list.add(new ItemStack(h.value(), count)));
+                        ItemStack stack = ItemStack.EMPTY;
+                        if (o.has("stack")) {
+                            stack = ItemStack.CODEC.parse(RegistryOps.create(JsonOps.INSTANCE, server.registryAccess()), o.get("stack")).result().orElse(ItemStack.EMPTY);
+                        } else {
+                            String itemId = o.get("item").getAsString();
+                            int count = o.get("count").getAsInt();
+                            var holder = BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId));
+                            if (holder.isPresent()) stack = new ItemStack(holder.get().value(), count);
+                        }
+                        if (!stack.isEmpty()) list.add(stack);
                     }
                     deliveries.put(id, list);
                 }
@@ -117,7 +127,7 @@ public class OrderManager {
         root.addProperty("nextId", nextId);
         JsonArray reqArr = new JsonArray();
         for (OrderRequest r : requests.values()) {
-            reqArr.add(r.save());
+            reqArr.add(r.save(server.registryAccess()));
         }
         root.add("requests", reqArr);
         JsonObject dObj = new JsonObject();
@@ -127,6 +137,8 @@ public class OrderManager {
                 JsonObject o = new JsonObject();
                 o.addProperty("item", BuiltInRegistries.ITEM.getKey(s.getItem()).toString());
                 o.addProperty("count", s.getCount());
+                JsonElement stackEl = ItemStack.CODEC.encodeStart(RegistryOps.create(JsonOps.INSTANCE, server.registryAccess()), s).result().orElse(new JsonObject());
+                o.add("stack", stackEl);
                 arr.add(o);
             }
             dObj.add(e.getKey().toString(), arr);
