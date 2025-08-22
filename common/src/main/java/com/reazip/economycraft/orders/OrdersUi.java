@@ -3,6 +3,7 @@ package com.reazip.economycraft.orders;
 import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyManager;
+import com.reazip.economycraft.util.ChatCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
@@ -248,37 +249,63 @@ public final class OrdersUi {
                 if (slot == 2) {
                     OrderRequest current = parent.orders.getRequest(request.id);
                     if (current == null) {
-                        ((ServerPlayer) player).sendSystemMessage(Component.literal("Request no longer available").withStyle(ChatFormatting.RED));
+                        ((ServerPlayer) player).sendSystemMessage(
+                                Component.literal("Request no longer available").withStyle(ChatFormatting.RED)
+                        );
                     } else if (!parent.hasItems((ServerPlayer) player, current.item, current.amount)) {
-                        ((ServerPlayer) player).sendSystemMessage(Component.literal("Not enough items").withStyle(ChatFormatting.RED));
+                        ((ServerPlayer) player).sendSystemMessage(
+                                Component.literal("Not enough items").withStyle(ChatFormatting.RED)
+                        );
                     } else {
                         long cost = current.price;
                         long bal = parent.eco.getBalance(current.requester);
                         if (bal < cost) {
-                            ((ServerPlayer) player).sendSystemMessage(Component.literal("Requester can't pay").withStyle(ChatFormatting.RED));
+                            ((ServerPlayer) player).sendSystemMessage(
+                                    Component.literal("Requester can't pay").withStyle(ChatFormatting.RED)
+                            );
                         } else {
                             parent.removeItems((ServerPlayer) player, current.item.copy(), current.amount);
                             long tax = Math.round(cost * EconomyConfig.get().taxRate);
                             parent.eco.setMoney(current.requester, bal - cost);
                             parent.eco.addMoney(player.getUUID(), cost - tax);
                             parent.orders.removeRequest(current.id);
+
                             int remaining = current.amount;
                             while (remaining > 0) {
                                 int c = Math.min(current.item.getMaxStackSize(), remaining);
                                 parent.orders.addDelivery(current.requester, new ItemStack(current.item.getItem(), c));
                                 remaining -= c;
                             }
-                            ((ServerPlayer) player).sendSystemMessage(Component.literal("Fulfilled request for " + current.amount + "x " + current.item.getHoverName().getString() + " and earned " + EconomyCraft.formatMoney(cost - tax)).withStyle(ChatFormatting.GREEN));
+
+                            ((ServerPlayer) player).sendSystemMessage(
+                                    Component.literal("Fulfilled request for " + current.amount + "x " +
+                                            current.item.getHoverName().getString() +
+                                            " and earned " + EconomyCraft.formatMoney(cost - tax)
+                                    ).withStyle(ChatFormatting.GREEN)
+                            );
+
                             var requesterPlayer = parent.viewer.getServer().getPlayerList().getPlayer(current.requester);
                             if (requesterPlayer != null) {
-                                Component msg = Component.literal("Your request for " + current.amount + "x " + current.item.getHoverName().getString() + " has been fulfilled: ")
-                                        .withStyle(ChatFormatting.YELLOW)
-                                        .append(Component.literal("[Claim]")
-                                                .withStyle(s -> s.withUnderlined(true)
-                                                        .withColor(ChatFormatting.GREEN)
-                                                        .withClickEvent(new ClickEvent.RunCommand("/eco orders claim"))));
-                                requesterPlayer.sendSystemMessage(msg);
+                                ClickEvent ev = ChatCompat.runCommandEvent("/eco orders claim");
+                                if (ev != null) {
+                                    Component msg = Component.literal("Your request for " + current.amount + "x " +
+                                                    current.item.getHoverName().getString() +
+                                                    " has been fulfilled: ")
+                                            .withStyle(ChatFormatting.YELLOW)
+                                            .append(Component.literal("[Claim]")
+                                                    .withStyle(s -> s.withUnderlined(true).withColor(ChatFormatting.GREEN).withClickEvent(ev)));
+                                    requesterPlayer.sendSystemMessage(msg);
+                                } else {
+                                    // Guaranteed clickable fallback
+                                    ChatCompat.sendRunCommandTellraw(
+                                            requesterPlayer,
+                                            "Your request for " + current.amount + "x " + current.item.getHoverName().getString() + " has been fulfilled: ",
+                                            "[Claim]",
+                                            "/eco orders claim"
+                                    );
+                                }
                             }
+
                             parent.requests.removeIf(r -> r.id == current.id);
                             parent.updatePage();
                         }
@@ -287,6 +314,7 @@ public final class OrdersUi {
                     OrdersUi.open((ServerPlayer) player, parent.eco);
                     return;
                 }
+
                 if (slot == 6) {
                     player.closeContainer();
                     OrdersUi.open((ServerPlayer) player, parent.eco);
@@ -295,6 +323,7 @@ public final class OrdersUi {
             }
             super.clicked(slot, drag, type, player);
         }
+
 
         @Override public boolean stillValid(Player player) { return true; }
         @Override public ItemStack quickMoveStack(Player player, int idx) { return ItemStack.EMPTY; }

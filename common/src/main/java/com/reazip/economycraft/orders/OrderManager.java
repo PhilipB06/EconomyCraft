@@ -10,6 +10,7 @@ import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Item;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -111,8 +112,15 @@ public class OrderManager {
                         } else {
                             String itemId = o.get("item").getAsString();
                             int count = o.get("count").getAsInt();
-                            var holder = BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId));
-                            if (holder.isPresent()) stack = new ItemStack(holder.get().value(), count);
+                            ResourceLocation rl = ResourceLocation.tryParse(itemId);
+                            if (rl != null) {
+                                java.util.Optional<Item> opt = BuiltInRegistries.ITEM.getOptional(rl);
+
+                                if (opt.isPresent()) {
+                                    Item item = opt.get();
+                                    stack = new ItemStack(item, count);
+                                }
+                            }
                         }
                         if (!stack.isEmpty()) list.add(stack);
                     }

@@ -7,6 +7,7 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 
@@ -37,12 +38,20 @@ public class ShopListing {
         if (obj.has("seller")) l.seller = UUID.fromString(obj.get("seller").getAsString());
         l.price = obj.get("price").getAsLong();
         if (obj.has("stack")) {
-            l.item = ItemStack.CODEC.parse(RegistryOps.create(JsonOps.INSTANCE, provider), obj.get("stack")).result().orElse(ItemStack.EMPTY);
+            l.item = ItemStack.CODEC
+                    .parse(RegistryOps.create(JsonOps.INSTANCE, provider), obj.get("stack"))
+                    .result()
+                    .orElse(ItemStack.EMPTY);
         }
         if (l.item == null || l.item.isEmpty()) {
             String itemId = obj.get("item").getAsString();
             int count = obj.get("count").getAsInt();
-            BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId)).ifPresent(h -> l.item = new ItemStack(h.value(), count));
+            ResourceLocation rl = ResourceLocation.tryParse(itemId);
+
+            if (rl != null) {
+                java.util.Optional<Item> opt = BuiltInRegistries.ITEM.getOptional(rl);
+                opt.ifPresent(item -> l.item = new ItemStack(item, count)); // directly set l.item
+            }
         }
         return l;
     }

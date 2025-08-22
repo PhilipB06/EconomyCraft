@@ -6,6 +6,6 @@ import com.reazip.economycraft.EconomyCraft;
 public final class EconomyCraftFabric implements ModInitializer {
     @Override
     public void onInitialize() {
-        EconomyCraft.init();
+        EconomyCraft.registerEvents();
     }
 }

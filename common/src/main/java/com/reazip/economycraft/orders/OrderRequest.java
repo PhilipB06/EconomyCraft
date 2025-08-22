@@ -42,7 +42,11 @@ public class OrderRequest {
         }
         if (r.item == null || r.item.isEmpty()) {
             String itemId = obj.get("item").getAsString();
-            BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId)).ifPresent(h -> r.item = new ItemStack(h.value()));
+            ResourceLocation rl = ResourceLocation.tryParse(itemId);
+            if (rl != null) {
+                java.util.Optional<net.minecraft.world.item.Item> opt = BuiltInRegistries.ITEM.getOptional(rl);
+                opt.ifPresent(item -> r.item = new ItemStack(item));
+            }
         }
         return r;
     }

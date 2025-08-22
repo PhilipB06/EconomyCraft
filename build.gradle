@@ -1,7 +1,7 @@
 plugins {
-    id 'dev.architectury.loom' version '1.10-SNAPSHOT' apply false
-    id 'architectury-plugin' version '3.4-SNAPSHOT'
-    id 'com.gradleup.shadow' version '8.3.6' apply false
+    id "dev.architectury.loom" version "1.10-SNAPSHOT" apply false
+    id "architectury-plugin" version "3.4-SNAPSHOT"
+    id "com.gradleup.shadow" version "8.3.6" apply false
 }
 
 architectury {
@@ -14,47 +14,35 @@ allprojects {
 }
 
 subprojects {
-    apply plugin: 'dev.architectury.loom'
-    apply plugin: 'architectury-plugin'
-    apply plugin: 'maven-publish'
+    apply plugin: "dev.architectury.loom"
+    apply plugin: "architectury-plugin"
+    apply plugin: "maven-publish"
 
     base {
-        // Set up a suffixed format for the mod jar names, e.g. `example-fabric`.
-        archivesName = "$rootProject.archives_name-$project.name"
+        def mcVer = (rootProject.findProperty("minecraft_version") ?: rootProject.minecraft_version)
+        archivesName = "${rootProject.archives_name}-${project.name}-${rootProject.mod_version}_${mcVer}"
     }
 
+    tasks.withType(Jar).configureEach { archiveVersion = "" }
+    tasks.matching { it.name == "remapJar" }.configureEach { archiveVersion = "" }
+
     repositories {
-        // Add repositories to retrieve artifacts from in here.
-        // You should only use this when depending on other mods because
-        // Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
-        // See https://docs.gradle.org/current/userguide/declaring_repositories.html
-        // for more information about repositories.
+        maven { url "https://maven.fabricmc.net/" }
+        maven { url "https://maven.architectury.dev/" }
+        maven { url "https://maven.neoforged.net/releases" }
+        mavenCentral()
     }
 
     loom {
         silentMojangMappingsLicense()
     }
 
-    dependencies {
-        minecraft "net.minecraft:minecraft:$rootProject.minecraft_version"
-        mappings loom.officialMojangMappings()
-    }
-
     java {
-        // Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
-        // if it is present.
-        // If you remove this line, sources will not be generated.
-        withSourcesJar()
-
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
     }
+    tasks.withType(JavaCompile).configureEach { options.release = 21 }
 
-    tasks.withType(JavaCompile).configureEach {
-        it.options.release = 21
-    }
-
-    // Configure Maven publishing.
     publishing {
         publications {
             mavenJava(MavenPublication) {
@@ -62,13 +50,123 @@ subprojects {
                 from components.java
             }
         }
+        repositories { /* */ }
+    }
 
-        // See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
-        repositories {
-            // Add repositories to publish to here.
-            // Notice: This block does NOT have the same function as the block in the top level.
-            // The repositories here will be used for publishing your artifact, not for
-            // retrieving dependencies.
+    if (project.name == "neoforge") {
+        tasks.named("processResources") {
+            // MC 1.xx.y -> [major.minor, major.(minor+1))
+            def mcFull = (rootProject.findProperty("minecraft_version") ?: rootProject.minecraft_version).toString()
+            def parts = mcFull.tokenize('.')
+            if (parts.size() < 2) throw new GradleException("Invalid minecraft_version: ${mcFull}")
+            def major = parts[0] as int
+            def minor = parts[1] as int
+            def mcLo = "${major}.${minor}"
+            def mcHi = "${major}.${minor + 1}"
+
+            def nfLo = (rootProject.findProperty("neoforge_line_lo") ?: "21.0").toString()
+            def nfHi = (rootProject.findProperty("neoforge_line_hi") ?: "22.0").toString()
+
+            def archVer = (rootProject.findProperty("architectury_version_plain")
+                    ?: project.findProperty("architectury_version_plain")
+                    ?: "13.0.0").toString()
+
+            inputs.property "mcLo", mcLo
+            inputs.property "mcHi", mcHi
+            inputs.property "nfLo", nfLo
+            inputs.property "nfHi", nfHi
+            inputs.property "archVer", archVer
+
+            filesMatching("META-INF/neoforge.mods.toml") {
+                expand([
+                        mcLo    : mcLo,
+                        mcHi    : mcHi,
+                        nfLo    : nfLo,
+                        nfHi    : nfHi,
+                        archVer : archVer,
+                        version : project.version
+                ])
+                filteringCharset = 'UTF-8'
+            }
         }
     }
+}
+
+// ---- TARGET RESOLVER
+ext.resolveMcTarget = { String mcStr ->
+    def t = ext.mcTargets.find { it.mc == mcStr }
+    if (!t) throw new GradleException("No mcTarget for minecraft_version='$mcStr'")
+    return t
+}
+
+// ---- BUILD TARGETS
+ext.mcTargets = [
+        [ mc: "1.21",   fabricApi: "0.102.0+1.21",   architecturyVer: "13.0.8", neoforge: "21.0.167",    neoforgeLineLo: "21.0", neoforgeLineHi: "21.1", yarnBuild: "build.1" ],
+        [ mc: "1.21.1", fabricApi: "0.116.5+1.21.1", architecturyVer: "13.0.8", neoforge: "21.1.200",    neoforgeLineLo: "21.1", neoforgeLineHi: "21.2", yarnBuild: "build.1" ],
+        [ mc: "1.21.2", fabricApi: "0.106.1+1.21.2", architecturyVer: "14.0.4", neoforge: "21.2.1-beta", neoforgeLineLo: "21.2", neoforgeLineHi: "21.3", yarnBuild: "build.1" ],
+        [ mc: "1.21.3", fabricApi: "0.114.1+1.21.3", architecturyVer: "14.0.4", neoforge: "21.3.89",     neoforgeLineLo: "21.3", neoforgeLineHi: "21.4", yarnBuild: "build.1" ],
+        [ mc: "1.21.4", fabricApi: "0.119.4+1.21.4", architecturyVer: "15.0.3", neoforge: "21.4.150",    neoforgeLineLo: "21.4", neoforgeLineHi: "21.5", yarnBuild: "build.1" ],
+        [ mc: "1.21.5", fabricApi: "0.128.2+1.21.5", architecturyVer: "16.1.4", neoforge: "21.5.91",     neoforgeLineLo: "21.5", neoforgeLineHi: "21.6", yarnBuild: "build.1" ],
+        [ mc: "1.21.6", fabricApi: "0.128.2+1.21.6", architecturyVer: "17.0.6", neoforge: "21.6.20-beta",neoforgeLineLo: "21.6", neoforgeLineHi: "21.7", yarnBuild: "build.1" ],
+        [ mc: "1.21.7", fabricApi: "0.129.0+1.21.7", architecturyVer: "17.0.8", neoforge: "21.7.25-beta",neoforgeLineLo: "21.7", neoforgeLineHi: "21.8", yarnBuild: "build.1" ],
+        [ mc: "1.21.8", fabricApi: "0.131.0+1.21.8", architecturyVer: "17.0.8", neoforge: "21.8.31",     neoforgeLineLo: "21.8", neoforgeLineHi: "21.9", yarnBuild: "build.1" ],
+]
+
+// ---- Build per version via external gradlew
+import org.gradle.internal.os.OperatingSystem
+def gradleWrapper = OperatingSystem.current().isWindows() ? "gradlew.bat" : "./gradlew"
+
+def mkArgs = { t ->
+    [
+            gradleWrapper,
+            "--no-daemon",
+            "-Pminecraft_version=${t.mc}",
+            "-Pfabric_api_version=${t.fabricApi}",
+            "-Pneoforge_version=${t.neoforge}",
+            "-Parchitectury_version_plain=${t.architecturyVer}",
+            "-Pneoforge_line_lo=${t.neoforgeLineLo}",
+            "-Pneoforge_line_hi=${t.neoforgeLineHi}",
+            "-Pyarn_build=${t.yarnBuild ?: 'build.1'}",
+            "clean", "build"
+    ]
+}
+
+def versionExecTasks = []
+ext.mcTargets.each { t ->
+    def mcSafe = t.mc.replace('.', '_')
+
+    def buildTask = tasks.register("buildFor_${mcSafe}", Exec) {
+        group = "build"
+        description = "Build for MC ${t.mc}"
+        workingDir rootProject.projectDir
+        commandLine mkArgs(t)
+    }
+
+    def copyTask = tasks.register("copyJars_${mcSafe}") {
+        dependsOn buildTask
+        doLast {
+            // Fabric jars
+            copy {
+                from fileTree(dir: "fabric/build/libs", include: "*.jar")
+                into file("$rootDir/build/fabric/${t.mc}")
+            }
+            // NeoForge jars
+            copy {
+                from fileTree(dir: "neoforge/build/libs", include: "*.jar")
+                into file("$rootDir/build/neoforge/${t.mc}")
+            }
+        }
+    }
+
+    versionExecTasks << copyTask
+}
+
+versionExecTasks.eachWithIndex { t, i ->
+    if (i > 0) t.configure { mustRunAfter versionExecTasks[i - 1] }
+}
+
+tasks.register("buildAll") {
+    group = "build"
+    description = "Build all defined MC target versions (1.21 – 1.21.8) and collect jars"
+    dependsOn versionExecTasks
 }

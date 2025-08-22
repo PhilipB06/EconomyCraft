@@ -3,6 +3,9 @@ package com.reazip.economycraft.shop;
 import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyManager;
+import com.reazip.economycraft.util.ChatCompat;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.MenuProvider;
@@ -223,7 +226,7 @@ public final class ShopUi {
                         long total = cost + tax;
                         long bal = eco.getBalance(player.getUUID());
                         if (bal < total) {
-                            ((ServerPlayer) player).sendSystemMessage(Component.literal("Not enough balance"));
+                            ((ServerPlayer) player).sendSystemMessage(Component.literal("Not enough balance").withStyle(ChatFormatting.RED));
                         } else {
                             eco.setMoney(player.getUUID(), bal - total);
                             eco.addMoney(current.seller, cost);
@@ -233,9 +236,27 @@ public final class ShopUi {
                             Component name = stack.getHoverName();
                             if (!player.getInventory().add(stack)) {
                                 shop.addDelivery(player.getUUID(), stack);
-                                ((ServerPlayer) player).sendSystemMessage(Component.literal("Item stored, use /eco orders claim"));
+
+                                ClickEvent ev = ChatCompat.runCommandEvent("/eco orders claim");
+                                if (ev != null) {
+                                    Component msg = Component.literal("Item stored: ")
+                                            .withStyle(ChatFormatting.YELLOW)
+                                            .append(Component.literal("[Claim]")
+                                                    .withStyle(s -> s.withUnderlined(true).withColor(ChatFormatting.GREEN).withClickEvent(ev)));
+                                    ((ServerPlayer) player).sendSystemMessage(msg);
+                                } else {
+                                    // Guaranteed clickable fallback
+                                    ChatCompat.sendRunCommandTellraw(
+                                            (ServerPlayer) player,
+                                            "Item stored: ",
+                                            "[Claim]",
+                                            "/eco orders claim"
+                                    );
+                                }
                             } else {
-                                ((ServerPlayer) player).sendSystemMessage(Component.literal("Purchased " + count + "x " + name.getString() + " for " + EconomyCraft.formatMoney(total)));
+                                ((ServerPlayer) player).sendSystemMessage(
+                                        Component.literal("Purchased " + count + "x " + name.getString() + " for " + EconomyCraft.formatMoney(total))
+                                );
                             }
                         }
                     }
@@ -311,7 +332,23 @@ public final class ShopUi {
                         ItemStack stack = removed.item.copy();
                         if (!player.getInventory().add(stack)) {
                             shop.addDelivery(player.getUUID(), stack);
-                            viewer.sendSystemMessage(Component.literal("Item stored, use /eco orders claim"));
+
+                            ClickEvent ev = ChatCompat.runCommandEvent("/eco orders claim");
+                            if (ev != null) {
+                                Component msg = Component.literal("Item stored: ")
+                                        .withStyle(ChatFormatting.YELLOW)
+                                        .append(Component.literal("[Claim]")
+                                                .withStyle(s -> s.withUnderlined(true).withColor(ChatFormatting.GREEN).withClickEvent(ev)));
+                                ((ServerPlayer) player).sendSystemMessage(msg);
+                            } else {
+                                // Guaranteed clickable fallback
+                                ChatCompat.sendRunCommandTellraw(
+                                        (ServerPlayer) player,
+                                        "Item stored: ",
+                                        "[Claim]",
+                                        "/eco orders claim"
+                                );
+                            }
                         } else {
                             viewer.sendSystemMessage(Component.literal("Listing removed"));
                         }

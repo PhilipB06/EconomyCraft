@@ -1,12 +1,14 @@
 package com.reazip.economycraft;
 
+import com.reazip.economycraft.util.ChatCompat;
 import dev.architectury.event.events.common.CommandRegistrationEvent;
 import dev.architectury.event.events.common.LifecycleEvent;
 import dev.architectury.event.events.common.PlayerEvent;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
-import net.minecraft.ChatFormatting;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 
 import java.text.NumberFormat;
 import java.util.Locale;
@@ -17,34 +19,48 @@ public final class EconomyCraft {
     private static MinecraftServer lastServer;
     private static final NumberFormat FORMAT = NumberFormat.getInstance(Locale.GERMANY);
 
-    public static void init() {
-        EconomyConfig.load(null);
+    public static void registerEvents() {
         CommandRegistrationEvent.EVENT.register((dispatcher, registry, selection) -> {
             EconomyCommands.register(dispatcher);
         });
 
         LifecycleEvent.SERVER_STARTED.register(server -> {
-            getManager(server); // load balances
+            EconomyConfig.load(null);
+            getManager(server);
         });
+
         LifecycleEvent.SERVER_STOPPING.register(server -> {
             if (manager != null && lastServer == server) {
                 manager.save();
             }
         });
 
-        PlayerEvent.PLAYER_JOIN.register(player -> {
-            EconomyManager eco = getManager(player.getServer());
-            eco.getBalance(player.getUUID());
-            if (eco.getOrders().hasDeliveries(player.getUUID()) || eco.getShop().hasDeliveries(player.getUUID())) {
+        PlayerEvent.PLAYER_JOIN.register(player -> onPlayerJoin((ServerPlayer) player));
+    }
+
+    private static void onPlayerJoin(ServerPlayer player) {
+        EconomyManager eco = getManager(player.getServer());
+        eco.getBalance(player.getUUID());
+
+        if (eco.getOrders().hasDeliveries(player.getUUID()) || eco.getShop().hasDeliveries(player.getUUID())) {
+            ClickEvent ev = ChatCompat.runCommandEvent("/eco orders claim");
+
+            if (ev != null) {
                 Component msg = Component.literal("You have unclaimed items: ")
                         .withStyle(ChatFormatting.YELLOW)
                         .append(Component.literal("[Claim]")
-                                .withStyle(s -> s.withUnderlined(true)
-                                        .withColor(ChatFormatting.GREEN)
-                                        .withClickEvent(new ClickEvent.RunCommand("/eco orders claim"))));
+                                .withStyle(s -> s.withUnderlined(true).withColor(ChatFormatting.GREEN).withClickEvent(ev)));
                 player.sendSystemMessage(msg);
+            } else {
+                // Guaranteed clickable fallback
+                ChatCompat.sendRunCommandTellraw(
+                        (ServerPlayer) player,
+                        "You have unclaimed items: ",
+                        "[Claim]",
+                        "/eco orders claim"
+                );
             }
-        });
+        }
     }
 
     public static EconomyManager getManager(MinecraftServer server) {

@@ -1,5 +1,5 @@
 modLoader = "javafml"
-loaderVersion = "[9,)"
+loaderVersion = "[1,)"
 license = "MIT"
 
 [[mods]]
@@ -11,25 +11,28 @@ description = '''
 Simple server-side economy and shop mod.
 '''
 
-[[dependencies.economycraft]]
-modId = "neoforge"
-type = "required"
-versionRange = "[21.7,)"
-ordering = "NONE"
-side = "BOTH"
-
+# ---- Minecraft:
 [[dependencies.economycraft]]
 modId = "minecraft"
 type = "required"
-versionRange = "[1.21.7,)"
+versionRange = "[${mcLo},${mcHi})"
 ordering = "NONE"
 side = "BOTH"
 
+# ---- NeoForge:
+[[dependencies.economycraft]]
+modId = "neoforge"
+type = "required"
+versionRange = "[${nfLo},${nfHi})"
+ordering = "NONE"
+side = "BOTH"
+
+# ---- Architectury:
 [[dependencies.economycraft]]
 modId = "architectury"
 type = "required"
-versionRange = "[17.0.6,)"
-ordering = "AFTER"
+versionRange = "[${archVer},)"
+ordering = "NONE"
 side = "BOTH"
 
 [[mixins]]
