@@ -35,8 +35,6 @@ public class EconomyManager {
     private final com.reazip.economycraft.shop.ShopManager shop;
     private final com.reazip.economycraft.orders.OrderManager orders;
     private final Set<UUID> displayed = new HashSet<>();
-    private boolean scoreboardEnabled = true;
-
     public static final long MAX = 999_999_999L;
 
     public EconomyManager(MinecraftServer server) {
@@ -51,7 +49,7 @@ public class EconomyManager {
         loadDaily();
         this.shop = new com.reazip.economycraft.shop.ShopManager(server);
         this.orders = new com.reazip.economycraft.orders.OrderManager(server);
-        if (scoreboardEnabled) {
+        if (EconomyConfig.get().scoreboardEnabled) {
             setupObjective();
         }
     }
@@ -167,7 +165,7 @@ public class EconomyManager {
     }
 
     private void updateLeaderboard() {
-        if (!scoreboardEnabled) return;
+        if (!EconomyConfig.get().scoreboardEnabled) return;
         Scoreboard board = server.getScoreboard();
         if (objective != null) {
             board.removeObjective(objective);
@@ -190,8 +188,10 @@ public class EconomyManager {
 
     public boolean toggleScoreboard() {
         Scoreboard board = server.getScoreboard();
-        scoreboardEnabled = !scoreboardEnabled;
-        if (scoreboardEnabled) {
+        EconomyConfig.get().scoreboardEnabled = !EconomyConfig.get().scoreboardEnabled;
+        EconomyConfig.save();
+
+        if (EconomyConfig.get().scoreboardEnabled) {
             setupObjective();
         } else {
             board.setDisplayObjective(DisplaySlot.SIDEBAR, null);
@@ -200,6 +200,31 @@ public class EconomyManager {
                 objective = null;
             }
         }
-        return scoreboardEnabled;
+
+        return EconomyConfig.get().scoreboardEnabled;
+    }
+
+    public void handlePvpKill(ServerPlayer victim, ServerPlayer killer) {
+        double pct = EconomyConfig.get().pvpBalanceLossPercentage;
+        if (pct <= 0.0) return;
+        if (victim == null || killer == null) return;
+        if (victim.getUUID().equals(killer.getUUID())) return;
+
+        long victimBal = getBalance(victim.getUUID());
+        if (victimBal <= 0L) return;
+
+        long loss = (long)Math.floor(pct * victimBal);
+        if (loss <= 0L) return;
+
+        setMoney(victim.getUUID(), victimBal - loss);
+        addMoney(killer.getUUID(), loss);
+
+        victim.sendSystemMessage(Component.literal(
+                        "You lost " + EconomyCraft.formatMoney(loss) + " for being killed by " + killer.getName().getString())
+                .withStyle(net.minecraft.ChatFormatting.RED));
+
+        killer.sendSystemMessage(Component.literal(
+                        "You received " + EconomyCraft.formatMoney(loss) + " for killing " + victim.getName().getString())
+                .withStyle(net.minecraft.ChatFormatting.GREEN));
     }
 }
