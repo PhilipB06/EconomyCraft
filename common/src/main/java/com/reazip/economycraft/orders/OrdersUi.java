@@ -258,7 +258,7 @@ public final class OrdersUi {
                         );
                     } else {
                         long cost = current.price;
-                        long bal = parent.eco.getBalance(current.requester);
+                        long bal = parent.eco.getBalance(current.requester, true);
                         if (bal < cost) {
                             ((ServerPlayer) player).sendSystemMessage(
                                     Component.literal("Requester can't pay").withStyle(ChatFormatting.RED)
@@ -266,7 +266,7 @@ public final class OrdersUi {
                         } else {
                             parent.removeItems((ServerPlayer) player, current.item.copy(), current.amount);
                             long tax = Math.round(cost * EconomyConfig.get().taxRate);
-                            parent.eco.setMoney(current.requester, bal - cost);
+                            parent.eco.removeMoney(current.requester, cost);
                             parent.eco.addMoney(player.getUUID(), cost - tax);
                             parent.orders.removeRequest(current.id);
 

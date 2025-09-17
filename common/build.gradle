@@ -1,8 +1,16 @@
-architectury {
-    common(rootProject.enabled_platforms.split(','))
+plugins {
+    id "dev.architectury.loom"
 }
 
 def mcCoord = (rootProject.findProperty("minecraft_version") ?: rootProject.minecraft_version) as String
+
+def platforms = (rootProject.findProperty("filter_platforms") ?: "fabric,neoforge")
+        .split(",")
+        .collect { it.trim() }
+
+architectury {
+    common(platforms)
+}
 
 dependencies {
     // Required Minecraft jar for Loom

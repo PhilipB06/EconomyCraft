@@ -9,13 +9,12 @@ The mod requires Architectury API and targets **Minecraft 1.21.x**.
 
 - Shop and order request system.
 - Optional balance sidebar with top balances.
-- Daily login bonus system.
-- PvP balance loss system: optionally transfer a percentage of the victim’s balance to the killer on death.
+- Optional PvP balance loss system: optionally transfer a configurable percentage of the victim’s balance to the killer on death.
 - Server-side only (no client installation required).
 
 ## Commands
 ### Player Commands
-- `/balance [player]` – Check balances.
+- `/balance [player|selector]` – Check balances.
 - `/pay <player> <amount>` – Transfer money.
 - `/daily` – Claim a daily login bonus.
 - `/shop` – Opens the shop UI.
@@ -27,6 +26,7 @@ The mod requires Architectury API and targets **Minecraft 1.21.x**.
 ### Admin Commands
 - `/eco addmoney <player|selector> <amount>` – Add money to a player.
 - `/eco setmoney <player|selector> <amount>` – Set a player’s balance.
+- `/eco removemoney <player|selector> [amount]` – Remove money from a player.
 - `/eco removeplayer <player|selector>` – Remove a player from the economy system.
 - `/eco toggleScoreboard` – Toggle the balance sidebar for all players.
 

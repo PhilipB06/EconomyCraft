@@ -24,7 +24,11 @@ subprojects {
     }
 
     tasks.withType(Jar).configureEach { archiveVersion = "" }
-    tasks.matching { it.name == "remapJar" }.configureEach { archiveVersion = "" }
+
+    tasks.named("remapJar", RemapJarTask).configure {
+        input.set(tasks.named("jar").flatMap { it.archiveFile })
+        archiveVersion = ""
+    }
 
     repositories {
         maven { url "https://maven.fabricmc.net/" }
@@ -50,12 +54,11 @@ subprojects {
                 from components.java
             }
         }
-        repositories { /* */ }
+        repositories { /* leer gelassen */ }
     }
 
     if (project.name == "neoforge") {
         tasks.named("processResources") {
-            // MC 1.xx.y -> [major.minor, major.(minor+1))
             def mcFull = (rootProject.findProperty("minecraft_version") ?: rootProject.minecraft_version).toString()
             def parts = mcFull.tokenize('.')
             if (parts.size() < 2) throw new GradleException("Invalid minecraft_version: ${mcFull}")
@@ -113,60 +116,66 @@ ext.mcTargets = [
 ]
 
 // ---- Build per version via external gradlew
+import net.fabricmc.loom.task.RemapJarTask
 import org.gradle.internal.os.OperatingSystem
 def gradleWrapper = OperatingSystem.current().isWindows() ? "gradlew.bat" : "./gradlew"
 
-def mkArgs = { t ->
-    [
-            gradleWrapper,
-            "--no-daemon",
-            "-Pminecraft_version=${t.mc}",
-            "-Pfabric_api_version=${t.fabricApi}",
-            "-Pneoforge_version=${t.neoforge}",
-            "-Parchitectury_version_plain=${t.architecturyVer}",
-            "-Pneoforge_line_lo=${t.neoforgeLineLo}",
-            "-Pneoforge_line_hi=${t.neoforgeLineHi}",
-            "-Pyarn_build=${t.yarnBuild ?: 'build.1'}",
-            "clean", "build"
-    ]
-}
-
-def versionExecTasks = []
 ext.mcTargets.each { t ->
-    def mcSafe = t.mc.replace('.', '_')
-
-    def buildTask = tasks.register("buildFor_${mcSafe}", Exec) {
-        group = "build"
-        description = "Build for MC ${t.mc}"
+    // Fabric only
+    def buildFabricTask = tasks.register("buildFabric_${t.mc}", Exec) {
+        group = "build/fabric"
+        description = "Build Fabric for MC ${t.mc}"
         workingDir rootProject.projectDir
-        commandLine mkArgs(t)
+        commandLine gradleWrapper,
+                "--no-daemon",
+                "-Pfilter_platforms=fabric",
+                "-Pminecraft_version=${t.mc}",
+                "-Pfabric_api_version=${t.fabricApi}",
+                "-Parchitectury_version_plain=${t.architecturyVer}",
+                "-Pyarn_build=${t.yarnBuild ?: 'build.1'}",
+                ":fabric:clean", ":fabric:build"
     }
 
-    def copyTask = tasks.register("copyJars_${mcSafe}") {
-        dependsOn buildTask
+    tasks.register("copyFabricJars_${t.mc}") {
+        dependsOn buildFabricTask
         doLast {
-            // Fabric jars
             copy {
                 from fileTree(dir: "fabric/build/libs", include: "*.jar")
                 into file("$rootDir/build/fabric/${t.mc}")
             }
-            // NeoForge jars
+        }
+    }
+
+    // NeoForge only
+    def buildNeoForgeTask = tasks.register("buildNeoForge_${t.mc}", Exec) {
+        group = "build/neoforge"
+        description = "Build NeoForge for MC ${t.mc}"
+        workingDir rootProject.projectDir
+        commandLine gradleWrapper,
+                "--no-daemon",
+                "-Pfilter_platforms=neoforge",
+                "-Pminecraft_version=${t.mc}",
+                "-Pneoforge_version=${t.neoforge}",
+                "-Parchitectury_version_plain=${t.architecturyVer}",
+                "-Pneoforge_line_lo=${t.neoforgeLineLo}",
+                "-Pneoforge_line_hi=${t.neoforgeLineHi}",
+                ":neoforge:clean", ":neoforge:build"
+    }
+
+    tasks.register("copyNeoForgeJars_${t.mc}") {
+        dependsOn buildNeoForgeTask
+        doLast {
             copy {
                 from fileTree(dir: "neoforge/build/libs", include: "*.jar")
                 into file("$rootDir/build/neoforge/${t.mc}")
             }
         }
     }
-
-    versionExecTasks << copyTask
 }
 
-versionExecTasks.eachWithIndex { t, i ->
-    if (i > 0) t.configure { mustRunAfter versionExecTasks[i - 1] }
-}
-
+// Convenience task: build everything
 tasks.register("buildAll") {
     group = "build"
-    description = "Build all defined MC target versions (1.21 – 1.21.8) and collect jars"
-    dependsOn versionExecTasks
+    description = "Build all Fabric & NeoForge targets"
+    dependsOn tasks.matching { it.name.startsWith("copyFabricJars_") || it.name.startsWith("copyNeoForgeJars_") }
 }

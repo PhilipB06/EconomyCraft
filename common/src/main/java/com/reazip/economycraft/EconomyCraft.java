@@ -40,7 +40,7 @@ public final class EconomyCraft {
 
     private static void onPlayerJoin(ServerPlayer player) {
         EconomyManager eco = getManager(player.getServer());
-        eco.getBalance(player.getUUID());
+        eco.getBalance(player.getUUID(), true);
 
         if (eco.getOrders().hasDeliveries(player.getUUID()) || eco.getShop().hasDeliveries(player.getUUID())) {
             ClickEvent ev = ChatCompat.runCommandEvent("/eco orders claim");

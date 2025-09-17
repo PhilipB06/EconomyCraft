@@ -58,18 +58,22 @@ public class EconomyManager {
         return server;
     }
 
-    public long getBalance(UUID player) {
+    public Long getBalance(UUID player, boolean newBalanceIfNonExistent) {
         if (!balances.containsKey(player)) {
-            long balance = clamp(EconomyConfig.get().startingBalance);
-            balances.put(player, balance);
-            updateLeaderboard();
-            return balance;
+            if (newBalanceIfNonExistent) {
+                long balance = clamp(EconomyConfig.get().startingBalance);
+                balances.put(player, balance);
+                updateLeaderboard();
+                return balance;
+            } else {
+                return null;
+            }
         }
         return balances.get(player);
     }
 
     public void addMoney(UUID player, long amount) {
-        balances.put(player, clamp(getBalance(player) + amount));
+        balances.put(player, clamp(getBalance(player, true) + amount));
         updateLeaderboard();
         save();
     }
@@ -80,10 +84,21 @@ public class EconomyManager {
         save();
     }
 
+    public boolean removeMoney(UUID player, long amount) {
+        long balance = getBalance(player, true);
+        if (balance < amount) {
+            return false;
+        }
+        balances.put(player, clamp(balance - amount));
+        updateLeaderboard();
+        save();
+        return true;
+    }
+
     public boolean pay(UUID from, UUID to, long amount) {
-        long balance = getBalance(from);
+        long balance = getBalance(from, false);
         if (balance < amount) return false;
-        setMoney(from, balance - amount);
+        removeMoney(from, amount);
         addMoney(to, amount);
         return true;
     }
@@ -210,13 +225,13 @@ public class EconomyManager {
         if (victim == null || killer == null) return;
         if (victim.getUUID().equals(killer.getUUID())) return;
 
-        long victimBal = getBalance(victim.getUUID());
+        long victimBal = getBalance(victim.getUUID(), true);
         if (victimBal <= 0L) return;
 
         long loss = (long)Math.floor(pct * victimBal);
         if (loss <= 0L) return;
 
-        setMoney(victim.getUUID(), victimBal - loss);
+        removeMoney(victim.getUUID(), loss);
         addMoney(killer.getUUID(), loss);
 
         victim.sendSystemMessage(Component.literal(

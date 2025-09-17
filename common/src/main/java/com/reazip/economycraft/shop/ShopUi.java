@@ -224,11 +224,11 @@ public final class ShopUi {
                         long cost = current.price;
                         long tax = Math.round(cost * EconomyConfig.get().taxRate);
                         long total = cost + tax;
-                        long bal = eco.getBalance(player.getUUID());
+                        long bal = eco.getBalance(player.getUUID(), true);
                         if (bal < total) {
                             ((ServerPlayer) player).sendSystemMessage(Component.literal("Not enough balance").withStyle(ChatFormatting.RED));
                         } else {
-                            eco.setMoney(player.getUUID(), bal - total);
+                            eco.removeMoney(player.getUUID(), total);
                             eco.addMoney(current.seller, cost);
                             shop.removeListing(current.id);
                             ItemStack stack = current.item.copy();

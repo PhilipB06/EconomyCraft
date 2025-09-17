@@ -2,14 +2,31 @@ pluginManagement {
     repositories {
         maven { url "https://maven.fabricmc.net/" }
         maven { url "https://maven.architectury.dev/" }
-        maven { url "https://files.minecraftforge.net/maven/" }
+        maven { url "https://maven.neoforged.net/" }
         gradlePluginPortal()
         mavenCentral()
     }
 }
 
-rootProject.name = 'economycraft'
+rootProject.name = "economycraft"
 
-include 'common'
-include 'fabric'
-include 'neoforge'
+def raw = gradle.startParameter.projectProperties.get("filter_platforms")
+if (raw == null || raw.trim().isEmpty()) {
+    raw = System.getProperty("filter_platforms", "fabric,neoforge")
+}
+def enabled = raw.split(",").collect { it.trim() }.findAll { it }
+println "[settings.gradle] filter_platforms = ${enabled}"
+
+include("common")
+if (enabled.contains("fabric")) {
+    println "[settings.gradle] including fabric"
+    include("fabric")
+} else {
+    println "[settings.gradle] skipping fabric"
+}
+if (enabled.contains("neoforge")) {
+    println "[settings.gradle] including neoforge"
+    include("neoforge")
+} else {
+    println "[settings.gradle] skipping neoforge"
+}
