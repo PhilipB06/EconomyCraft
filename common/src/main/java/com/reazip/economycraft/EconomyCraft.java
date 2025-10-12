@@ -39,7 +39,7 @@ public final class EconomyCraft {
     }
 
     private static void onPlayerJoin(ServerPlayer player) {
-        EconomyManager eco = getManager(player.getServer());
+        EconomyManager eco = getManager(player.level().getServer());
         eco.getBalance(player.getUUID(), true);
 
         if (eco.getOrders().hasDeliveries(player.getUUID()) || eco.getShop().hasDeliveries(player.getUUID())) {
@@ -49,12 +49,14 @@ public final class EconomyCraft {
                 Component msg = Component.literal("You have unclaimed items: ")
                         .withStyle(ChatFormatting.YELLOW)
                         .append(Component.literal("[Claim]")
-                                .withStyle(s -> s.withUnderlined(true).withColor(ChatFormatting.GREEN).withClickEvent(ev)));
+                                .withStyle(s -> s.withUnderlined(true)
+                                        .withColor(ChatFormatting.GREEN)
+                                        .withClickEvent(ev)));
                 player.sendSystemMessage(msg);
             } else {
                 // Guaranteed clickable fallback
                 ChatCompat.sendRunCommandTellraw(
-                        (ServerPlayer) player,
+                        player,
                         "You have unclaimed items: ",
                         "[Claim]",
                         "/eco orders claim"

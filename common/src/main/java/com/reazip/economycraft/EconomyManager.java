@@ -185,15 +185,27 @@ public class EconomyManager {
         if (objective != null) {
             board.removeObjective(objective);
         }
-        objective = board.addObjective("eco_balance", ObjectiveCriteria.DUMMY, Component.literal("Balance"), ObjectiveCriteria.RenderType.INTEGER, true, null);
+
+        objective = board.addObjective(
+                "eco_balance",
+                ObjectiveCriteria.DUMMY,
+                Component.literal("Balance"),
+                ObjectiveCriteria.RenderType.INTEGER,
+                true,
+                null
+        );
         board.setDisplayObjective(DisplaySlot.SIDEBAR, objective);
         displayed.clear();
         List<Map.Entry<UUID, Long>> sorted = new ArrayList<>(balances.entrySet());
         sorted.sort(Map.Entry.<UUID, Long>comparingByValue().reversed());
         for (Map.Entry<UUID, Long> e : sorted.stream().limit(5).toList()) {
-            String name = server.getProfileCache().get(e.getKey()).map(p -> p.getName()).orElse(e.getKey().toString());
-            board.getOrCreatePlayerScore(net.minecraft.world.scores.ScoreHolder.forNameOnly(name), objective).set(e.getValue().intValue());
-            displayed.add(e.getKey());
+            UUID id = e.getKey();
+            ServerPlayer online = server.getPlayerList().getPlayer(id);
+            String name = (online != null) ? online.getGameProfile().name() : id.toString();
+
+            board.getOrCreatePlayerScore(net.minecraft.world.scores.ScoreHolder.forNameOnly(name), objective)
+                    .set(e.getValue().intValue());
+            displayed.add(id);
         }
     }
 

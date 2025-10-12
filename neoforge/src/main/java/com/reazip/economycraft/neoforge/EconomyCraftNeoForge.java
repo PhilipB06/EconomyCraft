@@ -2,7 +2,6 @@ package com.reazip.economycraft.neoforge;
 
 import net.neoforged.fml.common.Mod;
 import com.reazip.economycraft.EconomyCraft;
-
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
@@ -21,7 +20,7 @@ public final class EconomyCraftNeoForge {
 
         var src = event.getSource().getEntity();
         if (src instanceof ServerPlayer killer) {
-            EconomyCraft.getManager(victim.getServer()).handlePvpKill(victim, killer);
+            EconomyCraft.getManager(victim.level().getServer()).handlePvpKill(victim, killer);
         }
     }
 }

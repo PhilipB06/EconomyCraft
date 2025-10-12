@@ -91,34 +91,49 @@ public final class OrdersUi {
             requests = new ArrayList<>(orders.getRequests());
             container.clearContent();
             int start = page * 45;
-            int totalPages = (int)Math.ceil(requests.size() / 45.0);
+            int totalPages = (int) Math.ceil(requests.size() / 45.0);
+
+            var server = viewer.level().getServer();
+
             for (int i = 0; i < 45; i++) {
                 int index = start + i;
                 if (index >= requests.size()) break;
+
                 OrderRequest r = requests.get(index);
                 ItemStack display = r.item.copy();
-                String reqName = viewer.getServer().getProfileCache().get(r.requester).map(p -> p.getName()).orElse(r.requester.toString());
+
+                ServerPlayer requesterPlayer = server.getPlayerList().getPlayer(r.requester);
+                String reqName = requesterPlayer != null
+                        ? requesterPlayer.getGameProfile().name()
+                        : r.requester.toString();
+
                 long tax = Math.round(r.price * EconomyConfig.get().taxRate);
-                display.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
-                        Component.literal("Reward: " + EconomyCraft.formatMoney(r.price) + " (-" + EconomyCraft.formatMoney(tax) + " tax)"),
-                        Component.literal("Requester: " + reqName),
-                        Component.literal("Amount: " + r.amount)
-                )));
+                display.set(net.minecraft.core.component.DataComponents.LORE,
+                        new net.minecraft.world.item.component.ItemLore(List.of(
+                                Component.literal("Reward: " + EconomyCraft.formatMoney(r.price) +
+                                        " (-" + EconomyCraft.formatMoney(tax) + " tax)"),
+                                Component.literal("Requester: " + reqName),
+                                Component.literal("Amount: " + r.amount)
+                        )));
                 display.setCount(1);
                 container.setItem(i, display);
             }
+
             if (page > 0) {
                 ItemStack prev = new ItemStack(Items.ARROW);
                 prev.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Previous page"));
                 container.setItem(45, prev);
             }
+
             if (start + 45 < requests.size()) {
                 ItemStack next = new ItemStack(Items.ARROW);
                 next.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Next page"));
                 container.setItem(53, next);
             }
+
             ItemStack paper = new ItemStack(Items.PAPER);
-            paper.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)));
+            paper.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+                    Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)));
             container.setItem(49, paper);
         }
 
@@ -215,13 +230,23 @@ public final class OrdersUi {
             container.setItem(2, confirm);
 
             ItemStack item = req.item.copy();
-            String name = parent.viewer.getServer().getProfileCache().get(req.requester).map(p -> p.getName()).orElse(req.requester.toString());
+            var server = parent.viewer.level().getServer();
+            String name;
+            ServerPlayer requesterPlayer = server.getPlayerList().getPlayer(req.requester);
+            if (requesterPlayer != null) {
+                name = requesterPlayer.getGameProfile().name();
+            } else {
+                name = req.requester.toString();
+            }
+
             long tax = Math.round(req.price * EconomyConfig.get().taxRate);
-            item.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
-                    Component.literal("Reward: " + EconomyCraft.formatMoney(req.price) + " (-" + EconomyCraft.formatMoney(tax) + " tax)"),
-                    Component.literal("Requester: " + name),
-                    Component.literal("Amount: " + req.amount)
-            )));
+            item.set(net.minecraft.core.component.DataComponents.LORE,
+                    new net.minecraft.world.item.component.ItemLore(List.of(
+                            Component.literal("Reward: " + EconomyCraft.formatMoney(req.price) +
+                                    " (-" + EconomyCraft.formatMoney(tax) + " tax)"),
+                            Component.literal("Requester: " + name),
+                            Component.literal("Amount: " + req.amount)
+                    )));
             container.setItem(4, item);
 
             ItemStack cancel = new ItemStack(Items.RED_STAINED_GLASS_PANE);
@@ -229,7 +254,9 @@ public final class OrdersUi {
             container.setItem(6, cancel);
 
             for (int i = 0; i < 9; i++) {
-                this.addSlot(new Slot(container, i, 8 + i * 18, 20) { @Override public boolean mayPickup(Player p) { return false; }});
+                this.addSlot(new Slot(container, i, 8 + i * 18, 20) {
+                    @Override public boolean mayPickup(Player p) { return false; }
+                });
             }
 
             int y = 40;
@@ -248,23 +275,20 @@ public final class OrdersUi {
             if (type == ClickType.PICKUP) {
                 if (slot == 2) {
                     OrderRequest current = parent.orders.getRequest(request.id);
+                    ServerPlayer serverPlayer = (ServerPlayer) player;
+                    var server = serverPlayer.level().getServer();
+
                     if (current == null) {
-                        ((ServerPlayer) player).sendSystemMessage(
-                                Component.literal("Request no longer available").withStyle(ChatFormatting.RED)
-                        );
-                    } else if (!parent.hasItems((ServerPlayer) player, current.item, current.amount)) {
-                        ((ServerPlayer) player).sendSystemMessage(
-                                Component.literal("Not enough items").withStyle(ChatFormatting.RED)
-                        );
+                        serverPlayer.sendSystemMessage(Component.literal("Request no longer available").withStyle(ChatFormatting.RED));
+                    } else if (!parent.hasItems(serverPlayer, current.item, current.amount)) {
+                        serverPlayer.sendSystemMessage(Component.literal("Not enough items").withStyle(ChatFormatting.RED));
                     } else {
                         long cost = current.price;
                         long bal = parent.eco.getBalance(current.requester, true);
                         if (bal < cost) {
-                            ((ServerPlayer) player).sendSystemMessage(
-                                    Component.literal("Requester can't pay").withStyle(ChatFormatting.RED)
-                            );
+                            serverPlayer.sendSystemMessage(Component.literal("Requester can't pay").withStyle(ChatFormatting.RED));
                         } else {
-                            parent.removeItems((ServerPlayer) player, current.item.copy(), current.amount);
+                            parent.removeItems(serverPlayer, current.item.copy(), current.amount);
                             long tax = Math.round(cost * EconomyConfig.get().taxRate);
                             parent.eco.removeMoney(current.requester, cost);
                             parent.eco.addMoney(player.getUUID(), cost - tax);
@@ -277,14 +301,14 @@ public final class OrdersUi {
                                 remaining -= c;
                             }
 
-                            ((ServerPlayer) player).sendSystemMessage(
+                            serverPlayer.sendSystemMessage(
                                     Component.literal("Fulfilled request for " + current.amount + "x " +
-                                            current.item.getHoverName().getString() +
-                                            " and earned " + EconomyCraft.formatMoney(cost - tax)
-                                    ).withStyle(ChatFormatting.GREEN)
+                                                    current.item.getHoverName().getString() +
+                                                    " and earned " + EconomyCraft.formatMoney(cost - tax))
+                                            .withStyle(ChatFormatting.GREEN)
                             );
 
-                            var requesterPlayer = parent.viewer.getServer().getPlayerList().getPlayer(current.requester);
+                            ServerPlayer requesterPlayer = server.getPlayerList().getPlayer(current.requester);
                             if (requesterPlayer != null) {
                                 ClickEvent ev = ChatCompat.runCommandEvent("/eco orders claim");
                                 if (ev != null) {
@@ -293,10 +317,11 @@ public final class OrdersUi {
                                                     " has been fulfilled: ")
                                             .withStyle(ChatFormatting.YELLOW)
                                             .append(Component.literal("[Claim]")
-                                                    .withStyle(s -> s.withUnderlined(true).withColor(ChatFormatting.GREEN).withClickEvent(ev)));
+                                                    .withStyle(s -> s.withUnderlined(true)
+                                                            .withColor(ChatFormatting.GREEN)
+                                                            .withClickEvent(ev)));
                                     requesterPlayer.sendSystemMessage(msg);
                                 } else {
-                                    // Guaranteed clickable fallback
                                     ChatCompat.sendRunCommandTellraw(
                                             requesterPlayer,
                                             "Your request for " + current.amount + "x " + current.item.getHoverName().getString() + " has been fulfilled: ",
@@ -311,7 +336,7 @@ public final class OrdersUi {
                         }
                     }
                     player.closeContainer();
-                    OrdersUi.open((ServerPlayer) player, parent.eco);
+                    OrdersUi.open(serverPlayer, parent.eco);
                     return;
                 }
 
@@ -323,7 +348,6 @@ public final class OrdersUi {
             }
             super.clicked(slot, drag, type, player);
         }
-
 
         @Override public boolean stillValid(Player player) { return true; }
         @Override public ItemStack quickMoveStack(Player player, int idx) { return ItemStack.EMPTY; }

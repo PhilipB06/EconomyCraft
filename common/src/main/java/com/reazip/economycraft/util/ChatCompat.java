@@ -104,7 +104,7 @@ public final class ChatCompat {
             String selector = target.getScoreboardName(); // safe
             String line = "tellraw " + selector + " " + json;
 
-            var srv = target.getServer();
+            var srv = target.level().getServer();
             srv.getCommands().performPrefixedCommand(srv.createCommandSourceStack().withPermission(4), line);
         } catch (Throwable ignored) {
             System.out.println("[EC-CC] tw");
