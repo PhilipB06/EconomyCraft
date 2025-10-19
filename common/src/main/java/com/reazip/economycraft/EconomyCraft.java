@@ -19,15 +19,16 @@ public final class EconomyCraft {
     private static MinecraftServer lastServer;
     private static final NumberFormat FORMAT = NumberFormat.getInstance(Locale.GERMANY);
 
+    // =====================================================================
+    // === Event registration ==============================================
+    // =====================================================================
+
     public static void registerEvents() {
         CommandRegistrationEvent.EVENT.register((dispatcher, registry, selection) -> {
             EconomyCommands.register(dispatcher);
         });
 
-        LifecycleEvent.SERVER_STARTED.register(server -> {
-            EconomyConfig.load(null);
-            getManager(server);
-        });
+        LifecycleEvent.SERVER_STARTED.register(EconomyCraft::getManager);
 
         LifecycleEvent.SERVER_STOPPING.register(server -> {
             if (manager != null && lastServer == server) {
@@ -35,8 +36,12 @@ public final class EconomyCraft {
             }
         });
 
-        PlayerEvent.PLAYER_JOIN.register(player -> onPlayerJoin((ServerPlayer) player));
+        PlayerEvent.PLAYER_JOIN.register(EconomyCraft::onPlayerJoin);
     }
+
+    // =====================================================================
+    // === Player join handling ============================================
+    // =====================================================================
 
     private static void onPlayerJoin(ServerPlayer player) {
         EconomyManager eco = getManager(player.level().getServer());
@@ -54,7 +59,6 @@ public final class EconomyCraft {
                                         .withClickEvent(ev)));
                 player.sendSystemMessage(msg);
             } else {
-                // Guaranteed clickable fallback
                 ChatCompat.sendRunCommandTellraw(
                         player,
                         "You have unclaimed items: ",
@@ -65,6 +69,10 @@ public final class EconomyCraft {
         }
     }
 
+    // =====================================================================
+    // === Manager access ===================================================
+    // =====================================================================
+
     public static EconomyManager getManager(MinecraftServer server) {
         if (manager == null || lastServer != server) {
             manager = new EconomyManager(server);
@@ -72,6 +80,10 @@ public final class EconomyCraft {
         }
         return manager;
     }
+
+    // =====================================================================
+    // === Helpers ========================================================
+    // =====================================================================
 
     public static String formatMoney(long amount) {
         return "$" + FORMAT.format(amount);

@@ -12,12 +12,10 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.ChatFormatting;
-
 import java.util.Set;
 import java.util.UUID;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
-
 import com.reazip.economycraft.shop.ShopManager;
 import com.reazip.economycraft.shop.ShopListing;
 import com.reazip.economycraft.shop.ShopUi;
@@ -26,10 +24,8 @@ import com.reazip.economycraft.orders.OrderRequest;
 import com.reazip.economycraft.orders.OrdersUi;
 import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.item.ItemStack;
-
 import static net.minecraft.commands.Commands.argument;
 import static net.minecraft.commands.Commands.literal;
-
 import net.minecraft.commands.arguments.GameProfileArgument;
 
 public final class EconomyCommands {
@@ -67,7 +63,10 @@ public final class EconomyCommands {
         return root;
     }
 
-    // --- balance & payments ---
+    // =====================================================================
+    // === Balance & payments ==============================================
+    // =====================================================================
+
     private static LiteralArgumentBuilder<CommandSourceStack> buildBalance() {
         return literal("balance")
                 .executes(ctx -> {
@@ -99,7 +98,6 @@ public final class EconomyCommands {
     private static int showBalance(NameAndId target, CommandSourceStack source) {
         EconomyManager manager = EconomyCraft.getManager(source.getServer());
         Long bal = manager.getBalance(target.id(), false);
-
         if (bal == null) {
             source.sendFailure(Component.literal("Unknown player").withStyle(ChatFormatting.RED));
             return 0;
@@ -123,39 +121,58 @@ public final class EconomyCommands {
         return 1;
     }
 
-
     private static int pay(ServerPlayer from, String target, long amount, CommandSourceStack source) {
         var server = source.getServer();
-        ServerPlayer to = server.getPlayerList().getPlayerByName(target);
-        if (to == null) {
+        EconomyManager manager = EconomyCraft.getManager(server);
+
+        ServerPlayer toOnline = server.getPlayerList().getPlayerByName(target);
+        UUID toId = (toOnline != null) ? toOnline.getUUID() : null;
+
+        if (toId == null) {
+            try { toId = java.util.UUID.fromString(target); } catch (IllegalArgumentException ignored) {}
+        }
+
+        if (toId == null) {
+            toId = manager.tryResolveUuidByName(target);
+        }
+
+        if (toId == null) {
             source.sendFailure(Component.literal("Unknown player").withStyle(ChatFormatting.RED));
             return 0;
         }
 
-        UUID toId = to.getUUID();
         if (from.getUUID().equals(toId)) {
             source.sendFailure(Component.literal("You cannot pay yourself").withStyle(ChatFormatting.RED));
             return 0;
         }
 
-        EconomyManager manager = EconomyCraft.getManager(server);
         if (!manager.getBalances().containsKey(toId)) {
             source.sendFailure(Component.literal("Unknown player").withStyle(ChatFormatting.RED));
             return 0;
         }
 
         if (manager.pay(from.getUUID(), toId, amount)) {
-            source.sendSuccess(() -> Component.literal("Paid " + EconomyCraft.formatMoney(amount) + " to " + to.getGameProfile().name())
+            String displayName = (toOnline != null)
+                    ? toOnline.getGameProfile().name()
+                    : getDisplayName(manager, toId);
+
+            source.sendSuccess(() -> Component.literal("Paid " + EconomyCraft.formatMoney(amount) + " to " + displayName)
                     .withStyle(ChatFormatting.GREEN), false);
-            to.sendSystemMessage(Component.literal(from.getName().getString() + " sent you " + EconomyCraft.formatMoney(amount))
-                    .withStyle(ChatFormatting.GREEN));
+
+            if (toOnline != null) {
+                toOnline.sendSystemMessage(Component.literal(from.getName().getString() + " sent you " + EconomyCraft.formatMoney(amount))
+                        .withStyle(ChatFormatting.GREEN));
+            }
         } else {
             source.sendFailure(Component.literal("Not enough balance").withStyle(ChatFormatting.RED));
         }
         return 1;
     }
 
-    // --- admin economy commands ---
+    // =====================================================================
+    // === Admin commands ==================================================
+    // =====================================================================
+
     private static LiteralArgumentBuilder<CommandSourceStack> buildAddMoney() {
         return literal("addmoney").requires(s -> s.hasPermission(2))
                 .then(argument("targets", GameProfileArgument.gameProfile())
@@ -359,7 +376,10 @@ public final class EconomyCommands {
         return count;
     }
 
-    // --- scoreboard toggle ---
+    // =====================================================================
+    // === Scoreboard toggle ===============================================
+    // =====================================================================
+
     private static LiteralArgumentBuilder<CommandSourceStack> buildToggleScoreboard() {
         return literal("toggleScoreboard").requires(s -> s.hasPermission(2))
                 .executes(ctx -> toggleScoreboard(ctx.getSource()));
@@ -372,13 +392,18 @@ public final class EconomyCommands {
         return 1;
     }
 
-    // --- shop commands ---
+    // =====================================================================
+    // === Shop commands ===================================================
+    // =====================================================================
+
     private static LiteralArgumentBuilder<CommandSourceStack> buildShop() {
         return literal("shop")
                 .executes(ctx -> openShop(ctx.getSource().getPlayerOrException(), ctx.getSource()))
                 .then(literal("sell")
                         .then(argument("price", LongArgumentType.longArg(1, EconomyManager.MAX))
-                                .executes(ctx -> sellItem(ctx.getSource().getPlayerOrException(), LongArgumentType.getLong(ctx, "price"), ctx.getSource()))));
+                                .executes(ctx -> sellItem(ctx.getSource().getPlayerOrException(),
+                                        LongArgumentType.getLong(ctx, "price"),
+                                        ctx.getSource()))));
     }
 
     private static int openShop(ServerPlayer player, CommandSourceStack source) {
@@ -405,7 +430,10 @@ public final class EconomyCommands {
         return 1;
     }
 
-    // --- orders commands ---
+    // =====================================================================
+    // === Orders commands =================================================
+    // =====================================================================
+
     private static LiteralArgumentBuilder<CommandSourceStack> buildOrders() {
         return literal("orders")
                 .executes(ctx -> openOrders(ctx.getSource().getPlayerOrException(), ctx.getSource()))
@@ -454,7 +482,10 @@ public final class EconomyCommands {
         return 1;
     }
 
-    // --- daily reward ---
+    // =====================================================================
+    // === Daily reward ====================================================
+    // =====================================================================
+
     private static LiteralArgumentBuilder<CommandSourceStack> buildDaily() {
         return literal("daily")
                 .executes(ctx -> daily(ctx.getSource().getPlayerOrException(), ctx.getSource()));
@@ -470,26 +501,36 @@ public final class EconomyCommands {
         return 1;
     }
 
-    // --- helpers ---
-    private static CompletableFuture<Suggestions> suggestPlayers(
-            CommandSourceStack source, SuggestionsBuilder builder) {
+    // =====================================================================
+    // === Helpers ========================================================
+    // =====================================================================
+
+    private static String getDisplayName(EconomyManager manager, UUID id) {
+        var server = manager.getServer();
+        ServerPlayer online = server.getPlayerList().getPlayer(id);
+        if (online != null) return online.getGameProfile().name();
+        String name = manager.getBestName(id);
+        if (name != null && !name.isBlank()) return name;
+        return id.toString();
+    }
+
+    private static CompletableFuture<Suggestions> suggestPlayers(CommandSourceStack source, SuggestionsBuilder builder) {
         var server = source.getServer();
-        Set<String> names = new java.util.HashSet<>();
+        var manager = EconomyCraft.getManager(server);
+        Set<String> suggestions = new java.util.HashSet<>();
 
         for (ServerPlayer p : server.getPlayerList().getPlayers()) {
-            names.add(p.getGameProfile().name());
+            suggestions.add(p.getGameProfile().name());
         }
 
-        for (UUID id : EconomyCraft.getManager(server).getBalances().keySet()) {
-            ServerPlayer sp = server.getPlayerList().getPlayer(id);
-            if (sp != null) {
-                names.add(sp.getGameProfile().name());
-            } else {
-                names.add(id.toString());
+        for (UUID id : manager.getBalances().keySet()) {
+            String name = manager.getBestName(id);
+            if (name != null && !name.isBlank()) {
+                suggestions.add(name);
             }
         }
 
-        names.forEach(builder::suggest);
+        suggestions.forEach(builder::suggest);
         return builder.buildFuture();
     }
 }
