@@ -16,7 +16,7 @@ public final class EconomyCraftFabric implements ModInitializer {
 
             var src = damageSource.getEntity();
             if (src instanceof ServerPlayer killer) {
-                EconomyCraft.getManager(victim.getServer()).handlePvpKill(victim, killer);
+                EconomyCraft.getManager(victim.level().getServer()).handlePvpKill(victim, killer);
             }
         });
     }

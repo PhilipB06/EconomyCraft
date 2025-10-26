@@ -21,7 +21,7 @@ public final class EconomyCraftNeoForge {
 
         var src = event.getSource().getEntity();
         if (src instanceof ServerPlayer killer) {
-            EconomyCraft.getManager(victim.getServer()).handlePvpKill(victim, killer);
+            EconomyCraft.getManager(victim.level().getServer()).handlePvpKill(victim, killer);
         }
     }
 }

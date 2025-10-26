@@ -24,10 +24,7 @@ public final class EconomyCraft {
             EconomyCommands.register(dispatcher);
         });
 
-        LifecycleEvent.SERVER_STARTED.register(server -> {
-            EconomyConfig.load(null);
-            getManager(server);
-        });
+        LifecycleEvent.SERVER_STARTED.register(EconomyCraft::getManager);
 
         LifecycleEvent.SERVER_STOPPING.register(server -> {
             if (manager != null && lastServer == server) {
@@ -35,11 +32,11 @@ public final class EconomyCraft {
             }
         });
 
-        PlayerEvent.PLAYER_JOIN.register(player -> onPlayerJoin((ServerPlayer) player));
+        PlayerEvent.PLAYER_JOIN.register(EconomyCraft::onPlayerJoin);
     }
 
     private static void onPlayerJoin(ServerPlayer player) {
-        EconomyManager eco = getManager(player.getServer());
+        EconomyManager eco = getManager(player.level().getServer());
         eco.getBalance(player.getUUID(), true);
 
         if (eco.getOrders().hasDeliveries(player.getUUID()) || eco.getShop().hasDeliveries(player.getUUID())) {
@@ -52,9 +49,8 @@ public final class EconomyCraft {
                                 .withStyle(s -> s.withUnderlined(true).withColor(ChatFormatting.GREEN).withClickEvent(ev)));
                 player.sendSystemMessage(msg);
             } else {
-                // Guaranteed clickable fallback
                 ChatCompat.sendRunCommandTellraw(
-                        (ServerPlayer) player,
+                        player,
                         "You have unclaimed items: ",
                         "[Claim]",
                         "/eco orders claim"

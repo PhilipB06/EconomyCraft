@@ -4,6 +4,7 @@ import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyManager;
 import com.reazip.economycraft.util.ChatCompat;
+import com.reazip.economycraft.util.IdentityCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
@@ -104,29 +105,42 @@ public final class ShopUi {
             listings = new ArrayList<>(shop.getListings());
             container.clearContent();
             int start = page * 45;
-            int totalPages = (int)Math.ceil(listings.size() / 45.0);
+            int totalPages = (int) Math.ceil(listings.size() / 45.0);
+
             for (int i = 0; i < 45; i++) {
                 int idx = start + i;
                 if (idx >= listings.size()) break;
+
                 ShopListing l = listings.get(idx);
                 ItemStack display = l.item.copy();
-                String sellerName = viewer.getServer().getProfileCache().get(l.seller).map(p -> p.getName()).orElse(l.seller.toString());
+
+                String sellerName;
+                ServerPlayer sellerPlayer = viewer.level().getServer().getPlayerList().getPlayer(l.seller);
+                if (sellerPlayer != null) {
+                    sellerName = IdentityCompat.of(sellerPlayer).name();
+                } else {
+                    sellerName = EconomyCraft.getManager(viewer.level().getServer()).getBestName(l.seller);
+                }
+
                 long tax = Math.round(l.price * EconomyConfig.get().taxRate);
-                display.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
+                display.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(List.of(
                         Component.literal("Price: " + EconomyCraft.formatMoney(l.price) + " (+" + EconomyCraft.formatMoney(tax) + " tax)"),
                         Component.literal("Seller: " + sellerName))));
                 container.setItem(i, display);
             }
+
             if (page > 0) {
                 ItemStack prev = new ItemStack(Items.ARROW);
                 prev.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Previous page"));
                 container.setItem(45, prev);
             }
+
             if (start + 45 < listings.size()) {
                 ItemStack next = new ItemStack(Items.ARROW);
                 next.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Next page"));
                 container.setItem(53, next);
             }
+
             ItemStack paper = new ItemStack(Items.PAPER);
             paper.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)));
             container.setItem(49, paper);
@@ -182,10 +196,17 @@ public final class ShopUi {
             confirm.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Confirm"));
             container.setItem(2, confirm);
 
+            String sellerName;
+            ServerPlayer sellerPlayer = viewer.level().getServer().getPlayerList().getPlayer(listing.seller);
+            if (sellerPlayer != null) {
+                sellerName = IdentityCompat.of(sellerPlayer).name();
+            } else {
+                sellerName = EconomyCraft.getManager(viewer.level().getServer()).getBestName(listing.seller);
+            }
+
             ItemStack item = listing.item.copy();
-            String sellerName = viewer.getServer().getProfileCache().get(listing.seller).map(p -> p.getName()).orElse(listing.seller.toString());
             long tax = Math.round(listing.price * EconomyConfig.get().taxRate);
-            item.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
+            item.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(List.of(
                     Component.literal("Price: " + EconomyCraft.formatMoney(listing.price) + " (+" + EconomyCraft.formatMoney(tax) + " tax)"),
                     Component.literal("Seller: " + sellerName))));
             container.setItem(4, item);
@@ -217,16 +238,20 @@ public final class ShopUi {
             if (type == ClickType.PICKUP) {
                 if (slot == 2) {
                     ShopListing current = shop.getListing(listing.id);
+                    ServerPlayer sp = (ServerPlayer) player;
+                    var server = sp.level().getServer();
+
                     if (current == null) {
-                        ((ServerPlayer) player).sendSystemMessage(Component.literal("Listing no longer available"));
+                        sp.sendSystemMessage(Component.literal("Listing no longer available").withStyle(ChatFormatting.RED));
                     } else {
-                        EconomyManager eco = EconomyCraft.getManager(((ServerPlayer) player).getServer());
+                        EconomyManager eco = EconomyCraft.getManager(server);
                         long cost = current.price;
                         long tax = Math.round(cost * EconomyConfig.get().taxRate);
                         long total = cost + tax;
                         long bal = eco.getBalance(player.getUUID(), true);
+
                         if (bal < total) {
-                            ((ServerPlayer) player).sendSystemMessage(Component.literal("Not enough balance").withStyle(ChatFormatting.RED));
+                            sp.sendSystemMessage(Component.literal("Not enough balance").withStyle(ChatFormatting.RED));
                         } else {
                             eco.removeMoney(player.getUUID(), total);
                             eco.addMoney(current.seller, cost);
@@ -234,6 +259,15 @@ public final class ShopUi {
                             ItemStack stack = current.item.copy();
                             int count = stack.getCount();
                             Component name = stack.getHoverName();
+
+                            String sellerName;
+                            ServerPlayer sellerPlayer = server.getPlayerList().getPlayer(current.seller);
+                            if (sellerPlayer != null) {
+                                sellerName = IdentityCompat.of(sellerPlayer).name();
+                            } else {
+                                sellerName = eco.getBestName(current.seller);
+                            }
+
                             if (!player.getInventory().add(stack)) {
                                 shop.addDelivery(player.getUUID(), stack);
 
@@ -242,28 +276,27 @@ public final class ShopUi {
                                     Component msg = Component.literal("Item stored: ")
                                             .withStyle(ChatFormatting.YELLOW)
                                             .append(Component.literal("[Claim]")
-                                                    .withStyle(s -> s.withUnderlined(true).withColor(ChatFormatting.GREEN).withClickEvent(ev)));
-                                    ((ServerPlayer) player).sendSystemMessage(msg);
+                                                    .withStyle(s -> s.withUnderlined(true)
+                                                            .withColor(ChatFormatting.GREEN)
+                                                            .withClickEvent(ev)));
+                                    sp.sendSystemMessage(msg);
                                 } else {
-                                    // Guaranteed clickable fallback
-                                    ChatCompat.sendRunCommandTellraw(
-                                            (ServerPlayer) player,
-                                            "Item stored: ",
-                                            "[Claim]",
-                                            "/eco orders claim"
-                                    );
+                                    ChatCompat.sendRunCommandTellraw(sp, "Item stored: ", "[Claim]", "/eco orders claim");
                                 }
                             } else {
-                                ((ServerPlayer) player).sendSystemMessage(
-                                        Component.literal("Purchased " + count + "x " + name.getString() + " for " + EconomyCraft.formatMoney(total))
+                                sp.sendSystemMessage(
+                                        Component.literal("Purchased " + count + "x " + name.getString() + " from " + sellerName +
+                                                        " for " + EconomyCraft.formatMoney(total))
+                                                .withStyle(ChatFormatting.GREEN)
                                 );
                             }
                         }
                     }
                     player.closeContainer();
-                    ShopUi.open((ServerPlayer) player, shop);
+                    ShopUi.open(sp, shop);
                     return;
                 }
+
                 if (slot == 6) {
                     player.closeContainer();
                     ShopUi.open((ServerPlayer) player, shop);

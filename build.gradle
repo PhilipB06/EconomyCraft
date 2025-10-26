@@ -1,5 +1,5 @@
 plugins {
-    id "dev.architectury.loom" version "1.10-SNAPSHOT" apply false
+    id "dev.architectury.loom" version "1.11-SNAPSHOT" apply false
     id "architectury-plugin" version "3.4-SNAPSHOT"
     id "com.gradleup.shadow" version "8.3.6" apply false
 }
@@ -113,6 +113,8 @@ ext.mcTargets = [
         [ mc: "1.21.6", fabricApi: "0.128.2+1.21.6", architecturyVer: "17.0.6", neoforge: "21.6.20-beta",neoforgeLineLo: "21.6", neoforgeLineHi: "21.7", yarnBuild: "build.1" ],
         [ mc: "1.21.7", fabricApi: "0.129.0+1.21.7", architecturyVer: "17.0.8", neoforge: "21.7.25-beta",neoforgeLineLo: "21.7", neoforgeLineHi: "21.8", yarnBuild: "build.1" ],
         [ mc: "1.21.8", fabricApi: "0.131.0+1.21.8", architecturyVer: "17.0.8", neoforge: "21.8.31",     neoforgeLineLo: "21.8", neoforgeLineHi: "21.9", yarnBuild: "build.1" ],
+        [ mc: "1.21.9", fabricApi: "0.134.0+1.21.9", architecturyVer: "18.0.3", neoforge: "21.9.16-beta", neoforgeLineLo: "21.9", neoforgeLineHi: "21.10", yarnBuild: "build.1" ],
+        [ mc: "1.21.10", fabricApi: "0.135.0+1.21.10", architecturyVer: "18.0.3", neoforge: "21.10.38-beta", neoforgeLineLo: "21.10", neoforgeLineHi: "21.11", yarnBuild: "build.1" ],
 ]
 
 // ---- Build per version via external gradlew
