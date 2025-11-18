@@ -141,11 +141,53 @@ ext.mcTargets.each { t ->
     tasks.register("copyFabricJars_${t.mc}") {
         dependsOn buildFabricTask
         doLast {
-            copy {
-                from fileTree(dir: "fabric/build/libs", include: "*.jar")
-                into file("$rootDir/build/fabric/${t.mc}")
+            def libsDir = file("${rootProject.projectDir}/fabric/build/libs")
+            if (!libsDir.exists()) {
+                throw new GradleException("Libs dir not found: ${libsDir}")
             }
+
+            def builtJars = libsDir.listFiles().findAll { File f ->
+                f.name.endsWith(".jar") &&
+                        !f.name.endsWith("-sources.jar") &&
+                        !f.name.contains("dev-shadow")
+            }
+            if (builtJars.isEmpty()) {
+                throw new GradleException("No built jars found in ${libsDir}")
+            }
+
+            def buildOut = file("${rootProject.projectDir}/build/fabric/${t.mc}")
+            copy {
+                from builtJars
+                into buildOut
+            }
+
+            def localModsDir = file("${rootProject.projectDir}/local_servers/fabric/${t.mc}/mods")
+            if (!localModsDir.exists()) {
+                println "local_servers/fabric/${t.mc}/mods not found – skipped local deploy."
+                return
+            }
+
+            localModsDir.listFiles()?.findAll { File f ->
+                f.name.endsWith(".jar") &&
+                        f.name.toLowerCase().contains(rootProject.archives_name.toString().toLowerCase())
+            }?.each { it.delete() }
+
+            copy {
+                from builtJars
+                into localModsDir
+            }
+
+            println "Deployed Fabric ${t.mc} jar to ${localModsDir}"
         }
+    }
+
+    tasks.register("runLocalFabric_${t.mc}", Exec) {
+        group = "run/fabric"
+        description = "Build, deploy and run local Fabric server for MC ${t.mc}"
+        dependsOn "copyFabricJars_${t.mc}"
+
+        workingDir "$rootProject.projectDir/local_servers/fabric/${t.mc}"
+        commandLine "java", "-Xmx4G", "-jar", "server.jar", "nogui"
     }
 
     // NeoForge only
@@ -167,10 +209,57 @@ ext.mcTargets.each { t ->
     tasks.register("copyNeoForgeJars_${t.mc}") {
         dependsOn buildNeoForgeTask
         doLast {
-            copy {
-                from fileTree(dir: "neoforge/build/libs", include: "*.jar")
-                into file("$rootDir/build/neoforge/${t.mc}")
+            def nfLibsDir = file("${rootProject.projectDir}/neoforge/build/libs")
+            if (!nfLibsDir.exists()) {
+                throw new GradleException("NeoForge libs dir not found: ${nfLibsDir}")
             }
+
+            def nfJars = nfLibsDir.listFiles().findAll { File f ->
+                f.name.endsWith(".jar") &&
+                        !f.name.endsWith("-sources.jar") &&
+                        !f.name.contains("dev-shadow")
+            }
+            if (nfJars.isEmpty()) {
+                throw new GradleException("No NeoForge jars found in ${nfLibsDir}")
+            }
+
+            def nfOut = file("${rootProject.projectDir}/build/neoforge/${t.mc}")
+            copy {
+                from nfJars
+                into nfOut
+            }
+
+            def localModsDir = file("${rootProject.projectDir}/local_servers/neoforge/${t.mc}/mods")
+            if (!localModsDir.exists()) {
+                println "local_servers/neoforge/${t.mc}/mods not found – skipped local deploy."
+                return
+            }
+
+            localModsDir.listFiles()?.findAll { File f ->
+                f.name.endsWith(".jar") &&
+                        f.name.toLowerCase().contains(rootProject.archives_name.toString().toLowerCase())
+            }?.each { it.delete() }
+
+            copy {
+                from nfJars
+                into localModsDir
+            }
+
+            println "Deployed NeoForge ${t.mc} jar to ${localModsDir}"
+        }
+    }
+
+    tasks.register("runLocalNeoForge_${t.mc}", Exec) {
+        group = "run/neoforge"
+        description = "Build, deploy and run local NeoForge server for MC ${t.mc}"
+        dependsOn "copyNeoForgeJars_${t.mc}"
+
+        workingDir "$rootProject.projectDir/local_servers/neoforge/${t.mc}"
+
+        if (OperatingSystem.current().isWindows()) {
+            commandLine "cmd", "/c", "run.bat"
+        } else {
+            commandLine "bash", "run.sh"
         }
     }
 }
