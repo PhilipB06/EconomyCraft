@@ -125,8 +125,6 @@ def gradleWrapper = OperatingSystem.current().isWindows() ? "gradlew.bat" : "./g
 ext.mcTargets.each { t ->
     // Fabric only
     def buildFabricTask = tasks.register("buildFabric_${t.mc}", Exec) {
-        group = "build/fabric"
-        description = "Build Fabric for MC ${t.mc}"
         workingDir rootProject.projectDir
         commandLine gradleWrapper,
                 "--no-daemon",
@@ -138,7 +136,9 @@ ext.mcTargets.each { t ->
                 ":fabric:clean", ":fabric:build"
     }
 
-    tasks.register("copyFabricJars_${t.mc}") {
+    tasks.register("buildAndCopyFabricJars_${t.mc}") {
+        group = "build/fabric"
+        description = "Build and copy Fabric Jar for MC ${t.mc}"
         dependsOn buildFabricTask
         doLast {
             def libsDir = file("${rootProject.projectDir}/fabric/build/libs")
@@ -184,16 +184,15 @@ ext.mcTargets.each { t ->
     tasks.register("runLocalFabric_${t.mc}", Exec) {
         group = "run/fabric"
         description = "Build, deploy and run local Fabric server for MC ${t.mc}"
-        dependsOn "copyFabricJars_${t.mc}"
+        dependsOn "buildAndCopyFabricJars_${t.mc}"
 
         workingDir "$rootProject.projectDir/local_servers/fabric/${t.mc}"
+        // java -Xmx4G -jar server.jar nogui
         commandLine "java", "-Xmx4G", "-jar", "server.jar", "nogui"
     }
 
     // NeoForge only
     def buildNeoForgeTask = tasks.register("buildNeoForge_${t.mc}", Exec) {
-        group = "build/neoforge"
-        description = "Build NeoForge for MC ${t.mc}"
         workingDir rootProject.projectDir
         commandLine gradleWrapper,
                 "--no-daemon",
@@ -206,7 +205,9 @@ ext.mcTargets.each { t ->
                 ":neoforge:clean", ":neoforge:build"
     }
 
-    tasks.register("copyNeoForgeJars_${t.mc}") {
+    tasks.register("buildAndCopyNeoForgeJars_${t.mc}") {
+        group = "build/neoforge"
+        description = "Build and copy NeoForge Jar for MC ${t.mc}"
         dependsOn buildNeoForgeTask
         doLast {
             def nfLibsDir = file("${rootProject.projectDir}/neoforge/build/libs")
@@ -252,13 +253,15 @@ ext.mcTargets.each { t ->
     tasks.register("runLocalNeoForge_${t.mc}", Exec) {
         group = "run/neoforge"
         description = "Build, deploy and run local NeoForge server for MC ${t.mc}"
-        dependsOn "copyNeoForgeJars_${t.mc}"
+        dependsOn "buildAndCopyNeoForgeJars_${t.mc}"
 
         workingDir "$rootProject.projectDir/local_servers/neoforge/${t.mc}"
 
         if (OperatingSystem.current().isWindows()) {
+            // cmd /c run.bat
             commandLine "cmd", "/c", "run.bat"
         } else {
+            // bash run.sh
             commandLine "bash", "run.sh"
         }
     }
@@ -268,5 +271,5 @@ ext.mcTargets.each { t ->
 tasks.register("buildAll") {
     group = "build"
     description = "Build all Fabric & NeoForge targets"
-    dependsOn tasks.matching { it.name.startsWith("copyFabricJars_") || it.name.startsWith("copyNeoForgeJars_") }
+    dependsOn tasks.matching { it.name.startsWith("buildAndCopyFabricJars_") || it.name.startsWith("buildAndCopyNeoForgeJars_") }
 }
