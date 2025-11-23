@@ -246,13 +246,25 @@ public class EconomyManager {
         displayed.clear();
 
         List<Map.Entry<UUID, Long>> sorted = new ArrayList<>(balances.entrySet());
-        sorted.sort(Map.Entry.<UUID, Long>comparingByValue().reversed());
+        sorted.sort((a, b) -> {
+            int c = Long.compare(b.getValue(), a.getValue());
+            if (c != 0) return c;
+
+            String an = resolveName(server, a.getKey());
+            String bn = resolveName(server, b.getKey());
+            c = String.CASE_INSENSITIVE_ORDER.compare(an, bn);
+            if (c != 0) return c;
+
+            return a.getKey().compareTo(b.getKey());
+        });
 
         for (var e : sorted.stream().limit(5).toList()) {
             UUID id = e.getKey();
             String name = resolveName(server, id);
-            board.getOrCreatePlayerScore(net.minecraft.world.scores.ScoreHolder.forNameOnly(name), objective)
-                    .set(e.getValue().intValue());
+            board.getOrCreatePlayerScore(
+                    net.minecraft.world.scores.ScoreHolder.forNameOnly(name),
+                    objective
+            ).set(e.getValue().intValue());
             displayed.add(id);
         }
     }

@@ -14,9 +14,7 @@ import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.ChatFormatting;
 
-import java.util.Set;
-import java.util.UUID;
-import java.util.Collection;
+import java.util.*;
 
 import java.util.concurrent.CompletableFuture;
 import com.reazip.economycraft.shop.ShopManager;
@@ -31,6 +29,7 @@ import static net.minecraft.commands.Commands.argument;
 import static net.minecraft.commands.Commands.literal;
 
 import net.minecraft.commands.arguments.GameProfileArgument;
+import org.jetbrains.annotations.NotNull;
 
 public final class EconomyCommands {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
@@ -72,7 +71,9 @@ public final class EconomyCommands {
     // =====================================================================
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildBalance() {
-        return literal("balance")
+        return literal("bal")
+                .then(literal("top")
+                        .executes(ctx -> balTop(ctx.getSource())))
                 .executes(ctx -> showBalance(IdentityCompat.of(ctx.getSource().getPlayerOrException()), ctx.getSource()))
                 .then(argument("target", GameProfileArgument.gameProfile())
                         .executes(ctx -> {
@@ -126,6 +127,67 @@ public final class EconomyCommands {
         }
 
         return 1;
+    }
+
+    private static int balTop(CommandSourceStack source) {
+        EconomyManager manager = EconomyCraft.getManager(source.getServer());
+        Map<UUID, Long> balances = manager.getBalances();
+
+        if (balances.isEmpty()) {
+            source.sendFailure(Component.literal("No balances found").withStyle(ChatFormatting.RED));
+            return 0;
+        }
+
+        var sorted = getSortedEntries(balances, manager);
+        if (sorted.size() > 10) sorted = new java.util.ArrayList<>(sorted.subList(0, 10));
+
+        StringBuilder sb = new StringBuilder("Top balances:\n");
+        for (int i = 0; i < sorted.size(); i++) {
+            var e = sorted.get(i);
+            UUID id = e.getKey();
+            long balance = e.getValue();
+
+            String name = manager.getBestName(id);
+            if (name == null || name.isBlank()) name = id.toString();
+
+            sb.append(i + 1)
+                    .append(". ")
+                    .append(name)
+                    .append(": ")
+                    .append(EconomyCraft.formatMoney(balance));
+
+            if (i + 1 < sorted.size()) sb.append("\n");
+        }
+
+        Component msg = Component.literal(sb.toString()).withStyle(ChatFormatting.GOLD);
+
+        ServerPlayer executor;
+        try { executor = source.getPlayerOrException(); }
+        catch (Exception ex) { executor = null; }
+
+        if (executor != null) executor.sendSystemMessage(msg);
+        else source.sendSuccess(() -> msg, false);
+
+        return sorted.size();
+    }
+
+    private static @NotNull ArrayList<Map.Entry<UUID, Long>> getSortedEntries(Map<UUID, Long> balances, EconomyManager manager) {
+        var sorted = new ArrayList<>(balances.entrySet());
+        sorted.sort((a, b) -> {
+            int c = Long.compare(b.getValue(), a.getValue());
+            if (c != 0) return c;
+
+            String an = manager.getBestName(a.getKey());
+            String bn = manager.getBestName(b.getKey());
+            if (an == null || an.isBlank()) an = a.getKey().toString();
+            if (bn == null || bn.isBlank()) bn = b.getKey().toString();
+
+            c = String.CASE_INSENSITIVE_ORDER.compare(an, bn);
+            if (c != 0) return c;
+
+            return a.getKey().compareTo(b.getKey());
+        });
+        return sorted;
     }
 
     private static int pay(ServerPlayer from, String target, long amount, CommandSourceStack source) {
