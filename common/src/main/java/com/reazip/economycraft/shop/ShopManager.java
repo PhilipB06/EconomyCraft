@@ -5,12 +5,17 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
+import com.reazip.economycraft.EconomyCraft;
+import com.reazip.economycraft.util.IdentityCompat;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -59,6 +64,35 @@ public class ShopManager {
         }
         return l;
     }
+
+    public void notifySellerSale(ShopListing listing, ServerPlayer buyer) {
+        if (listing == null || buyer == null) return;
+
+        UUID sellerId = listing.seller;
+        if (sellerId == null) return;
+
+        ServerPlayer seller = server.getPlayerList().getPlayer(sellerId);
+        if (seller == null) return;
+
+        ItemStack stack = listing.item;
+        int amount = (stack == null || stack.isEmpty()) ? 0 : stack.getCount();
+        String itemName = (stack == null || stack.isEmpty())
+                ? "item"
+                : stack.getHoverName().getString();
+
+        String buyerName = IdentityCompat.of(buyer).name();
+        long price = listing.price;
+
+        Component msg = Component.literal(
+                "Sold " + amount + "x " + itemName +
+                        " to " + buyerName +
+                        " for " + EconomyCraft.formatMoney(price)
+        ).withStyle(ChatFormatting.GREEN);
+
+
+        seller.sendSystemMessage(msg);
+    }
+
 
     public MinecraftServer server() {
         return server;

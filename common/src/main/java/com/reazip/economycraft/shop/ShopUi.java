@@ -255,7 +255,10 @@ public final class ShopUi {
                         } else {
                             eco.removeMoney(player.getUUID(), total);
                             eco.addMoney(current.seller, cost);
-                            shop.removeListing(current.id);
+                            ShopListing sold = shop.removeListing(current.id);
+                            if (sold != null) {
+                                shop.notifySellerSale(sold, sp);
+                            }
                             ItemStack stack = current.item.copy();
                             int count = stack.getCount();
                             Component name = stack.getHoverName();
