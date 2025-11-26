@@ -27,10 +27,12 @@ public final class ShopUi {
     private ShopUi() {}
 
     public static void open(ServerPlayer player, ShopManager shop) {
+        Component title = EconomyCraft.createBalanceTitle("Shop", player);
+
         player.openMenu(new MenuProvider() {
             @Override
             public Component getDisplayName() {
-                return Component.literal("Shop");
+                return title;
             }
 
             @Override
