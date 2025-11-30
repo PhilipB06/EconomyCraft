@@ -177,7 +177,7 @@ ext.mcTargets.each { t ->
                 into localModsDir
             }
 
-            println "Deployed Fabric ${t.mc} jar to ${localModsDir}"
+            println "Deployed Fabric ${t.mc} jar to ${buildOut} and ${localModsDir}"
         }
     }
 
@@ -246,7 +246,7 @@ ext.mcTargets.each { t ->
                 into localModsDir
             }
 
-            println "Deployed NeoForge ${t.mc} jar to ${localModsDir}"
+            println "Deployed NeoForge ${t.mc} jar to ${nfOut} and ${localModsDir}"
         }
     }
 
