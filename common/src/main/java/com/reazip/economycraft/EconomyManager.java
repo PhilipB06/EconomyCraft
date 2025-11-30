@@ -29,6 +29,7 @@ public class EconomyManager {
     private final Map<UUID, Long> balances = new HashMap<>();
     private final Map<UUID, Long> lastDaily = new HashMap<>();
     private Map<UUID, String> diskUserCache = null;
+    private final PriceRegistry prices;
 
     private Objective objective;
     private final com.reazip.economycraft.shop.ShopManager shop;
@@ -56,6 +57,8 @@ public class EconomyManager {
         if (EconomyConfig.get().scoreboardEnabled) {
             setupObjective();
         }
+
+        this.prices = new PriceRegistry(server);
     }
 
     public MinecraftServer getServer() {
@@ -299,6 +302,10 @@ public class EconomyManager {
         return orders;
     }
 
+    public PriceRegistry getPrices() {
+        return prices;
+    }
+
     public Map<UUID, Long> getBalances() {
         return balances;
     }
@@ -346,7 +353,6 @@ public class EconomyManager {
         return Math.max(0, Math.min(MAX, value));
     }
 
-    // For reading usercache.json
     private static final class UserCacheEntry {
         String name;
         String uuid;
