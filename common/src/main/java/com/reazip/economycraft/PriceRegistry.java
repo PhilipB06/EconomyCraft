@@ -27,6 +27,7 @@ public class PriceRegistry {
 
     private final Path file;
     private final Map<ResourceLocation, ItemPrice> prices = new HashMap<>();
+    private final Set<ResourceLocation> explicit = new HashSet<>();
 
     public PriceRegistry(MinecraftServer server) {
         Path dir = server.getFile("config/economycraft");
@@ -80,41 +81,44 @@ public class PriceRegistry {
 
     public void save() {
         JsonObject root = new JsonObject();
-        for (Map.Entry<ResourceLocation, ItemPrice> e : prices.entrySet()) {
-            ItemPrice p = e.getValue();
-            JsonObject obj = new JsonObject();
-            if (p != null) {
-                if (p.buy() != null) {
-                    obj.addProperty("buy", p.buy());
-                }
-                if (p.sell() != null) {
-                    obj.addProperty("sell", p.sell());
-                }
-            }
-            root.add(e.getKey().toString(), obj);
-        }
+
+        prices.entrySet().stream()
+                .sorted(Comparator.comparing(e -> e.getKey().toString()))
+                .forEach(e -> {
+                    ItemPrice p = e.getValue();
+                    JsonObject obj = new JsonObject();
+                    if (p != null) {
+                        if (p.buy()  != null) obj.addProperty("buy",  p.buy());
+                        if (p.sell() != null) obj.addProperty("sell", p.sell());
+                    }
+                    root.add(e.getKey().toString(), obj);
+                });
 
         try {
             Files.writeString(file, GSON.toJson(root));
-        } catch (IOException ignored) {
-        }
+        } catch (IOException ignored) {}
     }
 
     private void load() {
         prices.clear();
+        explicit.clear();
+
         try {
+            if (!Files.exists(file)) return;
+
             String json = Files.readString(file);
             JsonObject root = GSON.fromJson(json, JsonObject.class);
             if (root == null) return;
 
-            for (String key : root.keySet()) {
-                ResourceLocation id = ResourceLocation.tryParse(key);
+            for (Map.Entry<String, JsonElement> e : root.entrySet()) {
+                ResourceLocation id = ResourceLocation.tryParse(e.getKey());
                 if (id == null) continue;
 
-                JsonElement el = root.get(key);
-                if (!el.isJsonObject()) continue;
+                JsonElement el = e.getValue();
+                if (el == null || !el.isJsonObject()) continue;
 
                 JsonObject obj = el.getAsJsonObject();
+
                 Long buy = null;
                 Long sell = null;
 
@@ -123,6 +127,7 @@ public class PriceRegistry {
                         && obj.get("buy").getAsJsonPrimitive().isNumber()) {
                     buy = obj.get("buy").getAsLong();
                 }
+
                 if (obj.has("sell")
                         && obj.get("sell").isJsonPrimitive()
                         && obj.get("sell").getAsJsonPrimitive().isNumber()) {
@@ -130,13 +135,16 @@ public class PriceRegistry {
                 }
 
                 prices.put(id, new ItemPrice(buy, sell));
+                explicit.add(id);
             }
-        } catch (IOException ignored) {
+        } catch (Exception ignored) {
         }
     }
 
     private void generateDefaults() {
         prices.clear();
+        explicit.clear();
+
         for (Item item : BuiltInRegistries.ITEM) {
             ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
             ItemPrice def = createDefaultPrice(id, item);
@@ -147,19 +155,26 @@ public class PriceRegistry {
     private boolean normalizePrices() {
         boolean changed = false;
 
+        Map<ResourceLocation, Item> byId = new HashMap<>();
         Set<ResourceLocation> validIds = new HashSet<>();
         for (Item item : BuiltInRegistries.ITEM) {
             ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
             validIds.add(id);
+            byId.put(id, item);
         }
 
         if (prices.keySet().retainAll(validIds)) {
             changed = true;
         }
+        if (explicit.retainAll(validIds)) {
+            changed = true;
+        }
 
         for (ResourceLocation id : validIds) {
             if (!prices.containsKey(id)) {
-                prices.put(id, new ItemPrice(null, null));
+                Item item = byId.get(id);
+                ItemPrice def = (item != null) ? createDefaultPrice(id, item) : null;
+                prices.put(id, Objects.requireNonNullElseGet(def, () -> new ItemPrice(null, null)));
                 changed = true;
             }
         }
@@ -174,7 +189,19 @@ public class PriceRegistry {
 
             String path = id.getPath();
 
-            if ("enchanted_book".equals(path)) {
+            boolean banned =
+                    id.equals(airId)
+                            || "enchanted_book".equals(path)
+                            || isRawAnything(path)
+                            || isAdminOnlyBlock(path)
+                            || isSpawnEgg(path)
+                            || isMusicDisc(path)
+                            || isPatternTrimOrSherd(path)
+                            || isPotionItem(path)
+                            || isWeaponOrArmor(path)
+                            || isTestOrDebugItem(path);
+
+            if (banned) {
                 if (buy != null || sell != null) {
                     entry.setValue(new ItemPrice(null, null));
                     changed = true;
@@ -182,16 +209,18 @@ public class PriceRegistry {
                 continue;
             }
 
-            if (id.equals(airId)
-                    || isAdminOnlyBlock(path)
-                    || isSpawnEgg(path)
-                    || isMusicDisc(path)
-                    || isPatternTrimOrSherd(path)
-                    || isPotionItem(path)
-                    || isWeaponOrArmor(path)
-                    || isTestOrDebugItem(path)) {
-                if (buy != null || sell != null) {
-                    entry.setValue(new ItemPrice(null, null));
+            boolean isExplicit = explicit.contains(id);
+
+            Long nb = buy;
+            Long ns = sell;
+
+            if (nb != null && nb <= 0) nb = null;
+            if (ns != null && ns <= 0) ns = null;
+            if (nb != null && ns != null && ns > nb) ns = nb;
+
+            if (isExplicit) {
+                if (!Objects.equals(nb, buy) || !Objects.equals(ns, sell)) {
+                    entry.setValue(new ItemPrice(nb, ns));
                     changed = true;
                 }
                 continue;
@@ -201,50 +230,24 @@ public class PriceRegistry {
             if (forced != null) {
                 Long fb = forced.buy();
                 Long fs = forced.sell();
-                if (!Objects.equals(buy, fb) || !Objects.equals(sell, fs)) {
+                if (!Objects.equals(nb, fb) || !Objects.equals(ns, fs)) {
                     entry.setValue(forced);
                     changed = true;
                 }
                 continue;
             }
 
-            if (buy != null && buy <= 0) {
-                buy = null;
-            }
-            if (sell != null && sell <= 0) {
-                sell = null;
-            }
-
-            if (buy != null && sell != null && sell > buy) {
-                sell = buy;
-            }
-
-            if (!Objects.equals(buy, old != null ? old.buy() : null)
-                    || !Objects.equals(sell, old != null ? old.sell() : null)) {
-                entry.setValue(new ItemPrice(buy, sell));
+            if (!Objects.equals(nb, buy) || !Objects.equals(ns, sell)) {
+                entry.setValue(new ItemPrice(nb, ns));
                 changed = true;
             }
         }
 
-        if (applyOreRules()) {
-            changed = true;
-        }
-
-        if (applyCompressedBlockRules()) {
-            changed = true;
-        }
-
-        if (applyWoodRules()) {
-            changed = true;
-        }
-
-        if (applyFoodOverrides()) {
-            changed = true;
-        }
-
-        if (normalizeRawCookedPairs()) {
-            changed = true;
-        }
+        if (applyOreRules()) changed = true;
+        if (applyCompressedBlockRules()) changed = true;
+        if (applyWoodRules()) changed = true;
+        if (applyFoodOverrides()) changed = true;
+        if (normalizeRawCookedPairs()) changed = true;
 
         return changed;
     }
@@ -284,9 +287,6 @@ public class PriceRegistry {
         p = getRedstoneComponentPrice(path);
         if (p != null) return p;
 
-        p = getResourceBlockPrice(path);
-        if (p != null) return p;
-
         switch (path) {
             case "diamond" -> {
                 return new ItemPrice(500L, 250L);
@@ -314,10 +314,8 @@ public class PriceRegistry {
             }
         }
 
-        if (isOre(path) || isRawOre(path)) {
-            if (path.equals("nether_quartz_ore")) {
-                return new ItemPrice(80L, 40L);
-            }
+        if (isOre(path)) {
+            if (path.equals("nether_quartz_ore")) return new ItemPrice(80L, 40L);
             return new ItemPrice(120L, 60L);
         }
 
@@ -372,17 +370,19 @@ public class PriceRegistry {
             ResourceLocation oreId = ResourceLocation.withDefaultNamespace(pair[0]);
             ResourceLocation dropId = ResourceLocation.withDefaultNamespace(pair[1]);
 
+            if (!prices.containsKey(oreId) || !prices.containsKey(dropId)) continue;
+            if (explicit.contains(oreId)) continue;
+
             ItemPrice drop = prices.get(dropId);
-            if (drop == null || drop.sell() == null || drop.sell() <= 0) {
-                continue;
-            }
+            if (drop == null || drop.sell() == null || drop.sell() <= 0) continue;
 
             Long targetSell = drop.sell();
-            ItemPrice existing = prices.get(oreId);
-            Long existingBuy = existing != null ? existing.buy() : null;
-            Long existingSell = existing != null ? existing.sell() : null;
 
-            if (!Objects.equals(existingBuy, null) || !Objects.equals(existingSell, targetSell)) {
+            ItemPrice existing = prices.get(oreId);
+            Long eb = existing != null ? existing.buy() : null;
+            Long es = existing != null ? existing.sell() : null;
+
+            if (eb != null || !Objects.equals(es, targetSell)) {
                 prices.put(oreId, new ItemPrice(null, targetSell));
                 changed = true;
             }
@@ -400,9 +400,6 @@ public class PriceRegistry {
             {"iron_block", "iron_ingot", 9},
             {"gold_block", "gold_ingot", 9},
             {"copper_block", "copper_ingot", 9},
-            {"raw_iron_block", "raw_iron", 9},
-            {"raw_gold_block", "raw_gold", 9},
-            {"raw_copper_block", "raw_copper", 9},
             {"bone_block", "bone", 9},
             {"slime_block", "slime_ball", 9},
             {"dried_kelp_block", "dried_kelp", 9},
@@ -422,32 +419,27 @@ public class PriceRegistry {
             String basePath = (String) def[1];
             int factor = (Integer) def[2];
 
+            if (isRawAnything(blockPath) || isRawAnything(basePath)) continue;
+
             ResourceLocation blockId = ResourceLocation.withDefaultNamespace(blockPath);
             ResourceLocation baseId = ResourceLocation.withDefaultNamespace(basePath);
 
+            if (!prices.containsKey(blockId) || !prices.containsKey(baseId)) continue;
+            if (explicit.contains(blockId)) continue;
+
             ItemPrice base = prices.get(baseId);
-            if (base == null || (base.buy() == null && base.sell() == null)) {
-                continue;
-            }
+            if (base == null) continue;
 
             Long baseBuy = base.buy();
             Long baseSell = base.sell();
+            if (baseBuy == null && baseSell == null) continue;
 
-            Long targetBuy = baseBuy != null ? baseBuy * factor : null;
-            Long targetSell = baseSell != null ? baseSell * factor : null;
+            Long targetBuy = baseBuy != null ? safeMul(baseBuy, factor) : null;
+            Long targetSell = baseSell != null ? safeMul(baseSell, factor) : null;
 
-            ItemPrice current = prices.get(blockId);
-            Long curBuy = current != null ? current.buy() : null;
-            Long curSell = current != null ? current.sell() : null;
-
-            boolean looksGeneric =
-                    current == null
-                            || (curBuy == null && curSell == null)
-                            || (Objects.equals(curBuy, 3L) && Objects.equals(curSell, 1L));
-
-            if (!looksGeneric) {
-                continue;
-            }
+            ItemPrice cur = prices.get(blockId);
+            Long curBuy = cur != null ? cur.buy() : null;
+            Long curSell = cur != null ? cur.sell() : null;
 
             if (!Objects.equals(curBuy, targetBuy) || !Objects.equals(curSell, targetSell)) {
                 prices.put(blockId, new ItemPrice(targetBuy, targetSell));
@@ -456,6 +448,14 @@ public class PriceRegistry {
         }
 
         return changed;
+    }
+
+    private Long safeMul(Long v, int factor) {
+        try {
+            return Math.multiplyExact(v, factor);
+        } catch (ArithmeticException ex) {
+            return null;
+        }
     }
 
     private static final String[] WOOD_TYPES = new String[]{
@@ -479,15 +479,11 @@ public class PriceRegistry {
         boolean changed = false;
 
         for (String type : WOOD_TYPES) {
-            if (applyPlankFix(type + "_planks")) {
-                changed = true;
-            }
+            if (applyPlankFix(type + "_planks")) changed = true;
         }
 
         for (String type : NETHER_WOOD_TYPES) {
-            if (applyPlankFix(type + "_planks")) {
-                changed = true;
-            }
+            if (applyPlankFix(type + "_planks")) changed = true;
         }
 
         return changed;
@@ -495,6 +491,10 @@ public class PriceRegistry {
 
     private boolean applyPlankFix(String plankPath) {
         ResourceLocation planksId = ResourceLocation.withDefaultNamespace(plankPath);
+
+        if (!prices.containsKey(planksId)) return false;
+        if (explicit.contains(planksId)) return false;
+
         ItemPrice current = prices.get(planksId);
         Long curBuy = current != null ? current.buy() : null;
         Long curSell = current != null ? current.sell() : null;
@@ -502,10 +502,10 @@ public class PriceRegistry {
         boolean isDefaultLogPrice = Objects.equals(curBuy, 16L) && Objects.equals(curSell, 8L);
 
         if (current == null || (curBuy == null && curSell == null) || isDefaultLogPrice) {
-            ItemPrice np = new ItemPrice(3L, 1L);
-            prices.put(planksId, np);
+            prices.put(planksId, new ItemPrice(3L, 1L));
             return true;
         }
+
         return false;
     }
 
@@ -514,11 +514,13 @@ public class PriceRegistry {
 
         for (Map.Entry<ResourceLocation, ItemPrice> entry : prices.entrySet()) {
             ResourceLocation id = entry.getKey();
+            if (explicit.contains(id)) continue;
+
             Optional<Holder.Reference<Item>> holderOpt = BuiltInRegistries.ITEM.get(id);
             if (holderOpt.isEmpty()) continue;
+
             Item item = holderOpt.get().value();
             if (item == Items.AIR) continue;
-
             if (!isFood(item)) continue;
 
             ItemPrice current = entry.getValue();
@@ -548,10 +550,6 @@ public class PriceRegistry {
         return path.endsWith("_ore");
     }
 
-    private boolean isRawOre(String path) {
-        return path.startsWith("raw_");
-    }
-
     private boolean isIngot(String path) {
         return path.endsWith("_ingot");
     }
@@ -579,33 +577,6 @@ public class PriceRegistry {
     private boolean isFood(Item item) {
         ItemStack stack = new ItemStack(item);
         return stack.get(DataComponents.FOOD) != null;
-    }
-
-    private ItemPrice getResourceBlockPrice(String path) {
-        return switch (path) {
-            case "diamond_block" -> new ItemPrice(9 * 500L, 9 * 250L);
-            case "emerald_block" -> new ItemPrice(9 * 400L, 9 * 200L);
-            case "netherite_block" -> new ItemPrice(9 * 2000L, 9 * 1000L);
-
-            case "gold_block",
-                 "iron_block",
-                 "coal_block",
-                 "redstone_block",
-                 "lapis_block" -> new ItemPrice(9 * 80L, 9 * 40L);
-
-            case "raw_gold_block",
-                 "raw_iron_block",
-                 "raw_copper_block" -> new ItemPrice(9 * 120L, 9 * 60L);
-
-            case "slime_block" -> new ItemPrice(9 * 10L, 9 * 5L);
-            case "bone_block" -> new ItemPrice(9 * 10L, 9 * 5L);
-            case "amethyst_block" -> new ItemPrice(4 * 150L, 4 * 75L);
-            case "quartz_block" -> new ItemPrice(4 * 40L, 4 * 20L);
-            case "dried_kelp_block" -> new ItemPrice(9 * 8L, 9 * 4L);
-            case "honey_block" -> new ItemPrice(4 * 8L, 4 * 4L);
-            case "hay_block" -> new ItemPrice(9 * 8L, 9 * 4L);
-            default -> null;
-        };
     }
 
     private boolean isAdminOnlyBlock(String path) {
@@ -671,20 +642,31 @@ public class PriceRegistry {
         return path.startsWith("test_")
                 || path.equals("test_block")
                 || path.equals("test_instance_block")
-                || path.equals("dried_ghast");
+                || path.equals("dried_ghast")
+                || path.equals("command_block_minecart");
+    }
+
+    private boolean isRawAnything(String path) {
+        return path.startsWith("raw_");
     }
 
     private ItemPrice getForcedPrice(String path) {
         ItemPrice p;
 
-        if ("raw_iron".equals(path) || "iron_ore".equals(path) || "deepslate_iron_ore".equals(path)) {
-            return new ItemPrice(80L, 40L);
+        switch (path) {
+            case "golden_apple" -> { return new ItemPrice(700L, 350L); }
+            case "enchanted_golden_apple" -> { return new ItemPrice(null, null); }
+            case "enchanting_table" -> { return new ItemPrice(1500L, 750L); }
+            case "tnt" -> { return new ItemPrice(80L, 40L); }
         }
-        if ("iron_ingot".equals(path)) {
-            return new ItemPrice(120L, 60L);
-        }
-        if ("obsidian".equals(path)) {
-            return new ItemPrice(80L, 40L);
+
+        switch (path) {
+            case "iron_ore", "deepslate_iron_ore", "obsidian" -> {
+                return new ItemPrice(80L, 40L);
+            }
+            case "iron_ingot" -> {
+                return new ItemPrice(120L, 60L);
+            }
         }
 
         p = getBossLootPrice(path);
@@ -737,7 +719,6 @@ public class PriceRegistry {
             case "book" -> new ItemPrice(16L, 8L);
             case "writable_book" -> new ItemPrice(24L, 12L);
             case "written_book" -> new ItemPrice(24L, 12L);
-            case "enchanted_book" -> new ItemPrice(100L, 50L);
             default -> null;
         };
     }
@@ -791,36 +772,40 @@ public class PriceRegistry {
                  "hopper_minecart",
                  "minecart",
                  "tnt_minecart",
-                 "furnace_minecart",
-                 "command_block_minecart" -> new ItemPrice(10L, 5L);
+                 "furnace_minecart" -> new ItemPrice(10L, 5L);
             default -> null;
         };
     }
 
     private boolean normalizeRawCookedPairs() {
         boolean changed = false;
+
         for (Map.Entry<String, String> e : COOKED_TO_RAW.entrySet()) {
             ResourceLocation cookedId = ResourceLocation.withDefaultNamespace(e.getKey());
             ResourceLocation rawId = ResourceLocation.withDefaultNamespace(e.getValue());
-            if (!prices.containsKey(cookedId) || !prices.containsKey(rawId)) {
-                continue;
-            }
+
+            if (!prices.containsKey(cookedId) || !prices.containsKey(rawId)) continue;
+            if (explicit.contains(rawId)) continue;
+
             ItemPrice cooked = prices.get(cookedId);
-            if (cooked == null || (cooked.buy() == null && cooked.sell() == null)) {
-                continue;
-            }
+            if (cooked == null || (cooked.buy() == null && cooked.sell() == null)) continue;
+
             Long cb = cooked.buy();
             Long cs = cooked.sell();
+
             Long rawBuy = cb != null ? cb / 2 : null;
             Long rawSell = cs != null ? cs / 2 : null;
+
             ItemPrice rawOld = prices.get(rawId);
             Long ob = rawOld != null ? rawOld.buy() : null;
             Long os = rawOld != null ? rawOld.sell() : null;
+
             if (!Objects.equals(rawBuy, ob) || !Objects.equals(rawSell, os)) {
                 prices.put(rawId, new ItemPrice(rawBuy, rawSell));
                 changed = true;
             }
         }
+
         return changed;
     }
 
