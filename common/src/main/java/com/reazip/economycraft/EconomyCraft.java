@@ -74,6 +74,6 @@ public final class EconomyCraft {
     }
 
     public static String formatMoney(long amount) {
-        return "$" + FORMAT.format(amount);
+        return "R-Coin" + FORMAT.format(amount);
     }
 }
