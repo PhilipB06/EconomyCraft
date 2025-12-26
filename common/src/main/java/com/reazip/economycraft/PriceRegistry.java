@@ -8,7 +8,15 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.core.Holder;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.alchemy.Potion;
+import net.minecraft.world.item.alchemy.PotionContents;
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.item.enchantment.ItemEnchantments;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -63,11 +71,26 @@ public final class PriceRegistry {
                 return;
             }
 
+            int missingItemCount = 0;
+            final int missingItemExamplesLimit = 100;
+            List<String> missingItemExamples = new ArrayList<>(missingItemExamplesLimit);
+
             for (Map.Entry<String, JsonElement> e : root.entrySet()) {
                 String key = e.getKey();
                 ResourceLocation id = ResourceLocation.tryParse(key);
                 if (id == null) {
                     LOGGER.warn("[EconomyCraft] Invalid item id in prices.json: {}", key);
+                    continue;
+                }
+
+                boolean isRealItem = BuiltInRegistries.ITEM.containsKey(id);
+                boolean isVirtual = isVirtualPriceId(id);
+
+                if (!isRealItem && !isVirtual) {
+                    missingItemCount++;
+                    if (missingItemExamples.size() < missingItemExamplesLimit) {
+                        missingItemExamples.add(key);
+                    }
                     continue;
                 }
 
@@ -92,6 +115,19 @@ public final class PriceRegistry {
                 prices.put(id, entry);
             }
 
+            if (missingItemCount > 0) {
+                if (missingItemExamples.isEmpty()) {
+                    LOGGER.warn("[EconomyCraft] Skipped {} price entries for items not present in this server version.", missingItemCount);
+                } else {
+                    LOGGER.warn(
+                            "[EconomyCraft] Skipped {} price entries for items not present in this server version. Examples: {}{}",
+                            missingItemCount,
+                            String.join(", ", missingItemExamples),
+                            (missingItemCount > missingItemExamples.size() ? ", ..." : "")
+                    );
+                }
+            }
+
             LOGGER.info("[EconomyCraft] Loaded {} price entries from {}", prices.size(), file);
 
         } catch (Exception ex) {
@@ -103,53 +139,58 @@ public final class PriceRegistry {
         return prices.get(id);
     }
 
-    public PriceEntry get(Item item) {
-        ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
-        return prices.get(id);
+    public PriceEntry get(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return null;
+
+        for (ResourceLocation key : resolvePriceKeys(stack)) {
+            PriceEntry p = prices.get(key);
+            if (p != null) return p;
+        }
+        return null;
     }
 
-    public Long getUnitBuy(ResourceLocation id) {
-        PriceEntry p = prices.get(id);
+    public Long getUnitBuy(ItemStack stack) {
+        PriceEntry p = get(stack);
         return (p != null && p.unitBuy() > 0) ? p.unitBuy() : null;
     }
 
-    public Long getUnitSell(ResourceLocation id) {
-        PriceEntry p = prices.get(id);
+    public Long getUnitSell(ItemStack stack) {
+        PriceEntry p = get(stack);
         return (p != null && p.unitSell() > 0) ? p.unitSell() : null;
     }
 
-    public Long getStackBuy(ResourceLocation id) {
-        PriceEntry p = prices.get(id);
+    public Long getStackBuy(ItemStack stack) {
+        PriceEntry p = get(stack);
         return (p != null && p.stackBuy() > 0) ? p.stackBuy() : null;
     }
 
-    public Long getStackSell(ResourceLocation id) {
-        PriceEntry p = prices.get(id);
+    public Long getStackSell(ItemStack stack) {
+        PriceEntry p = get(stack);
         return (p != null && p.stackSell() > 0) ? p.stackSell() : null;
     }
 
-    public Integer getStackSize(ResourceLocation id) {
-        PriceEntry p = prices.get(id);
+    public Integer getStackSize(ItemStack stack) {
+        PriceEntry p = get(stack);
         return (p != null && p.stack() > 0) ? p.stack() : null;
     }
 
-    public boolean canBuyUnit(Item item) {
-        PriceEntry p = get(item);
+    public boolean canBuyUnit(ItemStack stack) {
+        PriceEntry p = get(stack);
         return p != null && p.unitBuy() > 0;
     }
 
-    public boolean canSellUnit(Item item) {
-        PriceEntry p = get(item);
+    public boolean canSellUnit(ItemStack stack) {
+        PriceEntry p = get(stack);
         return p != null && p.unitSell() > 0;
     }
 
-    public boolean canBuyStack(Item item) {
-        PriceEntry p = get(item);
+    public boolean canBuyStack(ItemStack stack) {
+        PriceEntry p = get(stack);
         return p != null && p.stackBuy() > 0 && p.stack() > 0;
     }
 
-    public boolean canSellStack(Item item) {
-        PriceEntry p = get(item);
+    public boolean canSellStack(ItemStack stack) {
+        PriceEntry p = get(stack);
         return p != null && p.stackSell() > 0 && p.stack() > 0;
     }
 
@@ -265,6 +306,136 @@ public final class PriceRegistry {
             }
         } catch (IOException e) {
             LOGGER.error("[EconomyCraft] Failed to backup broken prices.json at {}", file, e);
+        }
+    }
+
+    private static boolean isVirtualPriceId(ResourceLocation id) {
+        if (!"minecraft".equals(id.getNamespace())) return false;
+
+        String p = id.getPath();
+
+        // echte Items (NICHT virtuell)
+        if (p.equals("potion") || p.equals("splash_potion") || p.equals("lingering_potion") || p.equals("tipped_arrow")) {
+            return false;
+        }
+
+        // Potions / Arrows (dein Schema)
+        if (p.equals("water_bottle") || p.equals("splash_water_bottle") || p.equals("lingering_water_bottle")) return true;
+        if (p.endsWith("_potion")) return true;                    // awkward_potion, mundane_potion, ...
+        if (p.startsWith("potion_of_")) return true;
+        if (p.startsWith("splash_potion_of_")) return true;
+        if (p.startsWith("lingering_potion_of_")) return true;
+        if (p.startsWith("arrow_of_")) return true;
+
+        // Enchanted books (dein Schema: enchanted_book_<enchant>_<level>)
+        if (p.startsWith("enchanted_book_") && looksLikeEnchantedBookKey(p)) return true;
+
+        return false;
+    }
+
+    private static boolean looksLikeEnchantedBookKey(String path) {
+        String rest = path.substring("enchanted_book_".length());
+        int lastUnderscore = rest.lastIndexOf('_');
+        if (lastUnderscore <= 0 || lastUnderscore >= rest.length() - 1) return false;
+
+        String lvlStr = rest.substring(lastUnderscore + 1);
+        try {
+            int lvl = Integer.parseInt(lvlStr);
+            return lvl > 0;
+        } catch (NumberFormatException ex) {
+            return false;
+        }
+    }
+
+    private static List<ResourceLocation> resolvePriceKeys(ItemStack stack) {
+        List<ResourceLocation> out = new ArrayList<>(4);
+
+        ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
+
+        if (stack.is(Items.POTION) || stack.is(Items.SPLASH_POTION) || stack.is(Items.LINGERING_POTION) || stack.is(Items.TIPPED_ARROW)) {
+            ResourceLocation potionId = readPotionId(stack);
+
+            if (potionId != null) {
+                out.addAll(buildVirtualPotionKeys(stack, potionId));
+            } else {
+                out.addAll(buildVirtualPotionKeys(stack, ResourceLocation.withDefaultNamespace("water")));
+            }
+        }
+
+        out.add(itemId);
+        return out;
+    }
+
+    private static ResourceLocation readPotionId(ItemStack stack) {
+        PotionContents contents = stack.get(DataComponents.POTION_CONTENTS);
+        if (contents == null) return null;
+
+        Optional<Holder<Potion>> opt = contents.potion();
+        if (opt.isEmpty()) return null;
+
+        Potion potion = opt.get().value();
+        return BuiltInRegistries.POTION.getKey(potion);
+    }
+
+    private static List<ResourceLocation> buildVirtualPotionKeys(ItemStack stack, ResourceLocation potionId) {
+        String potionPath = potionId.getPath();
+        String form;
+        if (stack.is(Items.SPLASH_POTION)) form = "splash";
+        else if (stack.is(Items.LINGERING_POTION)) form = "lingering";
+        else if (stack.is(Items.TIPPED_ARROW)) form = "arrow";
+        else form = "potion";
+
+        if (potionPath.equals("water")) {
+            String key = switch (form) {
+                case "splash" -> "splash_water_bottle";
+                case "lingering" -> "lingering_water_bottle";
+                case "potion" -> "water_bottle";
+                case "arrow" -> "arrow_of_water_1";
+                default -> "water_bottle";
+            };
+            return List.of(ResourceLocation.withDefaultNamespace(key));
+        }
+
+        if (potionPath.equals("awkward") || potionPath.equals("mundane") || potionPath.equals("thick")) {
+            String key = switch (form) {
+                case "potion" -> potionPath + "_potion";
+                case "splash" -> potionPath + "_splash_potion";
+                case "lingering" -> potionPath + "_lingering_potion";
+                case "arrow" -> "arrow_of_" + potionPath + "_1";
+                default -> potionPath + "_potion";
+            };
+            return List.of(ResourceLocation.withDefaultNamespace(key));
+        }
+
+        String effect = potionPath;
+        String suffix = "_1";
+        if (effect.startsWith("long_")) {
+            effect = effect.substring("long_".length());
+            suffix = "_extended";
+        } else if (effect.startsWith("strong_")) {
+            effect = effect.substring("strong_".length());
+            suffix = "_2";
+        }
+
+        if (effect.equals("turtle_master")) {
+            effect = "the_turtle_master";
+        }
+
+        String base = switch (form) {
+            case "potion" -> "potion_of_" + effect;
+            case "splash" -> "splash_potion_of_" + effect;
+            case "lingering" -> "lingering_potion_of_" + effect;
+            case "arrow" -> "arrow_of_" + effect;
+            default -> "potion_of_" + effect;
+        };
+
+        if (suffix.equals("_1")) {
+            return List.of(
+                    ResourceLocation.withDefaultNamespace(base + "_1"),
+                    ResourceLocation.withDefaultNamespace(base)
+            );
+        } else {
+            return List.of(ResourceLocation.withDefaultNamespace(base + suffix));
         }
     }
 

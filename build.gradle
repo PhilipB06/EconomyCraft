@@ -102,19 +102,30 @@ ext.resolveMcTarget = { String mcStr ->
     return t
 }
 
+// ---- TASK NAME VERSION
+ext.mcTaskVer = { String v ->
+    def parts = v.tokenize('.')
+    if (parts.size() < 3) return v
+    def major = parts[0] as int
+    def minor = parts[1] as int
+    def patch = parts[2] as int
+    return "${major}.${minor}.${String.format('%02d', patch)}"
+}
+
 // ---- BUILD TARGETS
 ext.mcTargets = [
         [ mc: "1.21",   fabricApi: "0.102.0+1.21",   architecturyVer: "13.0.8", neoforge: "21.0.167",    neoforgeLineLo: "21.0", neoforgeLineHi: "21.1", yarnBuild: "build.1" ],
-        [ mc: "1.21.1", fabricApi: "0.116.5+1.21.1", architecturyVer: "13.0.8", neoforge: "21.1.200",    neoforgeLineLo: "21.1", neoforgeLineHi: "21.2", yarnBuild: "build.1" ],
+        [ mc: "1.21.1", fabricApi: "0.116.5+1.21.1", architecturyVer: "13.0.8", neoforge: "21.1.217",    neoforgeLineLo: "21.1", neoforgeLineHi: "21.2", yarnBuild: "build.1" ],
         [ mc: "1.21.2", fabricApi: "0.106.1+1.21.2", architecturyVer: "14.0.4", neoforge: "21.2.1-beta", neoforgeLineLo: "21.2", neoforgeLineHi: "21.3", yarnBuild: "build.1" ],
-        [ mc: "1.21.3", fabricApi: "0.114.1+1.21.3", architecturyVer: "14.0.4", neoforge: "21.3.89",     neoforgeLineLo: "21.3", neoforgeLineHi: "21.4", yarnBuild: "build.1" ],
-        [ mc: "1.21.4", fabricApi: "0.119.4+1.21.4", architecturyVer: "15.0.3", neoforge: "21.4.150",    neoforgeLineLo: "21.4", neoforgeLineHi: "21.5", yarnBuild: "build.1" ],
-        [ mc: "1.21.5", fabricApi: "0.128.2+1.21.5", architecturyVer: "16.1.4", neoforge: "21.5.91",     neoforgeLineLo: "21.5", neoforgeLineHi: "21.6", yarnBuild: "build.1" ],
+        [ mc: "1.21.3", fabricApi: "0.114.1+1.21.3", architecturyVer: "14.0.4", neoforge: "21.3.95",     neoforgeLineLo: "21.3", neoforgeLineHi: "21.4", yarnBuild: "build.1" ],
+        [ mc: "1.21.4", fabricApi: "0.119.4+1.21.4", architecturyVer: "15.0.3", neoforge: "21.4.156",    neoforgeLineLo: "21.4", neoforgeLineHi: "21.5", yarnBuild: "build.1" ],
+        [ mc: "1.21.5", fabricApi: "0.128.2+1.21.5", architecturyVer: "16.1.4", neoforge: "21.5.96",     neoforgeLineLo: "21.5", neoforgeLineHi: "21.6", yarnBuild: "build.1" ],
         [ mc: "1.21.6", fabricApi: "0.128.2+1.21.6", architecturyVer: "17.0.6", neoforge: "21.6.20-beta",neoforgeLineLo: "21.6", neoforgeLineHi: "21.7", yarnBuild: "build.1" ],
         [ mc: "1.21.7", fabricApi: "0.129.0+1.21.7", architecturyVer: "17.0.8", neoforge: "21.7.25-beta",neoforgeLineLo: "21.7", neoforgeLineHi: "21.8", yarnBuild: "build.1" ],
-        [ mc: "1.21.8", fabricApi: "0.131.0+1.21.8", architecturyVer: "17.0.8", neoforge: "21.8.31",     neoforgeLineLo: "21.8", neoforgeLineHi: "21.9", yarnBuild: "build.1" ],
-        [ mc: "1.21.9", fabricApi: "0.134.0+1.21.9", architecturyVer: "18.0.3", neoforge: "21.9.16-beta", neoforgeLineLo: "21.9", neoforgeLineHi: "21.10", yarnBuild: "build.1" ],
-        [ mc: "1.21.10", fabricApi: "0.135.0+1.21.10", architecturyVer: "18.0.3", neoforge: "21.10.38-beta", neoforgeLineLo: "21.10", neoforgeLineHi: "21.11", yarnBuild: "build.1" ],
+        [ mc: "1.21.8", fabricApi: "0.136.1+1.21.8", architecturyVer: "17.0.8", neoforge: "21.8.52",     neoforgeLineLo: "21.8", neoforgeLineHi: "21.9", yarnBuild: "build.1" ],
+        [ mc: "1.21.9", fabricApi: "0.134.1+1.21.9", architecturyVer: "18.0.5", neoforge: "21.9.16-beta", neoforgeLineLo: "21.9", neoforgeLineHi: "21.10", yarnBuild: "build.1" ],
+        [ mc: "1.21.10", fabricApi: "0.138.3+1.21.10", architecturyVer: "18.0.8", neoforge: "21.10.64", neoforgeLineLo: "21.10", neoforgeLineHi: "21.11", yarnBuild: "build.1" ],
+        [ mc: "1.21.11", fabricApi: "0.140.2+1.21.11", architecturyVer: "19.0.1", neoforge: "21.11.14-beta", neoforgeLineLo: "21.11", neoforgeLineHi: "21.12", yarnBuild: "build.1" ],
 ]
 
 // ---- Build per version via external gradlew
@@ -123,6 +134,8 @@ import org.gradle.internal.os.OperatingSystem
 def gradleWrapper = OperatingSystem.current().isWindows() ? "gradlew.bat" : "./gradlew"
 
 ext.mcTargets.each { t ->
+    def mcTask = ext.mcTaskVer(t.mc)
+
     // Fabric only
     def buildFabricTask = tasks.register("buildFabric_${t.mc}", Exec) {
         workingDir rootProject.projectDir
@@ -181,7 +194,7 @@ ext.mcTargets.each { t ->
         }
     }
 
-    tasks.register("runLocalFabric_${t.mc}", Exec) {
+    tasks.register("runLocalFabric_${mcTask}", Exec) {
         group = "run/fabric"
         description = "Build, deploy and run local Fabric server for MC ${t.mc}"
         dependsOn "buildAndCopyFabricJars_${t.mc}"
@@ -250,7 +263,7 @@ ext.mcTargets.each { t ->
         }
     }
 
-    tasks.register("runLocalNeoForge_${t.mc}", Exec) {
+    tasks.register("runLocalNeoForge_${mcTask}", Exec) {
         group = "run/neoforge"
         description = "Build, deploy and run local NeoForge server for MC ${t.mc}"
         dependsOn "buildAndCopyNeoForgeJars_${t.mc}"

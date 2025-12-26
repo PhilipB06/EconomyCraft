@@ -305,15 +305,6 @@
     "stack_buy": 15,
     "stack_sell": 5
   },
-  "minecraft:copper_horse_armor": {
-    "name": "copper horse armor",
-    "category": "armor",
-    "stack": 1,
-    "unit_buy": 90,
-    "unit_sell": 27,
-    "stack_buy": 90,
-    "stack_sell": 27
-  },
   "minecraft:copper_leggings": {
     "name": "copper leggings",
     "category": "armor",
@@ -350,15 +341,6 @@
     "stack_buy": 1400,
     "stack_sell": 420
   },
-  "minecraft:diamond_horse_armor": {
-    "name": "diamond horse armor",
-    "category": "armor",
-    "stack": 1,
-    "unit_buy": 1000,
-    "unit_sell": 300,
-    "stack_buy": 1000,
-    "stack_sell": 300
-  },
   "minecraft:diamond_leggings": {
     "name": "diamond leggings",
     "category": "armor",
@@ -388,15 +370,6 @@
   },
   "minecraft:golden_helmet": {
     "name": "golden helmet",
-    "category": "armor",
-    "stack": 1,
-    "unit_buy": 300,
-    "unit_sell": 90,
-    "stack_buy": 300,
-    "stack_sell": 90
-  },
-  "minecraft:golden_horse_armor": {
-    "name": "golden horse armor",
     "category": "armor",
     "stack": 1,
     "unit_buy": 300,
@@ -440,15 +413,6 @@
     "stack_buy": 75,
     "stack_sell": 23
   },
-  "minecraft:iron_horse_armor": {
-    "name": "iron horse armor",
-    "category": "armor",
-    "stack": 1,
-    "unit_buy": 180,
-    "unit_sell": 54,
-    "stack_buy": 180,
-    "stack_sell": 54
-  },
   "minecraft:iron_leggings": {
     "name": "iron leggings",
     "category": "armor",
@@ -475,15 +439,6 @@
     "unit_sell": 12,
     "stack_buy": 40,
     "stack_sell": 12
-  },
-  "minecraft:leather_horse_armor": {
-    "name": "leather horse armor",
-    "category": "armor",
-    "stack": 1,
-    "unit_buy": 56,
-    "unit_sell": 17,
-    "stack_buy": 56,
-    "stack_sell": 17
   },
   "minecraft:leather_leggings": {
     "name": "leather pants",
@@ -557,14 +512,104 @@
     "stack_buy": 150,
     "stack_sell": 45
   },
-  "minecraft:wolf_armor": {
-    "name": "wolf armor",
+  "minecraft:copper_horse_armor": {
+    "name": "copper horse armor",
+    "category": "armor",
+    "stack": 1,
+    "unit_buy": 90,
+    "unit_sell": 27,
+    "stack_buy": 90,
+    "stack_sell": 27
+  },
+  "minecraft:diamond_horse_armor": {
+    "name": "diamond horse armor",
+    "category": "armor",
+    "stack": 1,
+    "unit_buy": 1000,
+    "unit_sell": 300,
+    "stack_buy": 1000,
+    "stack_sell": 300
+  },
+  "minecraft:golden_horse_armor": {
+    "name": "golden horse armor",
+    "category": "armor",
+    "stack": 1,
+    "unit_buy": 300,
+    "unit_sell": 90,
+    "stack_buy": 300,
+    "stack_sell": 90
+  },
+  "minecraft:iron_horse_armor": {
+    "name": "iron horse armor",
     "category": "armor",
     "stack": 1,
     "unit_buy": 180,
     "unit_sell": 54,
     "stack_buy": 180,
     "stack_sell": 54
+  },
+  "minecraft:leather_horse_armor": {
+    "name": "leather horse armor",
+    "category": "armor",
+    "stack": 1,
+    "unit_buy": 56,
+    "unit_sell": 17,
+    "stack_buy": 56,
+    "stack_sell": 17
+  },
+  "minecraft:netherite_horse_armor": {
+    "name": "netherite horse armor",
+    "category": "armor",
+    "stack": 1,
+    "unit_buy": 3340,
+    "unit_sell": 1002,
+    "stack_buy": 3340,
+    "stack_sell": 1002
+  },
+  "minecraft:copper_nautilus_armor": {
+    "name": "copper nautilus armor",
+    "category": "armor",
+    "stack": 1,
+    "unit_buy": 235,
+    "unit_sell": 71,
+    "stack_buy": 235,
+    "stack_sell": 71
+  },
+  "minecraft:diamond_nautilus_armor": {
+    "name": "diamond nautilus armor",
+    "category": "armor",
+    "stack": 1,
+    "unit_buy": 2300,
+    "unit_sell": 690,
+    "stack_buy": 2300,
+    "stack_sell": 690
+  },
+  "minecraft:golden_nautilus_armor": {
+    "name": "golden nautilus armor",
+    "category": "armor",
+    "stack": 1,
+    "unit_buy": 940,
+    "unit_sell": 282,
+    "stack_buy": 940,
+    "stack_sell": 282
+  },
+  "minecraft:iron_nautilus_armor": {
+    "name": "iron nautilus armor",
+    "category": "armor",
+    "stack": 1,
+    "unit_buy": 470,
+    "unit_sell": 141,
+    "stack_buy": 470,
+    "stack_sell": 141
+  },
+  "minecraft:netherite_nautilus_armor": {
+    "name": "netherite nautilus armor",
+    "category": "armor",
+    "stack": 1,
+    "unit_buy": 4640,
+    "unit_sell": 1392,
+    "stack_buy": 4640,
+    "stack_sell": 1392
   },
   "minecraft:bolt_armor_trim_smithing_template": {
     "name": "bolt armor trim smithing template",
@@ -727,6 +772,15 @@
     "unit_sell": 390,
     "stack_buy": 83200,
     "stack_sell": 24960
+  },
+  "minecraft:wolf_armor": {
+    "name": "wolf armor",
+    "category": "armor",
+    "stack": 1,
+    "unit_buy": 180,
+    "unit_sell": 54,
+    "stack_buy": 180,
+    "stack_sell": 54
   },
   "minecraft:water_bottle": {
     "name": "water bottle",
@@ -7253,14 +7307,14 @@
     "stack_buy": 1152,
     "stack_sell": 346
   },
-  "minecraft:milk": {
-    "name": "milk",
+  "minecraft:milk_bucket": {
+    "name": "milk bucket",
     "category": "food",
-    "stack": 0,
-    "unit_buy": 60,
-    "unit_sell": 18,
-    "stack_buy": 0,
-    "stack_sell": 0
+    "stack": 1,
+    "unit_buy": 65,
+    "unit_sell": 20,
+    "stack_buy": 65,
+    "stack_sell": 20
   },
   "minecraft:poisonous_potato": {
     "name": "poisonous potato",
@@ -12923,15 +12977,6 @@
     "stack_buy": 512,
     "stack_sell": 154
   },
-  "minecraft:milk_bucket": {
-    "name": "milk bucket",
-    "category": "utility",
-    "stack": 1,
-    "unit_buy": 65,
-    "unit_sell": 20,
-    "stack_buy": 65,
-    "stack_sell": 20
-  },
   "minecraft:name_tag": {
     "name": "nametag",
     "category": "utility",
@@ -14029,6 +14074,69 @@
     "unit_sell": 150,
     "stack_buy": 500,
     "stack_sell": 150
+  },
+  "minecraft:copper_spear": {
+    "name": "copper spear",
+    "category": "weapons",
+    "stack": 1,
+    "unit_buy": 5,
+    "unit_sell": 2,
+    "stack_buy": 5,
+    "stack_sell": 2
+  },
+  "minecraft:diamond_spear": {
+    "name": "diamond spear",
+    "category": "weapons",
+    "stack": 1,
+    "unit_buy": 282,
+    "unit_sell": 85,
+    "stack_buy": 282,
+    "stack_sell": 85
+  },
+  "minecraft:golden_spear": {
+    "name": "golden spear",
+    "category": "weapons",
+    "stack": 1,
+    "unit_buy": 62,
+    "unit_sell": 19,
+    "stack_buy": 62,
+    "stack_sell": 19
+  },
+  "minecraft:iron_spear": {
+    "name": "iron spear",
+    "category": "weapons",
+    "stack": 1,
+    "unit_buy": 17,
+    "unit_sell": 5,
+    "stack_buy": 17,
+    "stack_sell": 5
+  },
+  "minecraft:netherite_spear": {
+    "name": "netherite spear",
+    "category": "weapons",
+    "stack": 1,
+    "unit_buy": 2622,
+    "unit_sell": 787,
+    "stack_buy": 2622,
+    "stack_sell": 787
+  },
+  "minecraft:stone_spear": {
+    "name": "stone spear",
+    "category": "weapons",
+    "stack": 1,
+    "unit_buy": 3,
+    "unit_sell": 1,
+    "stack_buy": 3,
+    "stack_sell": 1
+  },
+  "minecraft:wooden_spear": {
+    "name": "wooden spear",
+    "category": "weapons",
+    "stack": 1,
+    "unit_buy": 4,
+    "unit_sell": 1,
+    "stack_buy": 4,
+    "stack_sell": 1
   },
   "minecraft:copper_sword": {
     "name": "copper sword",
