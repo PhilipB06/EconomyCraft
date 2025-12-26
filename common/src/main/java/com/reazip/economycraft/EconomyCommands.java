@@ -37,6 +37,7 @@ public final class EconomyCommands {
 
         dispatcher.register(buildBalance().requires(s -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(buildPay().requires(s -> EconomyConfig.get().standaloneCommands));
+        dispatcher.register(SellCommand.register().requires(s -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(buildShop().requires(s -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(buildOrders().requires(s -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(buildDaily().requires(s -> EconomyConfig.get().standaloneCommands));
@@ -66,6 +67,7 @@ public final class EconomyCommands {
         LiteralArgumentBuilder<CommandSourceStack> root = literal("eco");
         root.then(buildBalance());
         root.then(buildPay());
+        root.then(SellCommand.register());
         root.then(buildAddMoney());
         root.then(buildSetMoney());
         root.then(buildRemoveMoney());
@@ -600,9 +602,9 @@ public final class EconomyCommands {
     private static LiteralArgumentBuilder<CommandSourceStack> buildShop() {
         return literal("shop")
                 .executes(ctx -> openShop(ctx.getSource().getPlayerOrException(), ctx.getSource()))
-                .then(literal("sell")
+                .then(literal("list")
                         .then(argument("price", LongArgumentType.longArg(1, EconomyManager.MAX))
-                                .executes(ctx -> sellItem(ctx.getSource().getPlayerOrException(),
+                                .executes(ctx -> listItem(ctx.getSource().getPlayerOrException(),
                                         LongArgumentType.getLong(ctx, "price"),
                                         ctx.getSource()))));
     }
@@ -612,9 +614,9 @@ public final class EconomyCommands {
         return 1;
     }
 
-    private static int sellItem(ServerPlayer player, long price, CommandSourceStack source) {
+    private static int listItem(ServerPlayer player, long price, CommandSourceStack source) {
         if (player.getMainHandItem().isEmpty()) {
-            source.sendFailure(Component.literal("Hold the item to sell in your hand").withStyle(ChatFormatting.RED));
+            source.sendFailure(Component.literal("Hold the item to list in your hand").withStyle(ChatFormatting.RED));
             return 0;
         }
 
