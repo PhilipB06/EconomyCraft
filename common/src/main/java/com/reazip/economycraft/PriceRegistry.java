@@ -36,6 +36,8 @@ public final class PriceRegistry {
     private final Path file;
     private final Map<ResourceLocation, PriceEntry> prices = new HashMap<>();
 
+    public record ResolvedPrice(ResourceLocation key, PriceEntry entry) {}
+
     public PriceRegistry(MinecraftServer server) {
         Path dir = server.getFile("config/economycraft");
         try {
@@ -140,11 +142,16 @@ public final class PriceRegistry {
     }
 
     public PriceEntry get(ItemStack stack) {
+        ResolvedPrice rp = resolve(stack);
+        return rp != null ? rp.entry() : null;
+    }
+
+    public ResolvedPrice resolve(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return null;
 
         for (ResourceLocation key : resolvePriceKeys(stack)) {
             PriceEntry p = prices.get(key);
-            if (p != null) return p;
+            if (p != null) return new ResolvedPrice(key, p);
         }
         return null;
     }
@@ -192,6 +199,10 @@ public final class PriceRegistry {
     public boolean canSellStack(ItemStack stack) {
         PriceEntry p = get(stack);
         return p != null && p.stackSell() > 0 && p.stack() > 0;
+    }
+
+    public boolean isSellBlockedByDamage(ItemStack stack) {
+        return stack != null && stack.isDamageableItem() && stack.getDamageValue() > 0;
     }
 
     public Collection<PriceEntry> all() {
