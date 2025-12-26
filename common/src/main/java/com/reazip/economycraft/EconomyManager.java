@@ -47,17 +47,13 @@ public class EconomyManager {
         this.file = dataDir.resolve("balances.json");
         this.dailyFile = dataDir.resolve("daily.json");
 
-        EconomyConfig.load(server);
         load();
         loadDaily();
 
         this.shop = new com.reazip.economycraft.shop.ShopManager(server);
         this.orders = new com.reazip.economycraft.orders.OrderManager(server);
 
-        if (EconomyConfig.get().scoreboardEnabled) {
-            setupObjective();
-        }
-
+        applyScoreboardSettingOnStartup();
         this.prices = new PriceRegistry(server);
     }
 
@@ -213,6 +209,25 @@ public class EconomyManager {
     // === Scoreboard / Leaderboard =======================================
     // =====================================================================
 
+    private void applyScoreboardSettingOnStartup() {
+        Scoreboard board = server.getScoreboard();
+
+        if (EconomyConfig.get().scoreboardEnabled) {
+            setupObjective();
+            return;
+        }
+
+        board.setDisplayObjective(DisplaySlot.SIDEBAR, null);
+
+        Objective existing = board.getObjective("eco_balance");
+        if (existing != null) {
+            board.removeObjective(existing);
+        }
+
+        objective = null;
+        displayed.clear();
+    }
+
     private void setupObjective() {
         Scoreboard board = server.getScoreboard();
         objective = board.getObjective("eco_balance");
@@ -232,7 +247,14 @@ public class EconomyManager {
     }
 
     private void updateLeaderboard() {
-        if (!EconomyConfig.get().scoreboardEnabled) return;
+        if (!EconomyConfig.get().scoreboardEnabled) {
+            Scoreboard board = server.getScoreboard();
+            board.setDisplayObjective(DisplaySlot.SIDEBAR, null);
+            if (objective != null) board.removeObjective(objective);
+            objective = null;
+            displayed.clear();
+            return;
+        }
 
         Scoreboard board = server.getScoreboard();
         if (objective != null) board.removeObjective(objective);

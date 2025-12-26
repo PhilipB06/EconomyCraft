@@ -20,6 +20,8 @@ public final class EconomyCraft {
     private static final NumberFormat FORMAT = NumberFormat.getInstance(Locale.GERMANY);
 
     public static void registerEvents() {
+        LifecycleEvent.SERVER_STARTING.register(EconomyConfig::load);
+
         CommandRegistrationEvent.EVENT.register((dispatcher, registry, selection) -> {
             EconomyCommands.register(dispatcher);
         });

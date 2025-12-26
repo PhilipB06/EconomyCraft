@@ -35,20 +35,31 @@ public final class EconomyCommands {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(buildRoot());
 
-        if (EconomyConfig.get().standaloneCommands) {
-            dispatcher.register(buildBalance());
-            dispatcher.register(buildPay());
-            dispatcher.register(buildShop());
-            dispatcher.register(buildOrders());
-            dispatcher.register(buildDaily());
-        }
-        if (EconomyConfig.get().standaloneAdminCommands) {
-            dispatcher.register(buildAddMoney());
-            dispatcher.register(buildSetMoney());
-            dispatcher.register(buildRemoveMoney());
-            dispatcher.register(buildRemovePlayer());
-            dispatcher.register(buildToggleScoreboard());
-        }
+        dispatcher.register(buildBalance().requires(s -> EconomyConfig.get().standaloneCommands));
+        dispatcher.register(buildPay().requires(s -> EconomyConfig.get().standaloneCommands));
+        dispatcher.register(buildShop().requires(s -> EconomyConfig.get().standaloneCommands));
+        dispatcher.register(buildOrders().requires(s -> EconomyConfig.get().standaloneCommands));
+        dispatcher.register(buildDaily().requires(s -> EconomyConfig.get().standaloneCommands));
+
+        var addMoney = buildAddMoney();
+        addMoney.requires(addMoney.getRequirement().and(s -> EconomyConfig.get().standaloneAdminCommands));
+        dispatcher.register(addMoney);
+
+        var setMoney = buildSetMoney();
+        setMoney.requires(setMoney.getRequirement().and(s -> EconomyConfig.get().standaloneAdminCommands));
+        dispatcher.register(setMoney);
+
+        var removeMoney = buildRemoveMoney();
+        removeMoney.requires(removeMoney.getRequirement().and(s -> EconomyConfig.get().standaloneAdminCommands));
+        dispatcher.register(removeMoney);
+
+        var removePlayer = buildRemovePlayer();
+        removePlayer.requires(removePlayer.getRequirement().and(s -> EconomyConfig.get().standaloneAdminCommands));
+        dispatcher.register(removePlayer);
+
+        var toggleScoreboard = buildToggleScoreboard();
+        toggleScoreboard.requires(toggleScoreboard.getRequirement().and(s -> EconomyConfig.get().standaloneAdminCommands));
+        dispatcher.register(toggleScoreboard);
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildRoot() {
@@ -686,9 +697,9 @@ public final class EconomyCommands {
         return 1;
     }
 
-// =====================================================================
-// === Daily reward ====================================================
-// =====================================================================
+    // =====================================================================
+    // === Daily reward ====================================================
+    // =====================================================================
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildDaily() {
         return literal("daily")
@@ -708,7 +719,7 @@ public final class EconomyCommands {
     }
 
     // =====================================================================
-    // === Helpers ========================================================
+    // === Helpers =========================================================
     // =====================================================================
 
     private static String getDisplayName(EconomyManager manager, UUID id) {
