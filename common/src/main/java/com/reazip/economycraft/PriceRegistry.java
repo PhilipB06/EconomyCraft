@@ -10,8 +10,11 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.core.Holder;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.BundleContents;
+import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.item.alchemy.Potion;
 import net.minecraft.world.item.alchemy.PotionContents;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
@@ -205,6 +208,14 @@ public final class PriceRegistry {
         return stack != null && stack.isDamageableItem() && stack.getDamageValue() > 0;
     }
 
+    public boolean isSellBlockedByContents(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return false;
+        ItemContainerContents container = stack.get(DataComponents.CONTAINER);
+        if (container != null && container.nonEmptyItems().iterator().hasNext()) return true;
+        BundleContents bundle = stack.get(DataComponents.BUNDLE_CONTENTS);
+        return bundle != null && !bundle.isEmpty();
+    }
+
     public Collection<PriceEntry> all() {
         return Collections.unmodifiableCollection(prices.values());
     }
@@ -370,6 +381,22 @@ public final class PriceRegistry {
                 out.addAll(buildVirtualPotionKeys(stack, potionId));
             } else {
                 out.addAll(buildVirtualPotionKeys(stack, ResourceLocation.withDefaultNamespace("water")));
+            }
+        }
+
+        if (stack.is(Items.ENCHANTED_BOOK)) {
+            ItemEnchantments stored = stack.getOrDefault(DataComponents.STORED_ENCHANTMENTS, ItemEnchantments.EMPTY);
+            for (Object2IntMap.Entry<Holder<Enchantment>> e : stored.entrySet()) {
+                Holder<Enchantment> holder = e.getKey();
+                int level = e.getIntValue();
+                if (level <= 0) continue;
+                ResourceLocation enchId = holder.unwrapKey().map(ResourceKey::location).orElse(null);
+                if (enchId == null) continue;
+                ResourceLocation key = ResourceLocation.fromNamespaceAndPath(
+                        enchId.getNamespace(),
+                        "enchanted_book_" + enchId.getPath() + "_" + level
+                );
+                out.add(key);
             }
         }
 

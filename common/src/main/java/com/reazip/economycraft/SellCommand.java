@@ -63,6 +63,11 @@ public final class SellCommand {
             return 0;
         }
 
+        if (prices.isSellBlockedByContents(hand)) {
+            source.sendFailure(Component.literal("Items with contents cannot be sold.").withStyle(ChatFormatting.RED));
+            return 0;
+        }
+
         int available = hand.getCount();
         int toSell = amount < 0 ? available : amount;
         if (toSell < 1 || toSell > available) {
@@ -112,6 +117,11 @@ public final class SellCommand {
 
         if (prices.isSellBlockedByDamage(hand)) {
             source.sendFailure(Component.literal("Damaged items cannot be sold.").withStyle(ChatFormatting.RED));
+            return 0;
+        }
+
+        if (prices.isSellBlockedByContents(hand)) {
+            source.sendFailure(Component.literal("Items with contents cannot be sold.").withStyle(ChatFormatting.RED));
             return 0;
         }
 
@@ -180,6 +190,12 @@ public final class SellCommand {
 
         if (prices.isSellBlockedByDamage(hand)) {
             source.sendFailure(Component.literal("Damaged items cannot be sold.").withStyle(ChatFormatting.RED));
+            PENDING.remove(player.getUUID());
+            return 0;
+        }
+
+        if (prices.isSellBlockedByContents(hand)) {
+            source.sendFailure(Component.literal("Items with contents cannot be sold.").withStyle(ChatFormatting.RED));
             PENDING.remove(player.getUUID());
             return 0;
         }
@@ -254,6 +270,7 @@ public final class SellCommand {
     private static boolean isMatchingSellable(PriceRegistry prices, ItemStack stack, ResourceLocation key) {
         if (stack == null || stack.isEmpty()) return false;
         if (prices.isSellBlockedByDamage(stack)) return false;
+        if (prices.isSellBlockedByContents(stack)) return false;
         ResolvedPrice rp = prices.resolve(stack);
         return rp != null && key.equals(rp.key()) && prices.getUnitSell(stack) != null;
     }
