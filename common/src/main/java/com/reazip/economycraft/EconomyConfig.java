@@ -119,7 +119,6 @@ public class EconomyConfig {
         if (added[0] > 0) {
             try {
                 Files.writeString(file, GSON.toJson(userRoot), StandardCharsets.UTF_8);
-                LOGGER.info("[EconomyCraft] Added {} new config keys to {}", added[0], file);
             } catch (IOException ex) {
                 throw new IllegalStateException("[EconomyCraft] Failed to write merged config.json at " + file, ex);
             }

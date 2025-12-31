@@ -116,7 +116,7 @@ public final class PriceRegistry {
                 long stackBuy = getLong(obj, "stack_buy", 0L);
                 long stackSell = getLong(obj, "stack_sell", 0L);
 
-                PriceEntry entry = new PriceEntry(id, name, category, stack, unitBuy, unitSell, stackBuy, stackSell);
+                PriceEntry entry = new PriceEntry(id, category, stack, unitBuy, unitSell);
                 prices.put(id, entry);
             }
 
@@ -134,7 +134,6 @@ public final class PriceRegistry {
             }
 
             LOGGER.info("[EconomyCraft] Loaded {} price entries from {}", prices.size(), file);
-
         } catch (Exception ex) {
             LOGGER.error("[EconomyCraft] Failed to load prices.json from {}", file, ex);
         }
@@ -169,16 +168,6 @@ public final class PriceRegistry {
         return (p != null && p.unitSell() > 0) ? p.unitSell() : null;
     }
 
-    public Long getStackBuy(ItemStack stack) {
-        PriceEntry p = get(stack);
-        return (p != null && p.stackBuy() > 0) ? p.stackBuy() : null;
-    }
-
-    public Long getStackSell(ItemStack stack) {
-        PriceEntry p = get(stack);
-        return (p != null && p.stackSell() > 0) ? p.stackSell() : null;
-    }
-
     public Integer getStackSize(ItemStack stack) {
         PriceEntry p = get(stack);
         return (p != null && p.stack() > 0) ? p.stack() : null;
@@ -192,16 +181,6 @@ public final class PriceRegistry {
     public boolean canSellUnit(ItemStack stack) {
         PriceEntry p = get(stack);
         return p != null && p.unitSell() > 0;
-    }
-
-    public boolean canBuyStack(ItemStack stack) {
-        PriceEntry p = get(stack);
-        return p != null && p.stackBuy() > 0 && p.stack() > 0;
-    }
-
-    public boolean canSellStack(ItemStack stack) {
-        PriceEntry p = get(stack);
-        return p != null && p.stackSell() > 0 && p.stack() > 0;
     }
 
     public boolean isSellBlockedByDamage(ItemStack stack) {
@@ -237,7 +216,7 @@ public final class PriceRegistry {
             }
         }
 
-        out.sort(Comparator.comparing(PriceEntry::name, String.CASE_INSENSITIVE_ORDER));
+        out.sort(Comparator.comparing(PriceEntry::id));
         return out;
     }
 
@@ -252,7 +231,6 @@ public final class PriceRegistry {
 
             Files.copy(in, file, StandardCopyOption.REPLACE_EXISTING);
             LOGGER.info("[EconomyCraft] Created {} from bundled default {}", file, DEFAULT_RESOURCE_PATH);
-
         } catch (IOException e) {
             LOGGER.error("[EconomyCraft] Failed to create prices.json at {}", file, e);
         }
@@ -295,12 +273,9 @@ public final class PriceRegistry {
         if (added > 0) {
             try {
                 Files.writeString(file, GSON.toJson(userRoot), StandardCharsets.UTF_8);
-                LOGGER.info("[EconomyCraft] Added {} new price entries to {}", added, file);
             } catch (IOException ex) {
                 LOGGER.error("[EconomyCraft] Failed to write merged prices.json at {}", file, ex);
             }
-        } else {
-            LOGGER.info("[EconomyCraft] prices.json up-to-date (no new entries).");
         }
     }
 
@@ -504,20 +479,9 @@ public final class PriceRegistry {
 
     public record PriceEntry(
             ResourceLocation id,
-            String name,
             String category,
             int stack,
             long unitBuy,
-            long unitSell,
-            long stackBuy,
-            long stackSell
-    ) {
-        public boolean hasAnyBuy() {
-            return unitBuy > 0 || stackBuy > 0;
-        }
-
-        public boolean hasAnySell() {
-            return unitSell > 0 || stackSell > 0;
-        }
-    }
+            long unitSell
+    ) { }
 }
