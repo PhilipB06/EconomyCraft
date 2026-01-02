@@ -70,6 +70,14 @@ public final class ShopUi {
         });
     }
 
+    private static Component createPriceLore(long price, long tax) {
+        String text = "Price: " + EconomyCraft.formatMoney(price);
+        if (tax > 0) {
+            text += " (+" + EconomyCraft.formatMoney(tax) + " tax)";
+        }
+        return Component.literal(text);
+    }
+
     private static class ShopMenu extends AbstractContainerMenu {
         private final ShopManager shop;
         private final ServerPlayer viewer;
@@ -126,7 +134,7 @@ public final class ShopUi {
 
                 long tax = Math.round(l.price * EconomyConfig.get().taxRate);
                 display.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(List.of(
-                        Component.literal("Price: " + EconomyCraft.formatMoney(l.price) + " (+" + EconomyCraft.formatMoney(tax) + " tax)"),
+                        createPriceLore(l.price, tax),
                         Component.literal("Seller: " + sellerName))));
                 container.setItem(i, display);
             }
@@ -209,7 +217,7 @@ public final class ShopUi {
             ItemStack item = listing.item.copy();
             long tax = Math.round(listing.price * EconomyConfig.get().taxRate);
             item.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(List.of(
-                    Component.literal("Price: " + EconomyCraft.formatMoney(listing.price) + " (+" + EconomyCraft.formatMoney(tax) + " tax)"),
+                    createPriceLore(listing.price, tax),
                     Component.literal("Seller: " + sellerName))));
             container.setItem(4, item);
 
@@ -337,7 +345,7 @@ public final class ShopUi {
             ItemStack item = listing.item.copy();
             long tax = Math.round(listing.price * EconomyConfig.get().taxRate);
             item.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
-                    Component.literal("Price: " + EconomyCraft.formatMoney(listing.price) + " (+" + EconomyCraft.formatMoney(tax) + " tax)"),
+                    createPriceLore(listing.price, tax),
                     Component.literal("Seller: you"),
                     Component.literal("This will remove the listing"))));
             container.setItem(4, item);

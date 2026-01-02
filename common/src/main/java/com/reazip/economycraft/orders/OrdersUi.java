@@ -43,6 +43,14 @@ public final class OrdersUi {
         });
     }
 
+    private static Component createRewardLore(long reward, long tax) {
+        String text = "Reward: " + EconomyCraft.formatMoney(reward);
+        if (tax > 0) {
+            text += " (-" + EconomyCraft.formatMoney(tax) + " tax)";
+        }
+        return Component.literal(text);
+    }
+
     public static void openClaims(ServerPlayer player, EconomyManager eco) {
         player.openMenu(new MenuProvider() {
             @Override
@@ -116,8 +124,7 @@ public final class OrdersUi {
                 long tax = Math.round(r.price * EconomyConfig.get().taxRate);
                 display.set(net.minecraft.core.component.DataComponents.LORE,
                         new net.minecraft.world.item.component.ItemLore(List.of(
-                                Component.literal("Reward: " + EconomyCraft.formatMoney(r.price) +
-                                        " (-" + EconomyCraft.formatMoney(tax) + " tax)"),
+                                createRewardLore(r.price, tax),
                                 Component.literal("Requester: " + reqName),
                                 Component.literal("Amount: " + r.amount)
                         )));
@@ -249,8 +256,7 @@ public final class OrdersUi {
             long tax = Math.round(req.price * EconomyConfig.get().taxRate);
             item.set(net.minecraft.core.component.DataComponents.LORE,
                     new net.minecraft.world.item.component.ItemLore(List.of(
-                            Component.literal("Reward: " + EconomyCraft.formatMoney(req.price) +
-                                    " (-" + EconomyCraft.formatMoney(tax) + " tax)"),
+                            createRewardLore(req.price, tax),
                             Component.literal("Requester: " + requesterName),
                             Component.literal("Amount: " + req.amount)
                     )));
@@ -384,7 +390,7 @@ public final class OrdersUi {
             ItemStack item = req.item.copy();
             long tax = Math.round(req.price * EconomyConfig.get().taxRate);
             item.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
-                    Component.literal("Reward: " + EconomyCraft.formatMoney(req.price) + " (-" + EconomyCraft.formatMoney(tax) + " tax)"),
+                    createRewardLore(req.price, tax),
                     Component.literal("Amount: " + req.amount),
                     Component.literal("This will remove the request"))));
             container.setItem(4, item);

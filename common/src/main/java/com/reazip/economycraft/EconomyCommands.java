@@ -633,10 +633,9 @@ public final class EconomyCommands {
 
         long tax = Math.round(price * EconomyConfig.get().taxRate);
 
-        Component msg = Component.literal(
-                "Listed item for " + EconomyCraft.formatMoney(price) +
-                        " (buyers pay " + EconomyCraft.formatMoney(price + tax) + ")"
-        ).withStyle(ChatFormatting.GREEN);
+        Component msg = Component.literal("Listed item for " + EconomyCraft.formatMoney(price) +
+                        (tax > 0 ? " (buyers pay " + EconomyCraft.formatMoney(price + tax) + ")" : ""))
+                .withStyle(ChatFormatting.GREEN);
 
         player.sendSystemMessage(msg);
 
@@ -687,7 +686,8 @@ public final class EconomyCommands {
         orders.addRequest(r);
         long tax = Math.round(price * EconomyConfig.get().taxRate);
 
-        Component msg = Component.literal("Created request (fulfiller receives " + EconomyCraft.formatMoney(price - tax) + ")")
+        Component msg = Component.literal("Created request" +
+                (tax > 0 ? " (fulfiller receives " + EconomyCraft.formatMoney(price - tax) + ")" : ""))
                 .withStyle(ChatFormatting.GREEN);
         player.sendSystemMessage(msg);
 
