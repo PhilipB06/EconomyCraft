@@ -82,6 +82,10 @@ public final class SellCommand {
             return 0;
         }
 
+        if (EconomyConfig.get().dailySellLimit > 0 && manager.tryRecordDailySell(player.getUUID(), total)) {
+            return handleDailyLimitFailure(manager, player, source);
+        }
+
         hand.shrink(toSell);
         if (hand.isEmpty()) {
             player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, ItemStack.EMPTY);
@@ -207,6 +211,10 @@ public final class SellCommand {
             return 0;
         }
 
+        if (EconomyConfig.get().dailySellLimit > 0 && manager.tryRecordDailySell(player.getUUID(), pending.total())) {
+            return handleDailyLimitFailure(manager, player, source);
+        }
+
         String itemName = hand.getHoverName().getString();
         removeMatching(player, prices, pending.key(), pending.count());
         manager.addMoney(player.getUUID(), pending.total());
@@ -294,4 +302,20 @@ public final class SellCommand {
 
     private record PendingSale(ResourceLocation key, int count, long total, long expiresAt,
                                ResourceLocation heldItemId) {}
+
+    private static int handleDailyLimitFailure(EconomyManager manager, ServerPlayer player, CommandSourceStack source) {
+        long remaining = manager.getDailySellRemaining(player.getUUID());
+        long limit = EconomyConfig.get().dailySellLimit;
+
+        if (remaining <= 0) {
+            source.sendFailure(Component.literal("Daily sell limit of " + EconomyCraft.formatMoney(limit) + " reached. Try again tomorrow.")
+                    .withStyle(ChatFormatting.RED));
+        } else {
+            source.sendFailure(Component.literal("This sale exceeds the daily sell limit of " +
+                            EconomyCraft.formatMoney(limit) + "). You can sell items worth " +
+                            EconomyCraft.formatMoney(remaining) + " more today.")
+                    .withStyle(ChatFormatting.RED));
+        }
+        return 0;
+    }
 }

@@ -77,9 +77,6 @@ public final class PriceRegistry {
             }
 
             int missingItemCount = 0;
-            final int missingItemExamplesLimit = 100;
-            List<String> missingItemExamples = new ArrayList<>(missingItemExamplesLimit);
-
             for (Map.Entry<String, JsonElement> e : root.entrySet()) {
                 String key = e.getKey();
                 ResourceLocation id = ResourceLocation.tryParse(key);
@@ -93,9 +90,6 @@ public final class PriceRegistry {
 
                 if (!isRealItem && !isVirtual) {
                     missingItemCount++;
-                    if (missingItemExamples.size() < missingItemExamplesLimit) {
-                        missingItemExamples.add(key);
-                    }
                     continue;
                 }
 
@@ -106,31 +100,17 @@ public final class PriceRegistry {
                 }
 
                 JsonObject obj = el.getAsJsonObject();
-
-                String name = getString(obj, "name", id.getPath());
                 String category = getString(obj, "category", "misc");
-
                 int stack = getInt(obj, "stack", 1);
                 long unitBuy = getLong(obj, "unit_buy", 0L);
                 long unitSell = getLong(obj, "unit_sell", 0L);
-                long stackBuy = getLong(obj, "stack_buy", 0L);
-                long stackSell = getLong(obj, "stack_sell", 0L);
 
                 PriceEntry entry = new PriceEntry(id, category, stack, unitBuy, unitSell);
                 prices.put(id, entry);
             }
 
             if (missingItemCount > 0) {
-                if (missingItemExamples.isEmpty()) {
-                    LOGGER.warn("[EconomyCraft] Skipped {} price entries for items not present in this server version.", missingItemCount);
-                } else {
-                    LOGGER.warn(
-                            "[EconomyCraft] Skipped {} price entries for items not present in this server version. Examples: {}{}",
-                            missingItemCount,
-                            String.join(", ", missingItemExamples),
-                            (missingItemCount > missingItemExamples.size() ? ", ..." : "")
-                    );
-                }
+                LOGGER.warn("[EconomyCraft] Skipped {} price entries for items not present in this server version.", missingItemCount);
             }
 
             LOGGER.info("[EconomyCraft] Loaded {} price entries from {}", prices.size(), file);
@@ -311,20 +291,19 @@ public final class PriceRegistry {
 
         String p = id.getPath();
 
-        // echte Items (NICHT virtuell)
         if (p.equals("potion") || p.equals("splash_potion") || p.equals("lingering_potion") || p.equals("tipped_arrow")) {
             return false;
         }
 
-        // Potions / Arrows (dein Schema)
+        // Potions / Arrows
         if (p.equals("water_bottle") || p.equals("splash_water_bottle") || p.equals("lingering_water_bottle")) return true;
-        if (p.endsWith("_potion")) return true;                    // awkward_potion, mundane_potion, ...
+        if (p.endsWith("_potion")) return true; // awkward_potion, mundane_potion, ...
         if (p.startsWith("potion_of_")) return true;
         if (p.startsWith("splash_potion_of_")) return true;
         if (p.startsWith("lingering_potion_of_")) return true;
         if (p.startsWith("arrow_of_")) return true;
 
-        // Enchanted books (dein Schema: enchanted_book_<enchant>_<level>)
+        // Enchanted books
         if (p.startsWith("enchanted_book_") && looksLikeEnchantedBookKey(p)) return true;
 
         return false;

@@ -17,17 +17,21 @@ import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.time.LocalDate;
 
 public class EconomyManager {
     private static final Gson GSON = new Gson();
     private static final Type TYPE = new TypeToken<Map<UUID, Long>>(){}.getType();
+    private static final Type DAILY_SELL_TYPE = new TypeToken<Map<UUID, DailySellData>>(){}.getType();
 
     private final MinecraftServer server;
     private final Path file;
     private final Path dailyFile;
+    private final Path dailySellFile;
 
     private final Map<UUID, Long> balances = new HashMap<>();
     private final Map<UUID, Long> lastDaily = new HashMap<>();
+    private final Map<UUID, DailySellData> dailySells = new HashMap<>();
     private Map<UUID, String> diskUserCache = null;
     private final PriceRegistry prices;
 
@@ -46,9 +50,11 @@ public class EconomyManager {
 
         this.file = dataDir.resolve("balances.json");
         this.dailyFile = dataDir.resolve("daily.json");
+        this.dailySellFile = dataDir.resolve("daily_sells.json");
 
         load();
         loadDaily();
+        loadDailySells();
 
         this.shop = new com.reazip.economycraft.shop.ShopManager(server);
         this.orders = new com.reazip.economycraft.orders.OrderManager(server);
@@ -193,6 +199,11 @@ public class EconomyManager {
             String json = GSON.toJson(lastDaily, new TypeToken<Map<UUID, Long>>(){}.getType());
             Files.writeString(dailyFile, json);
         } catch (IOException ignored) {}
+
+        try {
+            String json = GSON.toJson(dailySells, DAILY_SELL_TYPE);
+            Files.writeString(dailySellFile, json);
+        } catch (IOException ignored) {}
     }
 
     private void loadDaily() {
@@ -201,6 +212,16 @@ public class EconomyManager {
                 String json = Files.readString(dailyFile);
                 Map<UUID, Long> map = GSON.fromJson(json, new TypeToken<Map<UUID, Long>>(){}.getType());
                 if (map != null) lastDaily.putAll(map);
+            } catch (IOException ignored) {}
+        }
+    }
+
+    private void loadDailySells() {
+        if (Files.exists(dailySellFile)) {
+            try {
+                String json = Files.readString(dailySellFile);
+                Map<UUID, DailySellData> map = GSON.fromJson(json, DAILY_SELL_TYPE);
+                if (map != null) dailySells.putAll(map);
             } catch (IOException ignored) {}
         }
     }
@@ -339,12 +360,44 @@ public class EconomyManager {
     }
 
     public boolean claimDaily(UUID player) {
-        long today = java.time.LocalDate.now().toEpochDay();
+        long today = LocalDate.now().toEpochDay();
         long last = lastDaily.getOrDefault(player, -1L);
         if (last == today) return false;
         lastDaily.put(player, today);
         addMoney(player, EconomyConfig.get().dailyAmount);
         return true;
+    }
+
+    public boolean tryRecordDailySell(UUID player, long saleAmount) {
+        long limit = EconomyConfig.get().dailySellLimit;
+        if (limit <= 0) return false;
+
+        DailySellData data = getOrCreateTodaySellData(player);
+        long newTotal = data.amount() + saleAmount;
+        if (newTotal > limit) {
+            return true;
+        }
+
+        dailySells.put(player, new DailySellData(data.day(), newTotal));
+        return false;
+    }
+
+    public long getDailySellRemaining(UUID player) {
+        long limit = EconomyConfig.get().dailySellLimit;
+        if (limit <= 0) return Long.MAX_VALUE;
+
+        DailySellData data = getOrCreateTodaySellData(player);
+        return Math.max(0, limit - data.amount());
+    }
+
+    private DailySellData getOrCreateTodaySellData(UUID player) {
+        long today = LocalDate.now().toEpochDay();
+        DailySellData data = dailySells.get(player);
+        if (data == null || data.day() != today) {
+            data = new DailySellData(today, 0L);
+            dailySells.put(player, data);
+        }
+        return data;
     }
 
     public void handlePvpKill(ServerPlayer victim, ServerPlayer killer) {
@@ -379,4 +432,6 @@ public class EconomyManager {
         String name;
         String uuid;
     }
+
+    private record DailySellData(long day, long amount) {}
 }
