@@ -45,7 +45,6 @@ public final class ServerShopUi {
     private static final Component STORED_MSG = Component.literal("Item stored: ")
             .withStyle(ChatFormatting.YELLOW);
     private static final Map<String, ResourceLocation> CATEGORY_ICONS = buildCategoryIcons();
-    private static final List<Integer> STAR_SLOT_ORDER = buildStarSlotOrder();
 
     private ServerShopUi() {}
 
@@ -140,26 +139,40 @@ public final class ServerShopUi {
         private final PriceRegistry prices;
         private final ServerPlayer viewer;
         private List<String> categories = new ArrayList<>();
-        private final SimpleContainer container = new SimpleContainer(54);
+        private final SimpleContainer container;
+        private final int rows;
+        private final int itemsPerPage;
+        private final int navRowStart;
+        private final List<Integer> slotOrder;
+        private final int[] slotToIndex;
         private int page;
 
         CategoryMenu(int id, Inventory inv, EconomyManager eco, ServerPlayer viewer) {
-            super(MenuType.GENERIC_9x6, id);
+            super(getMenuType(requiredRows(eco.getPrices().buyTopCategories().size())), id);
             this.eco = eco;
             this.viewer = viewer;
             this.prices = eco.getPrices();
 
             refreshCategories();
+            this.rows = requiredRows(categories.size());
+            this.itemsPerPage = (rows - 1) * 9;
+            this.navRowStart = itemsPerPage;
+            this.slotOrder = buildStarSlotOrder(rows - 1);
+            this.container = new SimpleContainer(rows * 9);
+            this.slotToIndex = new int[rows * 9];
             setupSlots(inv);
             updatePage();
         }
 
         private void refreshCategories() {
-            categories = new ArrayList<>(prices.buyTopCategories());
+            categories = new ArrayList<>();
+            for (String cat : prices.buyTopCategories()) {
+                if (hasItems(prices, cat)) categories.add(cat);
+            }
         }
 
         private void setupSlots(Inventory inv) {
-            for (int i = 0; i < 54; i++) {
+            for (int i = 0; i < rows * 9; i++) {
                 int r = i / 9;
                 int c = i % 9;
                 this.addSlot(new Slot(container, i, 8 + c * 18, 18 + r * 18) {
@@ -167,7 +180,7 @@ public final class ServerShopUi {
                     @Override public boolean mayPlace(ItemStack stack) { return false; }
                 });
             }
-            int y = 18 + 6 * 18 + 14;
+            int y = 18 + rows * 18 + 14;
             for (int r = 0; r < 3; r++) {
                 for (int c = 0; c < 9; c++) {
                     this.addSlot(new Slot(inv, c + r * 9 + 9, 8 + c * 18, y + r * 18));
@@ -180,10 +193,11 @@ public final class ServerShopUi {
 
         private void updatePage() {
             container.clearContent();
-            int start = page * 45;
-            int totalPages = (int) Math.ceil(categories.size() / 45.0);
+            java.util.Arrays.fill(slotToIndex, -1);
+            int start = page * itemsPerPage;
+            int totalPages = (int) Math.ceil(categories.size() / (double) itemsPerPage);
 
-            for (int i = 0; i < 45; i++) {
+            for (int i = 0; i < itemsPerPage; i++) {
                 int idx = start + i;
                 if (idx >= categories.size()) break;
 
@@ -193,33 +207,36 @@ public final class ServerShopUi {
 
                 icon.set(DataComponents.CUSTOM_NAME, Component.literal(formatCategoryTitle(cat)));
                 icon.set(DataComponents.LORE, new ItemLore(List.of(Component.literal("Click to view items"))));
-                int slot = STAR_SLOT_ORDER.get(i);
+                int slot = slotOrder.get(i);
                 container.setItem(slot, icon);
+                slotToIndex[slot] = idx;
             }
+
+            fillEmptyWithPanes(container, itemsPerPage);
 
             if (page > 0) {
                 ItemStack prev = new ItemStack(Items.ARROW);
                 prev.set(DataComponents.CUSTOM_NAME, Component.literal("Previous page"));
-                container.setItem(45, prev);
+                container.setItem(navRowStart + 3, prev);
             }
 
-            if (start + 45 < categories.size()) {
+            if (start + itemsPerPage < categories.size()) {
                 ItemStack next = new ItemStack(Items.ARROW);
                 next.set(DataComponents.CUSTOM_NAME, Component.literal("Next page"));
-                container.setItem(53, next);
+                container.setItem(navRowStart + 5, next);
             }
 
             ItemStack paper = new ItemStack(Items.PAPER);
             paper.set(DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)));
-            container.setItem(49, paper);
+            container.setItem(navRowStart + 4, paper);
         }
 
         @Override
         public void clicked(int slot, int dragType, ClickType type, Player player) {
             if (type == ClickType.PICKUP || type == ClickType.QUICK_MOVE) {
-                if (slot < 45) {
-                    int index = page * 45 + slot;
-                    if (index < categories.size()) {
+                if (slot < navRowStart) {
+                    int index = slotToIndex[slot];
+                    if (index >= 0 && index < categories.size()) {
                         String cat = categories.get(index);
                         List<String> subs = prices.buySubcategories(cat);
                         if (subs.isEmpty()) {
@@ -230,8 +247,8 @@ public final class ServerShopUi {
                         return;
                     }
                 }
-                if (slot == 45 && page > 0) { page--; updatePage(); return; }
-                if (slot == 53 && (page + 1) * 45 < categories.size()) { page++; updatePage(); return; }
+                if (slot == navRowStart + 3 && page > 0) { page--; updatePage(); return; }
+                if (slot == navRowStart + 5 && (page + 1) * itemsPerPage < categories.size()) { page++; updatePage(); return; }
             }
             super.clicked(slot, dragType, type, player);
         }
@@ -246,26 +263,42 @@ public final class ServerShopUi {
         private final ServerPlayer viewer;
         private final String topCategory;
         private List<String> subcategories = new ArrayList<>();
-        private final SimpleContainer container = new SimpleContainer(54);
+        private final SimpleContainer container;
+        private final int rows;
+        private final int itemsPerPage;
+        private final int navRowStart;
+        private final List<Integer> slotOrder;
+        private final int[] slotToIndex;
         private int page;
 
         SubcategoryMenu(int id, Inventory inv, EconomyManager eco, String topCategory, ServerPlayer viewer) {
-            super(MenuType.GENERIC_9x6, id);
+            super(getMenuType(requiredRows(eco.getPrices().buySubcategories(topCategory).size())), id);
             this.eco = eco;
             this.viewer = viewer;
             this.topCategory = topCategory;
             this.prices = eco.getPrices();
             refresh();
+            this.rows = requiredRows(subcategories.size());
+            this.itemsPerPage = (rows - 1) * 9;
+            this.navRowStart = itemsPerPage;
+            this.slotOrder = buildStarSlotOrder(rows - 1);
+            this.container = new SimpleContainer(rows * 9);
+            this.slotToIndex = new int[rows * 9];
             setupSlots(inv);
             updatePage();
         }
 
         private void refresh() {
-            subcategories = new ArrayList<>(prices.buySubcategories(topCategory));
+            subcategories = new ArrayList<>();
+            for (String sub : prices.buySubcategories(topCategory)) {
+                if (hasItems(prices, topCategory + "." + sub)) {
+                    subcategories.add(sub);
+                }
+            }
         }
 
         private void setupSlots(Inventory inv) {
-            for (int i = 0; i < 54; i++) {
+            for (int i = 0; i < rows * 9; i++) {
                 int r = i / 9;
                 int c = i % 9;
                 this.addSlot(new Slot(container, i, 8 + c * 18, 18 + r * 18) {
@@ -273,7 +306,7 @@ public final class ServerShopUi {
                     @Override public boolean mayPlace(ItemStack stack) { return false; }
                 });
             }
-            int y = 18 + 6 * 18 + 14;
+            int y = 18 + rows * 18 + 14;
             for (int r = 0; r < 3; r++) {
                 for (int c = 0; c < 9; c++) {
                     this.addSlot(new Slot(inv, c + r * 9 + 9, 8 + c * 18, y + r * 18));
@@ -286,10 +319,11 @@ public final class ServerShopUi {
 
         private void updatePage() {
             container.clearContent();
-            int start = page * 45;
-            int totalPages = (int) Math.ceil(subcategories.size() / 45.0);
+            java.util.Arrays.fill(slotToIndex, -1);
+            int start = page * itemsPerPage;
+            int totalPages = (int) Math.ceil(subcategories.size() / (double) itemsPerPage);
 
-            for (int i = 0; i < 45; i++) {
+            for (int i = 0; i < itemsPerPage; i++) {
                 int idx = start + i;
                 if (idx >= subcategories.size()) break;
 
@@ -300,40 +334,43 @@ public final class ServerShopUi {
 
                 icon.set(DataComponents.CUSTOM_NAME, Component.literal(formatCategoryTitle(sub)));
                 icon.set(DataComponents.LORE, new ItemLore(List.of(Component.literal("Click to view items"))));
-                int slot = STAR_SLOT_ORDER.get(i);
+                int slot = slotOrder.get(i);
                 container.setItem(slot, icon);
+                slotToIndex[slot] = idx;
             }
+
+            fillEmptyWithPanes(container, itemsPerPage);
 
             if (page > 0) {
                 ItemStack prev = new ItemStack(Items.ARROW);
                 prev.set(DataComponents.CUSTOM_NAME, Component.literal("Previous page"));
-                container.setItem(45, prev);
+                container.setItem(navRowStart + 3, prev);
             }
 
-            if (start + 45 < subcategories.size()) {
+            if (start + itemsPerPage < subcategories.size()) {
                 ItemStack next = new ItemStack(Items.ARROW);
                 next.set(DataComponents.CUSTOM_NAME, Component.literal("Next page"));
-                container.setItem(53, next);
+                container.setItem(navRowStart + 5, next);
             }
 
             ItemStack paper = new ItemStack(Items.PAPER);
             paper.set(DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)));
-            container.setItem(49, paper);
+            container.setItem(navRowStart + 4, paper);
         }
 
         @Override
         public void clicked(int slot, int dragType, ClickType type, Player player) {
             if (type == ClickType.PICKUP || type == ClickType.QUICK_MOVE) {
-                if (slot < 45) {
-                    int index = page * 45 + slot;
-                    if (index < subcategories.size()) {
+                if (slot < navRowStart) {
+                    int index = slotToIndex[slot];
+                    if (index >= 0 && index < subcategories.size()) {
                         String sub = subcategories.get(index);
                         openItems(viewer, eco, topCategory + "." + sub);
                         return;
                     }
                 }
-                if (slot == 45 && page > 0) { page--; updatePage(); return; }
-                if (slot == 53 && (page + 1) * 45 < subcategories.size()) { page++; updatePage(); return; }
+                if (slot == navRowStart + 3 && page > 0) { page--; updatePage(); return; }
+                if (slot == navRowStart + 5 && (page + 1) * itemsPerPage < subcategories.size()) { page++; updatePage(); return; }
             }
             super.clicked(slot, dragType, type, player);
         }
@@ -348,17 +385,24 @@ public final class ServerShopUi {
         private final ServerPlayer viewer;
         private final String category;
         private List<PriceRegistry.PriceEntry> entries = new ArrayList<>();
-        private final SimpleContainer container = new SimpleContainer(54);
+        private final SimpleContainer container;
+        private final int rows;
+        private final int itemsPerPage;
+        private final int navRowStart;
         private int page;
 
         ItemMenu(int id, Inventory inv, EconomyManager eco, String category, ServerPlayer viewer) {
-            super(MenuType.GENERIC_9x6, id);
+            super(getMenuType(requiredRows(eco.getPrices().buyableByCategory(category).size())), id);
             this.eco = eco;
             this.viewer = viewer;
             this.category = category;
             this.prices = eco.getPrices();
 
             refreshEntries();
+            this.rows = requiredRows(entries.size());
+            this.itemsPerPage = (rows - 1) * 9;
+            this.navRowStart = itemsPerPage;
+            this.container = new SimpleContainer(rows * 9);
             setupSlots(inv);
             updatePage();
         }
@@ -368,7 +412,7 @@ public final class ServerShopUi {
         }
 
         private void setupSlots(Inventory inv) {
-            for (int i = 0; i < 54; i++) {
+            for (int i = 0; i < rows * 9; i++) {
                 int r = i / 9;
                 int c = i % 9;
                 this.addSlot(new Slot(container, i, 8 + c * 18, 18 + r * 18) {
@@ -376,7 +420,7 @@ public final class ServerShopUi {
                     @Override public boolean mayPlace(ItemStack stack) { return false; }
                 });
             }
-            int y = 18 + 6 * 18 + 14;
+            int y = 18 + rows * 18 + 14;
             for (int r = 0; r < 3; r++) {
                 for (int c = 0; c < 9; c++) {
                     this.addSlot(new Slot(inv, c + r * 9 + 9, 8 + c * 18, y + r * 18));
@@ -389,10 +433,10 @@ public final class ServerShopUi {
 
         private void updatePage() {
             container.clearContent();
-            int start = page * 45;
-            int totalPages = (int) Math.ceil(entries.size() / 45.0);
+            int start = page * itemsPerPage;
+            int totalPages = (int) Math.ceil(entries.size() / (double) itemsPerPage);
 
-            for (int i = 0; i < 45; i++) {
+            for (int i = 0; i < itemsPerPage; i++) {
                 int idx = start + i;
                 if (idx >= entries.size()) break;
 
@@ -422,32 +466,32 @@ public final class ServerShopUi {
             if (page > 0) {
                 ItemStack prev = new ItemStack(Items.ARROW);
                 prev.set(DataComponents.CUSTOM_NAME, Component.literal("Previous page"));
-                container.setItem(45, prev);
+                container.setItem(navRowStart + 3, prev);
             }
 
-            if (start + 45 < entries.size()) {
+            if (start + itemsPerPage < entries.size()) {
                 ItemStack next = new ItemStack(Items.ARROW);
                 next.set(DataComponents.CUSTOM_NAME, Component.literal("Next page"));
-                container.setItem(53, next);
+                container.setItem(navRowStart + 5, next);
             }
 
             ItemStack paper = new ItemStack(Items.PAPER);
             paper.set(DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)));
-            container.setItem(49, paper);
+            container.setItem(navRowStart + 4, paper);
         }
 
         @Override
         public void clicked(int slot, int dragType, ClickType type, Player player) {
             if (type == ClickType.PICKUP || type == ClickType.QUICK_MOVE) {
-                if (slot < 45) {
-                    int index = page * 45 + slot;
+                if (slot < navRowStart) {
+                    int index = page * itemsPerPage + slot;
                     if (index < entries.size()) {
                         handlePurchase(entries.get(index), type);
                         return;
                     }
                 }
-                if (slot == 45 && page > 0) { page--; updatePage(); return; }
-                if (slot == 53 && (page + 1) * 45 < entries.size()) { page++; updatePage(); return; }
+                if (slot == navRowStart + 3 && page > 0) { page--; updatePage(); return; }
+                if (slot == navRowStart + 5 && (page + 1) * itemsPerPage < entries.size()) { page++; updatePage(); return; }
             }
             super.clicked(slot, dragType, type, player);
         }
@@ -602,6 +646,68 @@ public final class ServerShopUi {
         if (key == null) return "";
         String cleaned = key.replace('.', ' ').replace('-', ' ').replace('_', ' ').trim().toLowerCase(Locale.ROOT);
         return cleaned;
+    }
+
+    private static List<Integer> buildStarSlotOrder(int height) {
+        int width = 9;
+        int centerX = (width - 1) / 2;
+        int centerY = (height - 1) / 2;
+        List<int[]> entries = new ArrayList<>();
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int idx = y * width + x;
+                double dx = x - centerX;
+                double dy = y - centerY;
+                double dist = Math.sqrt(dx * dx + dy * dy);
+                entries.add(new int[]{idx, (int) (dist * 1000), y, x});
+            }
+        }
+
+        entries.sort(Comparator
+                .comparingInt((int[] a) -> a[1])
+                .thenComparingInt(a -> a[2])
+                .thenComparingInt(a -> a[3]));
+
+        List<Integer> order = new ArrayList<>(entries.size());
+        for (int[] e : entries) order.add(e[0]);
+        return order;
+    }
+
+    private static boolean hasItems(PriceRegistry prices, String categoryKey) {
+        if (categoryKey == null || categoryKey.isBlank()) return false;
+        if (!prices.buyableByCategory(categoryKey).isEmpty()) return true;
+        if (!categoryKey.contains(".")) {
+            for (String sub : prices.buySubcategories(categoryKey)) {
+                if (!prices.buyableByCategory(categoryKey + "." + sub).isEmpty()) return true;
+            }
+        }
+        return false;
+    }
+
+    private static void fillEmptyWithPanes(SimpleContainer container, int limit) {
+        ItemStack filler = new ItemStack(Items.GRAY_STAINED_GLASS_PANE);
+        filler.set(DataComponents.CUSTOM_NAME, Component.literal(" "));
+        for (int i = 0; i < limit && i < container.getContainerSize(); i++) {
+            if (container.getItem(i).isEmpty()) {
+                container.setItem(i, filler.copy());
+            }
+        }
+    }
+
+    private static MenuType<?> getMenuType(int rows) {
+        return switch (rows) {
+            case 1 -> MenuType.GENERIC_9x1;
+            case 2 -> MenuType.GENERIC_9x2;
+            case 3 -> MenuType.GENERIC_9x3;
+            case 4 -> MenuType.GENERIC_9x4;
+            case 5 -> MenuType.GENERIC_9x5;
+            default -> MenuType.GENERIC_9x6;
+        };
+    }
+
+    private static int requiredRows(int itemCount) {
+        int contentRows = (int) Math.ceil(Math.max(1, itemCount) / 9.0);
+        return Math.min(6, Math.max(2, contentRows + 1));
     }
 
     private static List<Integer> buildStarSlotOrder() {
