@@ -203,8 +203,8 @@ public final class ServerShopUi {
                 ItemStack icon = createCategoryIcon(cat, cat, prices, viewer);
                 if (icon.isEmpty()) continue;
 
-                icon.set(DataComponents.CUSTOM_NAME, Component.literal(formatCategoryTitle(cat)));
-                icon.set(DataComponents.LORE, new ItemLore(List.of(Component.literal("Click to view items"))));
+                icon.set(DataComponents.CUSTOM_NAME, Component.literal(formatCategoryTitle(cat)).withStyle(s -> s.withItalic(false)));
+                icon.set(DataComponents.LORE, new ItemLore(List.of(Component.literal("Click to view items").withStyle(s -> s.withItalic(false)))));
                 int slot = STAR_SLOT_ORDER.get(i);
                 container.setItem(slot, icon);
                 slotToIndex[slot] = idx;
@@ -214,18 +214,18 @@ public final class ServerShopUi {
 
             if (page > 0) {
                 ItemStack prev = new ItemStack(Items.ARROW);
-                prev.set(DataComponents.CUSTOM_NAME, Component.literal("Previous page"));
+                prev.set(DataComponents.CUSTOM_NAME, Component.literal("Previous page").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 3, prev);
             }
 
             if (start + itemsPerPage < categories.size()) {
                 ItemStack next = new ItemStack(Items.ARROW);
-                next.set(DataComponents.CUSTOM_NAME, Component.literal("Next page"));
+                next.set(DataComponents.CUSTOM_NAME, Component.literal("Next page").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 5, next);
             }
 
             ItemStack paper = new ItemStack(Items.PAPER);
-            paper.set(DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)));
+            paper.set(DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
             container.setItem(navRowStart + 4, paper);
         }
 
@@ -325,25 +325,29 @@ public final class ServerShopUi {
                 ItemStack icon = createCategoryIcon(sub, full, prices, viewer);
                 if (icon.isEmpty()) continue;
 
-                icon.set(DataComponents.CUSTOM_NAME, Component.literal(formatCategoryTitle(sub)));
-                icon.set(DataComponents.LORE, new ItemLore(List.of(Component.literal("Click to view items"))));
+                icon.set(DataComponents.CUSTOM_NAME, Component.literal(formatCategoryTitle(sub)).withStyle(s -> s.withItalic(false)));
+                icon.set(DataComponents.LORE, new ItemLore(List.of(Component.literal("Click to view items").withStyle(s -> s.withItalic(false)))));
                 container.setItem(i, icon);
             }
 
             if (page > 0) {
                 ItemStack prev = new ItemStack(Items.ARROW);
-                prev.set(DataComponents.CUSTOM_NAME, Component.literal("Previous page"));
+                prev.set(DataComponents.CUSTOM_NAME, Component.literal("Previous page").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 3, prev);
             }
 
             if (start + itemsPerPage < subcategories.size()) {
                 ItemStack next = new ItemStack(Items.ARROW);
-                next.set(DataComponents.CUSTOM_NAME, Component.literal("Next page"));
+                next.set(DataComponents.CUSTOM_NAME, Component.literal("Next page").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 5, next);
             }
 
+            ItemStack back = new ItemStack(Items.BARRIER);
+            back.set(DataComponents.CUSTOM_NAME, Component.literal("Back").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.DARK_RED)));
+            container.setItem(navRowStart + 8, back);
+
             ItemStack paper = new ItemStack(Items.PAPER);
-            paper.set(DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)));
+            paper.set(DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
             container.setItem(navRowStart + 4, paper);
         }
 
@@ -360,6 +364,7 @@ public final class ServerShopUi {
                 }
                 if (slot == navRowStart + 3 && page > 0) { page--; updatePage(); return; }
                 if (slot == navRowStart + 5 && (page + 1) * itemsPerPage < subcategories.size()) { page++; updatePage(); return; }
+                if (slot == navRowStart + 8) { openRoot(viewer, eco); return; }
             }
             super.clicked(slot, dragType, type, player);
         }
@@ -435,37 +440,41 @@ public final class ServerShopUi {
 
                 int stackSize = Math.max(1, entry.stack());
                 List<Component> lore = new ArrayList<>();
-                lore.add(Component.literal("Buy: " + EconomyCraft.formatMoney(entry.unitBuy())));
+                lore.add(Component.literal("Buy: " + EconomyCraft.formatMoney(entry.unitBuy())).withStyle(s -> s.withItalic(false)));
 
                 Long stackPrice = safeMultiply(entry.unitBuy(), stackSize);
                 if (stackSize > 1 && stackPrice != null) {
-                    lore.add(Component.literal("Stack (" + stackSize + "): " + EconomyCraft.formatMoney(stackPrice)));
+                    lore.add(Component.literal("Stack (" + stackSize + "): " + EconomyCraft.formatMoney(stackPrice)).withStyle(s -> s.withItalic(false)));
                 }
 
-                lore.add(Component.literal("Left click: Buy 1"));
+                lore.add(Component.literal("Left click: Buy 1").withStyle(s -> s.withItalic(false)));
                 if (stackSize > 1) {
-                    lore.add(Component.literal("Shift-click: Buy " + stackSize));
+                    lore.add(Component.literal("Shift-click: Buy " + stackSize).withStyle(s -> s.withItalic(false)));
                 }
 
                 display.set(DataComponents.LORE, new ItemLore(lore));
-                display.setCount(Math.min(stackSize, display.getMaxStackSize()));
+                display.setCount(1);
                 container.setItem(i, display);
             }
 
             if (page > 0) {
                 ItemStack prev = new ItemStack(Items.ARROW);
-                prev.set(DataComponents.CUSTOM_NAME, Component.literal("Previous page"));
+                prev.set(DataComponents.CUSTOM_NAME, Component.literal("Previous page").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 3, prev);
             }
 
             if (start + itemsPerPage < entries.size()) {
                 ItemStack next = new ItemStack(Items.ARROW);
-                next.set(DataComponents.CUSTOM_NAME, Component.literal("Next page"));
+                next.set(DataComponents.CUSTOM_NAME, Component.literal("Next page").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 5, next);
             }
 
+            ItemStack back = new ItemStack(Items.BARRIER);
+            back.set(DataComponents.CUSTOM_NAME, Component.literal("Back").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.DARK_RED)));
+            container.setItem(navRowStart + 8, back);
+
             ItemStack paper = new ItemStack(Items.PAPER);
-            paper.set(DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)));
+            paper.set(DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
             container.setItem(navRowStart + 4, paper);
         }
 
@@ -481,6 +490,7 @@ public final class ServerShopUi {
                 }
                 if (slot == navRowStart + 3 && page > 0) { page--; updatePage(); return; }
                 if (slot == navRowStart + 5 && (page + 1) * itemsPerPage < entries.size()) { page++; updatePage(); return; }
+                if (slot == navRowStart + 8) { openRoot(viewer, eco); return; }
             }
             super.clicked(slot, dragType, type, player);
         }
