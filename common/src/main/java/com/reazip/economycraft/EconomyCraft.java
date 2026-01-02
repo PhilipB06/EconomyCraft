@@ -1,6 +1,7 @@
 package com.reazip.economycraft;
 
 import com.reazip.economycraft.util.ChatCompat;
+import com.reazip.economycraft.EconomyConfig; // Добавлен импорт
 import dev.architectury.event.events.common.CommandRegistrationEvent;
 import dev.architectury.event.events.common.LifecycleEvent;
 import dev.architectury.event.events.common.PlayerEvent;
@@ -9,15 +10,19 @@ import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import org.slf4j.Logger; // Добавлен импорт
+import org.slf4j.LoggerFactory; // Добавлен импорт
+
 
 import java.text.NumberFormat;
 import java.util.Locale;
 
 public final class EconomyCraft {
+    private static final Logger LOGGER = LoggerFactory.getLogger(EconomyCraft.class); // Логирование
     public static final String MOD_ID = "economycraft";
     private static EconomyManager manager;
     private static MinecraftServer lastServer;
-    private static final NumberFormat FORMAT = NumberFormat.getInstance(Locale.GERMANY);
+    private static final NumberFormat FORMAT = NumberFormat.getInstance(); // Локаль по умолчанию
 
     public static void registerEvents() {
         LifecycleEvent.SERVER_STARTING.register(EconomyConfig::load);
@@ -39,7 +44,8 @@ public final class EconomyCraft {
 
     private static void onPlayerJoin(ServerPlayer player) {
         EconomyManager eco = getManager(player.level().getServer());
-        eco.getBalance(player.getUUID(), true);
+        long balance = eco.getBalance(player.getUUID(), true);
+        LOGGER.info("Player {} joined with balance: {}", player.getName().getString(), balance);
 
         if (eco.getOrders().hasDeliveries(player.getUUID()) || eco.getShop().hasDeliveries(player.getUUID())) {
             ClickEvent ev = ChatCompat.runCommandEvent("/eco orders claim");
@@ -62,6 +68,9 @@ public final class EconomyCraft {
     }
 
     public static EconomyManager getManager(MinecraftServer server) {
+        if (server == null) {
+            throw new IllegalArgumentException("Server cannot be null");
+        }
         if (manager == null || lastServer != server) {
             manager = new EconomyManager(server);
             lastServer = server;
@@ -72,10 +81,13 @@ public final class EconomyCraft {
     public static Component createBalanceTitle(String baseTitle, ServerPlayer player) {
         EconomyManager eco = getManager(player.level().getServer());
         long balance = eco.getBalance(player.getUUID(), true);
-        return Component.literal(baseTitle + " - Balance: " + formatMoney(balance));
+        String currencyName = EconomyConfig.get().currencyName;
+        return Component.literal(baseTitle + " - Balance: " + formatMoney(balance) + " " + currencyName);
     }
 
     public static String formatMoney(long amount) {
-        return "$" + FORMAT.format(amount);
+        String symbol = EconomyConfig.get().currencySymbol;
+        return symbol + FORMAT.format(amount);
     }
 }
+
