@@ -20,16 +20,19 @@ import java.util.concurrent.CompletableFuture;
 import com.reazip.economycraft.shop.ShopManager;
 import com.reazip.economycraft.shop.ShopListing;
 import com.reazip.economycraft.shop.ShopUi;
+import com.reazip.economycraft.shop.ServerShopUi;
 import com.reazip.economycraft.orders.OrderManager;
 import com.reazip.economycraft.orders.OrderRequest;
 import com.reazip.economycraft.orders.OrdersUi;
 import net.minecraft.world.item.ItemStack;
+import com.reazip.economycraft.PriceRegistry;
 
 import static net.minecraft.commands.Commands.argument;
 import static net.minecraft.commands.Commands.literal;
 
 import net.minecraft.commands.arguments.GameProfileArgument;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public final class EconomyCommands {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
@@ -39,6 +42,7 @@ public final class EconomyCommands {
         dispatcher.register(buildPay().requires(s -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(SellCommand.register().requires(s -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(buildShop().requires(s -> EconomyConfig.get().standaloneCommands));
+        dispatcher.register(buildServerShop().requires(s -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(buildOrders().requires(s -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(buildDaily().requires(s -> EconomyConfig.get().standaloneCommands));
 
@@ -73,6 +77,7 @@ public final class EconomyCommands {
         root.then(buildRemoveMoney());
         root.then(buildRemovePlayer());
         root.then(buildShop());
+        root.then(buildServerShop());
         root.then(buildOrders());
         root.then(buildDaily());
         root.then(buildToggleScoreboard());
@@ -642,6 +647,22 @@ public final class EconomyCommands {
         return 1;
     }
 
+    private static LiteralArgumentBuilder<CommandSourceStack> buildServerShop() {
+        return literal("servershop")
+                .executes(ctx -> openServerShop(ctx.getSource().getPlayerOrException(), ctx.getSource(), null))
+                .then(argument("category", StringArgumentType.greedyString())
+                        .suggests((ctx, builder) -> suggestServerShopCategories(ctx.getSource(), builder))
+                        .executes(ctx -> openServerShop(ctx.getSource().getPlayerOrException(),
+                                ctx.getSource(),
+                                StringArgumentType.getString(ctx, "category"))));
+    }
+
+    private static int openServerShop(ServerPlayer player, CommandSourceStack source, @Nullable String category) {
+        EconomyManager manager = EconomyCraft.getManager(source.getServer());
+        ServerShopUi.open(player, manager, category);
+        return 1;
+    }
+
     // =====================================================================
     // === Orders commands =================================================
     // =====================================================================
@@ -750,6 +771,14 @@ public final class EconomyCommands {
         }
 
         suggestions.forEach(builder::suggest);
+        return builder.buildFuture();
+    }
+
+    private static CompletableFuture<Suggestions> suggestServerShopCategories(CommandSourceStack source, SuggestionsBuilder builder) {
+        PriceRegistry prices = EconomyCraft.getManager(source.getServer()).getPrices();
+        for (String cat : prices.buyCategories()) {
+            builder.suggest(cat);
+        }
         return builder.buildFuture();
     }
 }

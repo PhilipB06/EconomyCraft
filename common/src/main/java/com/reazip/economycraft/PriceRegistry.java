@@ -185,12 +185,38 @@ public final class PriceRegistry {
         return out;
     }
 
+    public Set<String> buyCategories() {
+        Set<String> out = new TreeSet<>();
+        for (PriceEntry p : prices.values()) {
+            if (p.unitBuy() > 0) {
+                out.add(p.category());
+            }
+        }
+        return out;
+    }
+
     public List<PriceEntry> byCategory(String category) {
         if (category == null) return List.of();
         String c = category.trim().toLowerCase(Locale.ROOT);
 
         List<PriceEntry> out = new ArrayList<>();
         for (PriceEntry p : prices.values()) {
+            if (p.category() != null && p.category().trim().toLowerCase(Locale.ROOT).equals(c)) {
+                out.add(p);
+            }
+        }
+
+        out.sort(Comparator.comparing(PriceEntry::id));
+        return out;
+    }
+
+    public List<PriceEntry> buyableByCategory(String category) {
+        if (category == null) return List.of();
+        String c = category.trim().toLowerCase(Locale.ROOT);
+
+        List<PriceEntry> out = new ArrayList<>();
+        for (PriceEntry p : prices.values()) {
+            if (p.unitBuy() <= 0) continue;
             if (p.category() != null && p.category().trim().toLowerCase(Locale.ROOT).equals(c)) {
                 out.add(p);
             }
