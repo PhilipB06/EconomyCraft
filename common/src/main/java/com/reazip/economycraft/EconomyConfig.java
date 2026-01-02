@@ -30,6 +30,10 @@ public class EconomyConfig {
     public boolean standaloneAdminCommands;
     @SerializedName("scoreboard_enabled")
     public boolean scoreboardEnabled;
+    @SerializedName("currency_name")
+    public String currencyName = "Золото";
+    @SerializedName("currency_symbol")
+    public String currencySymbol = "₿";
 
     private static EconomyConfig INSTANCE = new EconomyConfig();
     private static Path file;
