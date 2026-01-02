@@ -45,6 +45,7 @@ public final class ServerShopUi {
     private static final Component STORED_MSG = Component.literal("Item stored: ")
             .withStyle(ChatFormatting.YELLOW);
     private static final Map<String, ResourceLocation> CATEGORY_ICONS = buildCategoryIcons();
+    private static final List<Integer> STAR_SLOT_ORDER = buildStarSlotOrder(5);
 
     private ServerShopUi() {}
 
@@ -107,7 +108,11 @@ public final class ServerShopUi {
     }
 
     private static void openItems(ServerPlayer player, EconomyManager eco, String category) {
-        Component title = Component.literal(formatCategoryTitle(category));
+        openItems(player, eco, category, null);
+    }
+
+    private static void openItems(ServerPlayer player, EconomyManager eco, String category, @Nullable String displayTitle) {
+        Component title = Component.literal(displayTitle != null ? formatCategoryTitle(displayTitle) : formatCategoryTitle(category));
 
         player.openMenu(new MenuProvider() {
             @Override
@@ -140,26 +145,19 @@ public final class ServerShopUi {
         private final ServerPlayer viewer;
         private List<String> categories = new ArrayList<>();
         private final SimpleContainer container;
-        private final int rows;
-        private final int itemsPerPage;
-        private final int navRowStart;
-        private final List<Integer> slotOrder;
-        private final int[] slotToIndex;
+        private final int itemsPerPage = 45;
+        private final int navRowStart = 45;
+        private final int[] slotToIndex = new int[54];
         private int page;
 
         CategoryMenu(int id, Inventory inv, EconomyManager eco, ServerPlayer viewer) {
-            super(getMenuType(requiredRows(eco.getPrices().buyTopCategories().size())), id);
+            super(MenuType.GENERIC_9x6, id);
             this.eco = eco;
             this.viewer = viewer;
             this.prices = eco.getPrices();
 
             refreshCategories();
-            this.rows = requiredRows(categories.size());
-            this.itemsPerPage = (rows - 1) * 9;
-            this.navRowStart = itemsPerPage;
-            this.slotOrder = buildStarSlotOrder(rows - 1);
-            this.container = new SimpleContainer(rows * 9);
-            this.slotToIndex = new int[rows * 9];
+            this.container = new SimpleContainer(54);
             setupSlots(inv);
             updatePage();
         }
@@ -172,7 +170,7 @@ public final class ServerShopUi {
         }
 
         private void setupSlots(Inventory inv) {
-            for (int i = 0; i < rows * 9; i++) {
+            for (int i = 0; i < 54; i++) {
                 int r = i / 9;
                 int c = i % 9;
                 this.addSlot(new Slot(container, i, 8 + c * 18, 18 + r * 18) {
@@ -180,7 +178,7 @@ public final class ServerShopUi {
                     @Override public boolean mayPlace(ItemStack stack) { return false; }
                 });
             }
-            int y = 18 + rows * 18 + 14;
+            int y = 18 + 6 * 18 + 14;
             for (int r = 0; r < 3; r++) {
                 for (int c = 0; c < 9; c++) {
                     this.addSlot(new Slot(inv, c + r * 9 + 9, 8 + c * 18, y + r * 18));
@@ -207,7 +205,7 @@ public final class ServerShopUi {
 
                 icon.set(DataComponents.CUSTOM_NAME, Component.literal(formatCategoryTitle(cat)));
                 icon.set(DataComponents.LORE, new ItemLore(List.of(Component.literal("Click to view items"))));
-                int slot = slotOrder.get(i);
+                int slot = STAR_SLOT_ORDER.get(i);
                 container.setItem(slot, icon);
                 slotToIndex[slot] = idx;
             }
@@ -267,8 +265,6 @@ public final class ServerShopUi {
         private final int rows;
         private final int itemsPerPage;
         private final int navRowStart;
-        private final List<Integer> slotOrder;
-        private final int[] slotToIndex;
         private int page;
 
         SubcategoryMenu(int id, Inventory inv, EconomyManager eco, String topCategory, ServerPlayer viewer) {
@@ -281,9 +277,7 @@ public final class ServerShopUi {
             this.rows = requiredRows(subcategories.size());
             this.itemsPerPage = (rows - 1) * 9;
             this.navRowStart = itemsPerPage;
-            this.slotOrder = buildStarSlotOrder(rows - 1);
             this.container = new SimpleContainer(rows * 9);
-            this.slotToIndex = new int[rows * 9];
             setupSlots(inv);
             updatePage();
         }
@@ -319,7 +313,6 @@ public final class ServerShopUi {
 
         private void updatePage() {
             container.clearContent();
-            java.util.Arrays.fill(slotToIndex, -1);
             int start = page * itemsPerPage;
             int totalPages = (int) Math.ceil(subcategories.size() / (double) itemsPerPage);
 
@@ -334,12 +327,8 @@ public final class ServerShopUi {
 
                 icon.set(DataComponents.CUSTOM_NAME, Component.literal(formatCategoryTitle(sub)));
                 icon.set(DataComponents.LORE, new ItemLore(List.of(Component.literal("Click to view items"))));
-                int slot = slotOrder.get(i);
-                container.setItem(slot, icon);
-                slotToIndex[slot] = idx;
+                container.setItem(i, icon);
             }
-
-            fillEmptyWithPanes(container, itemsPerPage);
 
             if (page > 0) {
                 ItemStack prev = new ItemStack(Items.ARROW);
@@ -362,10 +351,10 @@ public final class ServerShopUi {
         public void clicked(int slot, int dragType, ClickType type, Player player) {
             if (type == ClickType.PICKUP || type == ClickType.QUICK_MOVE) {
                 if (slot < navRowStart) {
-                    int index = slotToIndex[slot];
-                    if (index >= 0 && index < subcategories.size()) {
+                    int index = page * itemsPerPage + slot;
+                    if (index < subcategories.size()) {
                         String sub = subcategories.get(index);
-                        openItems(viewer, eco, topCategory + "." + sub);
+                        openItems(viewer, eco, topCategory + "." + sub, sub);
                         return;
                     }
                 }
@@ -767,6 +756,9 @@ public final class ServerShopUi {
         } catch (NumberFormatException e) {
             return ItemStack.EMPTY;
         }
+
+        if (enchantPath.equals("curse_of_binding")) enchantPath = "binding_curse";
+        else if (enchantPath.equals("curse_of_vanishing")) enchantPath = "vanishing_curse";
 
         ResourceLocation enchantId = ResourceLocation.fromNamespaceAndPath(key.getNamespace(), enchantPath);
         HolderLookup.RegistryLookup<Enchantment> lookup = viewer.registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
