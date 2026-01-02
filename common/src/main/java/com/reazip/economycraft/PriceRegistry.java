@@ -37,7 +37,7 @@ public final class PriceRegistry {
             .setPrettyPrinting()
             .create();
     private final Path file;
-    private final Map<ResourceLocation, PriceEntry> prices = new HashMap<>();
+    private final Map<ResourceLocation, PriceEntry> prices = new LinkedHashMap<>();
 
     public record ResolvedPrice(ResourceLocation key, PriceEntry entry) {}
 
@@ -180,8 +180,18 @@ public final class PriceRegistry {
     }
 
     public Set<String> categories() {
-        Set<String> out = new TreeSet<>();
+        Set<String> out = new LinkedHashSet<>();
         for (PriceEntry p : prices.values()) out.add(p.category());
+        return out;
+    }
+
+    public Set<String> buyCategories() {
+        Set<String> out = new LinkedHashSet<>();
+        for (PriceEntry p : prices.values()) {
+            if (p.unitBuy() > 0) {
+                out.add(p.category());
+            }
+        }
         return out;
     }
 
@@ -195,9 +205,54 @@ public final class PriceRegistry {
                 out.add(p);
             }
         }
-
-        out.sort(Comparator.comparing(PriceEntry::id));
         return out;
+    }
+
+    public List<PriceEntry> buyableByCategory(String category) {
+        if (category == null) return List.of();
+        String c = category.trim().toLowerCase(Locale.ROOT);
+
+        List<PriceEntry> out = new ArrayList<>();
+        for (PriceEntry p : prices.values()) {
+            if (p.unitBuy() <= 0) continue;
+            if (p.category() != null && p.category().trim().toLowerCase(Locale.ROOT).equals(c)) {
+                out.add(p);
+            }
+        }
+        return out;
+    }
+
+    public List<String> buyTopCategories() {
+        LinkedHashSet<String> out = new LinkedHashSet<>();
+        for (PriceEntry p : prices.values()) {
+            if (p.unitBuy() <= 0 || p.category() == null) continue;
+            String cat = p.category();
+            int dot = cat.indexOf('.');
+            if (dot > 0) {
+                out.add(cat.substring(0, dot));
+            } else {
+                out.add(cat);
+            }
+        }
+        return new ArrayList<>(out);
+    }
+
+    public List<String> buySubcategories(String topCategory) {
+        if (topCategory == null || topCategory.isBlank()) return List.of();
+        String root = topCategory.trim().toLowerCase(Locale.ROOT);
+        LinkedHashSet<String> out = new LinkedHashSet<>();
+        for (PriceEntry p : prices.values()) {
+            if (p.unitBuy() <= 0 || p.category() == null) continue;
+            String cat = p.category().trim();
+            int dot = cat.indexOf('.');
+            if (dot <= 0 || dot >= cat.length() - 1) continue;
+            String base = cat.substring(0, dot).toLowerCase(Locale.ROOT);
+            String sub = cat.substring(dot + 1);
+            if (base.equals(root)) {
+                out.add(sub);
+            }
+        }
+        return new ArrayList<>(out);
     }
 
     private void createFromBundledDefault() {
@@ -346,11 +401,15 @@ public final class PriceRegistry {
                 if (level <= 0) continue;
                 ResourceLocation enchId = holder.unwrapKey().map(ResourceKey::location).orElse(null);
                 if (enchId == null) continue;
-                ResourceLocation key = ResourceLocation.fromNamespaceAndPath(
-                        enchId.getNamespace(),
-                        "enchanted_book_" + enchId.getPath() + "_" + level
-                );
+                String base = "enchanted_book_" + enchId.getPath() + "_" + level;
+                ResourceLocation key = ResourceLocation.fromNamespaceAndPath(enchId.getNamespace(), base);
                 out.add(key);
+
+                if ("binding_curse".equals(enchId.getPath())) {
+                    out.add(ResourceLocation.fromNamespaceAndPath(enchId.getNamespace(), "enchanted_book_curse_of_binding_" + level));
+                } else if ("vanishing_curse".equals(enchId.getPath())) {
+                    out.add(ResourceLocation.fromNamespaceAndPath(enchId.getNamespace(), "enchanted_book_curse_of_vanishing_" + level));
+                }
             }
         }
 
