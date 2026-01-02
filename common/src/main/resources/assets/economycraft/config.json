@@ -5,5 +5,7 @@
   "pvp_balance_loss_percentage": 0.0,
   "standalone_commands": true,
   "standalone_admin_commands": false,
-  "scoreboard_enabled": true
+  "scoreboard_enabled": true,
+  "currency_name": "Золото",
+  "currency_symbol": "₿"
 }
