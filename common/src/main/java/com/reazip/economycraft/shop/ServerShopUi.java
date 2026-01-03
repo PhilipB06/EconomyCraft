@@ -80,7 +80,7 @@ public final class ServerShopUi {
     private static void openRoot(ServerPlayer player, EconomyManager eco) {
         String name = IdentityCompat.of(player).name();
         long bal = eco.getBalance(player.getUUID(), true);
-        Component title = Component.literal(name + "\nBalance: " + EconomyCraft.formatMoney(bal));
+        Component title = Component.literal(name + "\nBalance: " + EconomyCraft.formatMoney(bal)).withStyle(s -> s.withBold(true));
 
         player.openMenu(new MenuProvider() {
             @Override
@@ -118,9 +118,9 @@ public final class ServerShopUi {
     private static void openItems(ServerPlayer player, EconomyManager eco, String category, @Nullable String displayTitle) {
         Component title;
         if (displayTitle != null) {
-            title = Component.literal(displayTitle);
+            title = Component.literal(displayTitle).withStyle(s -> s.withBold(true));
         } else {
-            title = Component.literal(formatCategoryTitle(category));
+            title = Component.literal(formatCategoryTitle(category)).withStyle(s -> s.withBold(true));
         }
 
         player.openMenu(new MenuProvider() {
@@ -212,7 +212,7 @@ public final class ServerShopUi {
                 ItemStack icon = createCategoryIcon(cat, cat, prices, viewer);
                 if (icon.isEmpty()) continue;
 
-                icon.set(DataComponents.CUSTOM_NAME, Component.literal(formatCategoryTitle(cat)).withStyle(s -> s.withItalic(false).withColor(getCategoryColor(cat))));
+                icon.set(DataComponents.CUSTOM_NAME, Component.literal(formatCategoryTitle(cat)).withStyle(s -> s.withItalic(false).withColor(getCategoryColor(cat)).withBold(true)));
                 icon.set(DataComponents.LORE, new ItemLore(List.of(Component.literal("Click to view items").withStyle(s -> s.withItalic(false)))));
                 int slot = STAR_SLOT_ORDER.get(i);
                 container.setItem(slot, icon);
@@ -337,7 +337,7 @@ public final class ServerShopUi {
                 ItemStack icon = createCategoryIcon(sub, full, prices, viewer);
                 if (icon.isEmpty()) continue;
 
-                icon.set(DataComponents.CUSTOM_NAME, Component.literal(formatCategoryTitle(sub)).withStyle(s -> s.withItalic(false).withColor(getCategoryColor(full))));
+                icon.set(DataComponents.CUSTOM_NAME, Component.literal(formatCategoryTitle(sub)).withStyle(s -> s.withItalic(false).withColor(getCategoryColor(full)).withBold(true)));
                 icon.set(DataComponents.LORE, new ItemLore(List.of(Component.literal("Click to view items").withStyle(s -> s.withItalic(false)))));
                 container.setItem(i, icon);
             }

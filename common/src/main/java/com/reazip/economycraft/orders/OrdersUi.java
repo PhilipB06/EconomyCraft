@@ -33,7 +33,7 @@ public final class OrdersUi {
     public static void open(ServerPlayer player, EconomyManager eco) {
         String name = IdentityCompat.of(player).name();
         long balance = eco.getBalance(player.getUUID(), true);
-        Component title = Component.literal(name + "\nBalance: " + EconomyCraft.formatMoney(balance));
+        Component title = Component.literal(name + "\nBalance: " + EconomyCraft.formatMoney(balance)).withStyle(s -> s.withBold(true));
 
         player.openMenu(new MenuProvider() {
             @Override
