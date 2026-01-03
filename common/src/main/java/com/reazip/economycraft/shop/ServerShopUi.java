@@ -34,12 +34,13 @@ import net.minecraft.core.registries.Registries;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 public final class ServerShopUi {
     private static final Component STORED_MSG = Component.literal("Item stored: ")
@@ -203,7 +204,7 @@ public final class ServerShopUi {
                 ItemStack icon = createCategoryIcon(cat, cat, prices, viewer);
                 if (icon.isEmpty()) continue;
 
-                icon.set(DataComponents.CUSTOM_NAME, Component.literal(formatCategoryTitle(cat)).withStyle(s -> s.withItalic(false)));
+                icon.set(DataComponents.CUSTOM_NAME, Component.literal(formatCategoryTitle(cat)).withStyle(s -> s.withItalic(false).withColor(getCategoryColor(cat))));
                 icon.set(DataComponents.LORE, new ItemLore(List.of(Component.literal("Click to view items").withStyle(s -> s.withItalic(false)))));
                 int slot = STAR_SLOT_ORDER.get(i);
                 container.setItem(slot, icon);
@@ -223,6 +224,9 @@ public final class ServerShopUi {
                 next.set(DataComponents.CUSTOM_NAME, Component.literal("Next page").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 5, next);
             }
+
+            ItemStack balance = createBalanceItem(viewer);
+            container.setItem(navRowStart, balance);
 
             ItemStack paper = new ItemStack(Items.PAPER);
             paper.set(DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
@@ -325,7 +329,7 @@ public final class ServerShopUi {
                 ItemStack icon = createCategoryIcon(sub, full, prices, viewer);
                 if (icon.isEmpty()) continue;
 
-                icon.set(DataComponents.CUSTOM_NAME, Component.literal(formatCategoryTitle(sub)).withStyle(s -> s.withItalic(false)));
+                icon.set(DataComponents.CUSTOM_NAME, Component.literal(formatCategoryTitle(sub)).withStyle(s -> s.withItalic(false).withColor(getCategoryColor(full))));
                 icon.set(DataComponents.LORE, new ItemLore(List.of(Component.literal("Click to view items").withStyle(s -> s.withItalic(false)))));
                 container.setItem(i, icon);
             }
@@ -345,6 +349,9 @@ public final class ServerShopUi {
             ItemStack back = new ItemStack(Items.BARRIER);
             back.set(DataComponents.CUSTOM_NAME, Component.literal("Back").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.DARK_RED)));
             container.setItem(navRowStart + 8, back);
+
+            ItemStack balance = createBalanceItem(viewer);
+            container.setItem(navRowStart, balance);
 
             ItemStack paper = new ItemStack(Items.PAPER);
             paper.set(DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
@@ -473,6 +480,9 @@ public final class ServerShopUi {
             back.set(DataComponents.CUSTOM_NAME, Component.literal("Back").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.DARK_RED)));
             container.setItem(navRowStart + 8, back);
 
+            ItemStack balance = createBalanceItem(viewer);
+            container.setItem(navRowStart, balance);
+
             ItemStack paper = new ItemStack(Items.PAPER);
             paper.set(DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
             container.setItem(navRowStart + 4, paper);
@@ -543,6 +553,8 @@ public final class ServerShopUi {
             if (stored) {
                 sendStoredMessage(viewer);
             }
+
+            updatePage();
         }
 
         private boolean giveToPlayer(ItemStack base, int amount) {
@@ -672,6 +684,42 @@ public final class ServerShopUi {
         return order;
     }
 
+    private static ChatFormatting getCategoryColor(String key) {
+        String norm = normalizeCategoryKey(key);
+        return switch (norm) {
+            case "redstone" -> ChatFormatting.RED;
+            case "food" -> ChatFormatting.GOLD;
+            case "ores" -> ChatFormatting.WHITE;
+            case "blocks" -> ChatFormatting.DARK_GREEN;
+            case "stones" -> ChatFormatting.GRAY;
+            case "bricks" -> ChatFormatting.DARK_GRAY;
+            case "copper" -> ChatFormatting.AQUA;
+            case "earth" -> ChatFormatting.GREEN;
+            case "sand" -> ChatFormatting.YELLOW;
+            case "wood" -> ChatFormatting.DARK_GREEN;
+            case "drops" -> ChatFormatting.GRAY;
+            case "utility" -> ChatFormatting.LIGHT_PURPLE;
+            case "transport" -> ChatFormatting.BLUE;
+            case "light" -> ChatFormatting.YELLOW;
+            case "plants" -> ChatFormatting.GREEN;
+            case "tools" -> ChatFormatting.AQUA;
+            case "weapons" -> ChatFormatting.RED;
+            case "armor" -> ChatFormatting.BLUE;
+            case "enchantments" -> ChatFormatting.LIGHT_PURPLE;
+            case "brewing" -> ChatFormatting.DARK_AQUA;
+            case "ocean" -> ChatFormatting.DARK_AQUA;
+            case "nether" -> ChatFormatting.RED;
+            case "end" -> ChatFormatting.LIGHT_PURPLE;
+            case "deep dark" -> ChatFormatting.DARK_BLUE;
+            case "deep_dark" -> ChatFormatting.DARK_BLUE;
+            case "archaeology" -> ChatFormatting.GOLD;
+            case "ice" -> ChatFormatting.AQUA;
+            case "dyed" -> ChatFormatting.BLUE;
+            case "discs" -> ChatFormatting.DARK_PURPLE;
+            default -> ChatFormatting.WHITE;
+        };
+    }
+
     private static boolean hasItems(PriceRegistry prices, String categoryKey) {
         if (categoryKey == null || categoryKey.isBlank()) return false;
         if (!prices.buyableByCategory(categoryKey).isEmpty()) return true;
@@ -707,6 +755,16 @@ public final class ServerShopUi {
     private static int requiredRows(int itemCount) {
         int contentRows = (int) Math.ceil(Math.max(1, itemCount) / 9.0);
         return Math.min(6, Math.max(2, contentRows + 1));
+    }
+
+    private static ItemStack createBalanceItem(ServerPlayer player) {
+        ItemStack head = new ItemStack(Items.PLAYER_HEAD);
+        head.set(DataComponents.PROFILE,
+                net.minecraft.world.item.component.ResolvableProfile.createUnresolved(player.getName().getString()));
+        long balance = EconomyCraft.getManager(player.level().getServer()).getBalance(player.getUUID(), true);
+        head.set(DataComponents.CUSTOM_NAME, Component.literal("Balance").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.GOLD)));
+        head.set(DataComponents.LORE, new ItemLore(List.of(Component.literal(EconomyCraft.formatMoney(balance)).withStyle(s -> s.withItalic(false)))));
+        return head;
     }
 
     private static List<Integer> buildStarSlotOrder() {

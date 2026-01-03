@@ -19,16 +19,19 @@ import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.component.ItemLore;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.jetbrains.annotations.Nullable;
 
 public final class OrdersUi {
     private OrdersUi() {}
 
     public static void open(ServerPlayer player, EconomyManager eco) {
-        Component title = EconomyCraft.createBalanceTitle("Orders", player);
+        Component title = Component.literal("Orders");
 
         player.openMenu(new MenuProvider() {
             @Override
@@ -51,6 +54,15 @@ public final class OrdersUi {
         return Component.literal(text);
     }
 
+    private static ItemStack createBalanceItem(EconomyManager eco, UUID playerId, @Nullable String name) {
+        ItemStack head = new ItemStack(Items.PLAYER_HEAD);
+        head.set(DataComponents.PROFILE, net.minecraft.world.item.component.ResolvableProfile.createUnresolved(name != null ? name : playerId.toString()));
+        long balance = eco.getBalance(playerId, true);
+        head.set(DataComponents.CUSTOM_NAME, Component.literal("Balance").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.GOLD)));
+        head.set(DataComponents.LORE, new ItemLore(List.of(Component.literal(EconomyCraft.formatMoney(balance)).withStyle(s -> s.withItalic(false)))));
+        return head;
+    }
+
     public static void openClaims(ServerPlayer player, EconomyManager eco) {
         player.openMenu(new MenuProvider() {
             @Override
@@ -70,6 +82,7 @@ public final class OrdersUi {
         private List<OrderRequest> requests = new ArrayList<>();
         private final SimpleContainer container = new SimpleContainer(54);
         private int page;
+        private final int navRowStart = 45;
         private final Runnable listener = this::updatePage;
 
         RequestMenu(int id, Inventory inv, OrderManager orders, EconomyManager eco, ServerPlayer viewer) {
@@ -134,20 +147,23 @@ public final class OrdersUi {
 
             if (page > 0) {
                 ItemStack prev = new ItemStack(Items.ARROW);
-                prev.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Previous page"));
-                container.setItem(45, prev);
+                prev.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Previous page").withStyle(s -> s.withItalic(false)));
+                container.setItem(navRowStart + 2, prev);
             }
 
             if (start + 45 < requests.size()) {
                 ItemStack next = new ItemStack(Items.ARROW);
-                next.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Next page"));
-                container.setItem(53, next);
+                next.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Next page").withStyle(s -> s.withItalic(false)));
+                container.setItem(navRowStart + 6, next);
             }
+
+            ItemStack balance = createBalanceItem(eco, viewer.getUUID(), IdentityCompat.of(viewer).name());
+            container.setItem(navRowStart, balance);
 
             ItemStack paper = new ItemStack(Items.PAPER);
             paper.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
-                    Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)));
-            container.setItem(49, paper);
+                    Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
+            container.setItem(navRowStart + 4, paper);
         }
 
         @Override
@@ -165,8 +181,8 @@ public final class OrdersUi {
                         return;
                     }
                 }
-                if (slot == 45 && page > 0) { page--; updatePage(); return; }
-                if (slot == 53 && (page + 1) * 45 < requests.size()) { page++; updatePage(); return; }
+                if (slot == navRowStart + 2 && page > 0) { page--; updatePage(); return; }
+                if (slot == navRowStart + 6 && (page + 1) * 45 < requests.size()) { page++; updatePage(); return; }
             }
             super.clicked(slot, dragType, type, player);
         }
@@ -449,6 +465,7 @@ public final class OrdersUi {
         private final SimpleContainer container = new SimpleContainer(54);
         private final List<ItemStack> items = new ArrayList<>();
         private int page;
+        private final int navRowStart = 45;
 
         ClaimMenu(int id, Inventory inv, EconomyManager eco, UUID owner) {
             super(MenuType.GENERIC_9x6, id);
@@ -491,17 +508,30 @@ public final class OrdersUi {
             }
             if (page > 0) {
                 ItemStack prev = new ItemStack(Items.ARROW);
-                prev.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Previous page"));
-                container.setItem(45, prev);
+                prev.set(DataComponents.CUSTOM_NAME, Component.literal("Previous page").withStyle(s -> s.withItalic(false)));
+                container.setItem(navRowStart + 2, prev);
             }
             if (start + 45 < items.size()) {
                 ItemStack next = new ItemStack(Items.ARROW);
-                next.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Next page"));
-                container.setItem(53, next);
+                next.set(DataComponents.CUSTOM_NAME, Component.literal("Next page").withStyle(s -> s.withItalic(false)));
+                container.setItem(navRowStart + 6, next);
             }
+            String name = null;
+            ServerPlayer viewer = getViewer();
+            if (viewer != null) {
+                name = IdentityCompat.of(viewer).name();
+            } else {
+                name = eco.getBestName(owner);
+            }
+            ItemStack balance = createBalanceItem(eco, owner, name);
+            container.setItem(navRowStart, balance);
             ItemStack paper = new ItemStack(Items.PAPER);
-            paper.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)));
-            container.setItem(49, paper);
+            paper.set(DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
+            container.setItem(navRowStart + 4, paper);
+        }
+
+        private ServerPlayer getViewer() {
+            return eco.getServer().getPlayerList().getPlayer(owner);
         }
 
         private void removeStack(ItemStack stack) {
@@ -526,8 +556,8 @@ public final class OrdersUi {
                     }
                     return;
                 }
-                if (slot == 45 && page > 0) { page--; updatePage(); return; }
-                if (slot == 53 && (page + 1) * 45 < items.size()) { page++; updatePage(); return; }
+                if (slot == navRowStart + 2 && page > 0) { page--; updatePage(); return; }
+                if (slot == navRowStart + 6 && (page + 1) * 45 < items.size()) { page++; updatePage(); return; }
             }
             super.clicked(slot, dragType, type, player);
         }
