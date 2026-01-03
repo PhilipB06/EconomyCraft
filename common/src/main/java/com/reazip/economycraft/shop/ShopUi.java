@@ -243,7 +243,8 @@ public final class ShopUi {
             this.viewer = viewer;
 
             ItemStack confirm = new ItemStack(Items.LIME_STAINED_GLASS_PANE);
-            confirm.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Confirm"));
+            confirm.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+                    Component.literal("Confirm").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.GREEN)));
             container.setItem(2, confirm);
 
             String sellerName;
@@ -262,7 +263,8 @@ public final class ShopUi {
             container.setItem(4, item);
 
             ItemStack cancel = new ItemStack(Items.RED_STAINED_GLASS_PANE);
-            cancel.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Cancel"));
+            cancel.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+                    Component.literal("Cancel").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.DARK_RED)));
             container.setItem(6, cancel);
 
             for (int i = 0; i < 9; i++) {
@@ -379,7 +381,8 @@ public final class ShopUi {
             this.viewer = viewer;
 
             ItemStack confirm = new ItemStack(Items.LIME_STAINED_GLASS_PANE);
-            confirm.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Confirm"));
+            confirm.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+                    Component.literal("Confirm").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.GREEN)));
             container.setItem(2, confirm);
 
             ItemStack item = listing.item.copy();
@@ -391,7 +394,8 @@ public final class ShopUi {
             container.setItem(4, item);
 
             ItemStack cancel = new ItemStack(Items.RED_STAINED_GLASS_PANE);
-            cancel.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Cancel"));
+            cancel.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+                    Component.literal("Cancel").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.DARK_RED)));
             container.setItem(6, cancel);
 
             for (int i = 0; i < 9; i++) {
