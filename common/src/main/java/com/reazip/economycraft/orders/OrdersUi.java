@@ -163,8 +163,8 @@ public final class OrdersUi {
                 display.set(net.minecraft.core.component.DataComponents.LORE,
                         new net.minecraft.world.item.component.ItemLore(List.of(
                                 createRewardLore(r.price, tax),
-                                labeledValue("Requester", reqName, LABEL_SECONDARY_COLOR),
-                                labeledValue("Amount", String.valueOf(r.amount), LABEL_PRIMARY_COLOR)
+                                labeledValue("Amount", String.valueOf(r.amount), LABEL_PRIMARY_COLOR),
+                                labeledValue("Requester", reqName, LABEL_SECONDARY_COLOR)
                         )));
                 display.setCount(1);
                 container.setItem(i, display);
@@ -299,8 +299,8 @@ public final class OrdersUi {
             item.set(net.minecraft.core.component.DataComponents.LORE,
                     new net.minecraft.world.item.component.ItemLore(List.of(
                             createRewardLore(req.price, tax),
-                            labeledValue("Requester", requesterName, LABEL_SECONDARY_COLOR),
-                            labeledValue("Amount", String.valueOf(req.amount), LABEL_PRIMARY_COLOR)
+                            labeledValue("Amount", String.valueOf(req.amount), LABEL_PRIMARY_COLOR),
+                            labeledValue("Requester", requesterName, LABEL_SECONDARY_COLOR)
                     )));
             container.setItem(4, item);
 
