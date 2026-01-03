@@ -19,6 +19,9 @@ import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.ItemLore;
+import net.minecraft.world.item.component.ResolvableProfile;
+import com.mojang.authlib.GameProfile;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,7 +30,9 @@ public final class ShopUi {
     private ShopUi() {}
 
     public static void open(ServerPlayer player, ShopManager shop) {
-        Component title = Component.literal("Shop");
+        String name = IdentityCompat.of(player).name();
+        long balance = EconomyCraft.getManager(player.level().getServer()).getBalance(player.getUUID(), true);
+        Component title = Component.literal(name + "\nBalance: " + EconomyCraft.formatMoney(balance));
 
         player.openMenu(new MenuProvider() {
             @Override
@@ -80,13 +85,13 @@ public final class ShopUi {
 
     private static ItemStack createBalanceItem(ServerPlayer player) {
         ItemStack head = new ItemStack(Items.PLAYER_HEAD);
-        head.set(net.minecraft.core.component.DataComponents.PROFILE,
-                net.minecraft.world.item.component.ResolvableProfile.createUnresolved(player.getName().getString()));
+        GameProfile profile = player.getGameProfile();
+        head.set(net.minecraft.core.component.DataComponents.PROFILE, ResolvableProfile.createResolved(profile));
         long balance = EconomyCraft.getManager(player.level().getServer()).getBalance(player.getUUID(), true);
         head.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
                 Component.literal("Balance").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.GOLD)));
         head.set(net.minecraft.core.component.DataComponents.LORE,
-                new net.minecraft.world.item.component.ItemLore(List.of(Component.literal(EconomyCraft.formatMoney(balance)).withStyle(s -> s.withItalic(false)))));
+                new ItemLore(List.of(Component.literal(EconomyCraft.formatMoney(balance)).withStyle(s -> s.withItalic(false)))));
         return head;
     }
 

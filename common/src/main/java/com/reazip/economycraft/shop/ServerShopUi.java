@@ -4,6 +4,7 @@ import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyManager;
 import com.reazip.economycraft.PriceRegistry;
 import com.reazip.economycraft.util.ChatCompat;
+import com.reazip.economycraft.util.IdentityCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
@@ -77,7 +78,9 @@ public final class ServerShopUi {
     }
 
     private static void openRoot(ServerPlayer player, EconomyManager eco) {
-        Component title = Component.literal("Server Shop");
+        String name = IdentityCompat.of(player).name();
+        long bal = eco.getBalance(player.getUUID(), true);
+        Component title = Component.literal(name + "\nBalance: " + EconomyCraft.formatMoney(bal));
 
         player.openMenu(new MenuProvider() {
             @Override
@@ -113,7 +116,12 @@ public final class ServerShopUi {
     }
 
     private static void openItems(ServerPlayer player, EconomyManager eco, String category, @Nullable String displayTitle) {
-        Component title = Component.literal(displayTitle != null ? formatCategoryTitle(displayTitle) : formatCategoryTitle(category));
+        Component title;
+        if (displayTitle != null) {
+            title = Component.literal(displayTitle);
+        } else {
+            title = Component.literal(formatCategoryTitle(category));
+        }
 
         player.openMenu(new MenuProvider() {
             @Override
@@ -760,7 +768,7 @@ public final class ServerShopUi {
     private static ItemStack createBalanceItem(ServerPlayer player) {
         ItemStack head = new ItemStack(Items.PLAYER_HEAD);
         head.set(DataComponents.PROFILE,
-                net.minecraft.world.item.component.ResolvableProfile.createUnresolved(player.getName().getString()));
+                net.minecraft.world.item.component.ResolvableProfile.createResolved(player.getGameProfile()));
         long balance = EconomyCraft.getManager(player.level().getServer()).getBalance(player.getUUID(), true);
         head.set(DataComponents.CUSTOM_NAME, Component.literal("Balance").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.GOLD)));
         head.set(DataComponents.LORE, new ItemLore(List.of(Component.literal(EconomyCraft.formatMoney(balance)).withStyle(s -> s.withItalic(false)))));

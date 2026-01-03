@@ -31,7 +31,9 @@ public final class OrdersUi {
     private OrdersUi() {}
 
     public static void open(ServerPlayer player, EconomyManager eco) {
-        Component title = Component.literal("Orders");
+        String name = IdentityCompat.of(player).name();
+        long balance = eco.getBalance(player.getUUID(), true);
+        Component title = Component.literal(name + "\nBalance: " + EconomyCraft.formatMoney(balance));
 
         player.openMenu(new MenuProvider() {
             @Override
@@ -56,7 +58,11 @@ public final class OrdersUi {
 
     private static ItemStack createBalanceItem(EconomyManager eco, UUID playerId, @Nullable String name) {
         ItemStack head = new ItemStack(Items.PLAYER_HEAD);
-        head.set(DataComponents.PROFILE, net.minecraft.world.item.component.ResolvableProfile.createUnresolved(name != null ? name : playerId.toString()));
+        if (name != null && !name.isBlank()) {
+            head.set(DataComponents.PROFILE, net.minecraft.world.item.component.ResolvableProfile.createResolved(new com.mojang.authlib.GameProfile(playerId, name)));
+        } else {
+            head.set(DataComponents.PROFILE, net.minecraft.world.item.component.ResolvableProfile.createUnresolved(playerId.toString()));
+        }
         long balance = eco.getBalance(playerId, true);
         head.set(DataComponents.CUSTOM_NAME, Component.literal("Balance").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.GOLD)));
         head.set(DataComponents.LORE, new ItemLore(List.of(Component.literal(EconomyCraft.formatMoney(balance)).withStyle(s -> s.withItalic(false)))));
