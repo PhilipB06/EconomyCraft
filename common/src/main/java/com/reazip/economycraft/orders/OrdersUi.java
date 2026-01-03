@@ -8,6 +8,7 @@ import com.reazip.economycraft.util.IdentityCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.SimpleContainer;
@@ -19,7 +20,6 @@ import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.component.ItemLore;
 
 import java.util.ArrayList;
@@ -29,6 +29,13 @@ import org.jetbrains.annotations.Nullable;
 
 public final class OrdersUi {
     private OrdersUi() {}
+
+    private static final ChatFormatting LABEL_PRIMARY_COLOR = ChatFormatting.GOLD;
+    private static final ChatFormatting LABEL_SECONDARY_COLOR = ChatFormatting.AQUA;
+    private static final ChatFormatting VALUE_COLOR = ChatFormatting.DARK_PURPLE;
+    private static final ChatFormatting BALANCE_NAME_COLOR = ChatFormatting.YELLOW;
+    private static final ChatFormatting BALANCE_LABEL_COLOR = ChatFormatting.GOLD;
+    private static final ChatFormatting BALANCE_VALUE_COLOR = ChatFormatting.DARK_PURPLE;
 
     public static void open(ServerPlayer player, EconomyManager eco) {
         Component title = Component.literal("Orders");
@@ -47,25 +54,38 @@ public final class OrdersUi {
     }
 
     private static Component createRewardLore(long reward, long tax) {
-        String text = "Reward: " + EconomyCraft.formatMoney(reward);
+        StringBuilder value = new StringBuilder(EconomyCraft.formatMoney(reward));
         if (tax > 0) {
-            text += " (-" + EconomyCraft.formatMoney(tax) + " tax)";
+            value.append(" (-").append(EconomyCraft.formatMoney(tax)).append(" tax)");
         }
-        return Component.literal(text);
+        return labeledValue("Reward", value.toString(), LABEL_PRIMARY_COLOR);
     }
 
-    private static ItemStack createBalanceItem(EconomyManager eco, UUID playerId, @Nullable String name) {
+    private static ItemStack createBalanceItem(EconomyManager eco, UUID playerId, @Nullable ServerPlayer player, @Nullable String name) {
         ItemStack head = new ItemStack(Items.PLAYER_HEAD);
-        if (name != null && !name.isBlank()) {
-            head.set(DataComponents.PROFILE, net.minecraft.world.item.component.ResolvableProfile.createResolved(new com.mojang.authlib.GameProfile(playerId, name)));
-        } else {
-            head.set(DataComponents.PROFILE, net.minecraft.world.item.component.ResolvableProfile.createUnresolved(playerId.toString()));
-        }
+        var profile = player != null
+                ? net.minecraft.world.item.component.ResolvableProfile.createResolved(player.getGameProfile())
+                : net.minecraft.world.item.component.ResolvableProfile.createUnresolved(name != null && !name.isBlank() ? name : playerId.toString());
+        head.set(DataComponents.PROFILE, profile);
         long balance = eco.getBalance(playerId, true);
         String displayName = name != null ? name : playerId.toString();
-        head.set(DataComponents.CUSTOM_NAME, Component.literal(displayName).withStyle(s -> s.withItalic(false).withColor(ChatFormatting.GOLD)));
-        head.set(DataComponents.LORE, new ItemLore(List.of(Component.literal("Balance: " + EconomyCraft.formatMoney(balance)).withStyle(s -> s.withItalic(false).withColor(ChatFormatting.GOLD)))));
+        head.set(DataComponents.CUSTOM_NAME, Component.literal(displayName).withStyle(s -> s.withItalic(false).withColor(BALANCE_NAME_COLOR)));
+        head.set(DataComponents.LORE, new ItemLore(List.of(balanceLore(balance))));
         return head;
+    }
+
+    private static Component balanceLore(long balance) {
+        return Component.literal("Balance: ")
+                .withStyle(s -> s.withItalic(false).withColor(BALANCE_LABEL_COLOR))
+                .append(Component.literal(EconomyCraft.formatMoney(balance))
+                        .withStyle(s -> s.withItalic(false).withColor(BALANCE_VALUE_COLOR)));
+    }
+
+    private static Component labeledValue(String label, String value, ChatFormatting labelColor) {
+        return Component.literal(label + ": ")
+                .withStyle(s -> s.withItalic(false).withColor(labelColor))
+                .append(Component.literal(value)
+                        .withStyle(s -> s.withItalic(false).withColor(VALUE_COLOR)));
     }
 
     public static void openClaims(ServerPlayer player, EconomyManager eco) {
@@ -143,8 +163,8 @@ public final class OrdersUi {
                 display.set(net.minecraft.core.component.DataComponents.LORE,
                         new net.minecraft.world.item.component.ItemLore(List.of(
                                 createRewardLore(r.price, tax),
-                                Component.literal("Requester: " + reqName),
-                                Component.literal("Amount: " + r.amount)
+                                labeledValue("Requester", reqName, LABEL_SECONDARY_COLOR),
+                                labeledValue("Amount", String.valueOf(r.amount), LABEL_PRIMARY_COLOR)
                         )));
                 display.setCount(1);
                 container.setItem(i, display);
@@ -162,7 +182,7 @@ public final class OrdersUi {
                 container.setItem(navRowStart + 6, next);
             }
 
-            ItemStack balance = createBalanceItem(eco, viewer.getUUID(), IdentityCompat.of(viewer).name());
+            ItemStack balance = createBalanceItem(eco, viewer.getUUID(), viewer, IdentityCompat.of(viewer).name());
             container.setItem(navRowStart, balance);
 
             ItemStack paper = new ItemStack(Items.PAPER);
@@ -278,8 +298,8 @@ public final class OrdersUi {
             item.set(net.minecraft.core.component.DataComponents.LORE,
                     new net.minecraft.world.item.component.ItemLore(List.of(
                             createRewardLore(req.price, tax),
-                            Component.literal("Requester: " + requesterName),
-                            Component.literal("Amount: " + req.amount)
+                            labeledValue("Requester", requesterName, LABEL_SECONDARY_COLOR),
+                            labeledValue("Amount", String.valueOf(req.amount), LABEL_PRIMARY_COLOR)
                     )));
             container.setItem(4, item);
 
@@ -412,8 +432,8 @@ public final class OrdersUi {
             long tax = Math.round(req.price * EconomyConfig.get().taxRate);
             item.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
                     createRewardLore(req.price, tax),
-                    Component.literal("Amount: " + req.amount),
-                    Component.literal("This will remove the request"))));
+                    labeledValue("Amount", String.valueOf(req.amount), LABEL_PRIMARY_COLOR),
+                    Component.literal("This will remove the request").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.RED)))));
             container.setItem(4, item);
 
             ItemStack cancel = new ItemStack(Items.RED_STAINED_GLASS_PANE);
@@ -528,7 +548,7 @@ public final class OrdersUi {
             } else {
                 name = eco.getBestName(owner);
             }
-            ItemStack balance = createBalanceItem(eco, owner, name);
+            ItemStack balance = createBalanceItem(eco, owner, viewer, name);
             container.setItem(navRowStart, balance);
             ItemStack paper = new ItemStack(Items.PAPER);
             paper.set(DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));

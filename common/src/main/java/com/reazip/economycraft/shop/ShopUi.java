@@ -29,6 +29,13 @@ import java.util.List;
 public final class ShopUi {
     private ShopUi() {}
 
+    private static final ChatFormatting LABEL_PRIMARY_COLOR = ChatFormatting.GOLD;
+    private static final ChatFormatting LABEL_SECONDARY_COLOR = ChatFormatting.AQUA;
+    private static final ChatFormatting VALUE_COLOR = ChatFormatting.DARK_PURPLE;
+    private static final ChatFormatting BALANCE_NAME_COLOR = ChatFormatting.YELLOW;
+    private static final ChatFormatting BALANCE_LABEL_COLOR = ChatFormatting.GOLD;
+    private static final ChatFormatting BALANCE_VALUE_COLOR = ChatFormatting.DARK_PURPLE;
+
     public static void open(ServerPlayer player, ShopManager shop) {
         Component title = Component.literal("Shop");
 
@@ -74,11 +81,11 @@ public final class ShopUi {
     }
 
     private static Component createPriceLore(long price, long tax) {
-        String text = "Price: " + EconomyCraft.formatMoney(price);
+        StringBuilder value = new StringBuilder(EconomyCraft.formatMoney(price));
         if (tax > 0) {
-            text += " (+" + EconomyCraft.formatMoney(tax) + " tax)";
+            value.append(" (+").append(EconomyCraft.formatMoney(tax)).append(" tax)");
         }
-        return Component.literal(text);
+        return labeledValue("Price", value.toString(), LABEL_PRIMARY_COLOR);
     }
 
     private static ItemStack createBalanceItem(ServerPlayer player) {
@@ -87,10 +94,24 @@ public final class ShopUi {
         head.set(net.minecraft.core.component.DataComponents.PROFILE, ResolvableProfile.createResolved(profile));
         long balance = EconomyCraft.getManager(player.level().getServer()).getBalance(player.getUUID(), true);
         head.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
-                Component.literal(IdentityCompat.of(player).name()).withStyle(s -> s.withItalic(false).withColor(ChatFormatting.GOLD)));
+                Component.literal(IdentityCompat.of(player).name()).withStyle(s -> s.withItalic(false).withColor(BALANCE_NAME_COLOR)));
         head.set(net.minecraft.core.component.DataComponents.LORE,
-                new ItemLore(List.of(Component.literal("Balance: " + EconomyCraft.formatMoney(balance)).withStyle(s -> s.withItalic(false).withColor(ChatFormatting.GOLD)))));
+                new ItemLore(List.of(balanceLore(balance))));
         return head;
+    }
+
+    private static Component balanceLore(long balance) {
+        return Component.literal("Balance: ")
+                .withStyle(s -> s.withItalic(false).withColor(BALANCE_LABEL_COLOR))
+                .append(Component.literal(EconomyCraft.formatMoney(balance))
+                        .withStyle(s -> s.withItalic(false).withColor(BALANCE_VALUE_COLOR)));
+    }
+
+    private static Component labeledValue(String label, String value, ChatFormatting labelColor) {
+        return Component.literal(label + ": ")
+                .withStyle(s -> s.withItalic(false).withColor(labelColor))
+                .append(Component.literal(value)
+                        .withStyle(s -> s.withItalic(false).withColor(VALUE_COLOR)));
     }
 
     private static class ShopMenu extends AbstractContainerMenu {
@@ -151,7 +172,7 @@ public final class ShopUi {
                 long tax = Math.round(l.price * EconomyConfig.get().taxRate);
                 display.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(List.of(
                         createPriceLore(l.price, tax),
-                        Component.literal("Seller: " + sellerName))));
+                        labeledValue("Seller", sellerName, LABEL_SECONDARY_COLOR))));
                 container.setItem(i, display);
             }
 
@@ -237,7 +258,7 @@ public final class ShopUi {
             long tax = Math.round(listing.price * EconomyConfig.get().taxRate);
             item.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(List.of(
                     createPriceLore(listing.price, tax),
-                    Component.literal("Seller: " + sellerName))));
+                    labeledValue("Seller", sellerName, LABEL_SECONDARY_COLOR))));
             container.setItem(4, item);
 
             ItemStack cancel = new ItemStack(Items.RED_STAINED_GLASS_PANE);
@@ -365,8 +386,8 @@ public final class ShopUi {
             long tax = Math.round(listing.price * EconomyConfig.get().taxRate);
             item.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
                     createPriceLore(listing.price, tax),
-                    Component.literal("Seller: you"),
-                    Component.literal("This will remove the listing"))));
+                    labeledValue("Seller", "you", LABEL_SECONDARY_COLOR),
+                    Component.literal("This will remove the listing").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.RED)))));
             container.setItem(4, item);
 
             ItemStack cancel = new ItemStack(Items.RED_STAINED_GLASS_PANE);

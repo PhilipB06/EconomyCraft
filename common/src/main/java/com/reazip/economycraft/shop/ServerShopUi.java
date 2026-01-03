@@ -48,6 +48,12 @@ public final class ServerShopUi {
             .withStyle(ChatFormatting.YELLOW);
     private static final Map<String, ResourceLocation> CATEGORY_ICONS = buildCategoryIcons();
     private static final List<Integer> STAR_SLOT_ORDER = buildStarSlotOrder(5);
+    private static final ChatFormatting LABEL_PRIMARY_COLOR = ChatFormatting.GOLD;
+    private static final ChatFormatting LABEL_SECONDARY_COLOR = ChatFormatting.AQUA;
+    private static final ChatFormatting VALUE_COLOR = ChatFormatting.DARK_PURPLE;
+    private static final ChatFormatting BALANCE_NAME_COLOR = ChatFormatting.YELLOW;
+    private static final ChatFormatting BALANCE_LABEL_COLOR = ChatFormatting.GOLD;
+    private static final ChatFormatting BALANCE_VALUE_COLOR = ChatFormatting.DARK_PURPLE;
 
     private ServerShopUi() {}
 
@@ -453,16 +459,16 @@ public final class ServerShopUi {
 
                 int stackSize = Math.max(1, entry.stack());
                 List<Component> lore = new ArrayList<>();
-                lore.add(Component.literal("Buy: " + EconomyCraft.formatMoney(entry.unitBuy())).withStyle(s -> s.withItalic(false)));
+                lore.add(labeledValue("Buy", EconomyCraft.formatMoney(entry.unitBuy()), LABEL_PRIMARY_COLOR));
 
                 Long stackPrice = safeMultiply(entry.unitBuy(), stackSize);
                 if (stackSize > 1 && stackPrice != null) {
-                    lore.add(Component.literal("Stack (" + stackSize + "): " + EconomyCraft.formatMoney(stackPrice)).withStyle(s -> s.withItalic(false)));
+                    lore.add(labeledValue("Stack (" + stackSize + ")", EconomyCraft.formatMoney(stackPrice), LABEL_PRIMARY_COLOR));
                 }
 
-                lore.add(Component.literal("Left click: Buy 1").withStyle(s -> s.withItalic(false)));
+                lore.add(labeledValue("Left click", "Buy 1", LABEL_SECONDARY_COLOR));
                 if (stackSize > 1) {
-                    lore.add(Component.literal("Shift-click: Buy " + stackSize).withStyle(s -> s.withItalic(false)));
+                    lore.add(labeledValue("Shift-click", "Buy " + stackSize, LABEL_SECONDARY_COLOR));
                 }
 
                 display.set(DataComponents.LORE, new ItemLore(lore));
@@ -763,14 +769,28 @@ public final class ServerShopUi {
         return Math.min(6, Math.max(2, contentRows + 1));
     }
 
+    private static Component labeledValue(String label, String value, ChatFormatting labelColor) {
+        return Component.literal(label + ": ")
+                .withStyle(s -> s.withItalic(false).withColor(labelColor))
+                .append(Component.literal(value)
+                        .withStyle(s -> s.withItalic(false).withColor(VALUE_COLOR)));
+    }
+
+    private static Component balanceLore(long balance) {
+        return Component.literal("Balance: ")
+                .withStyle(s -> s.withItalic(false).withColor(BALANCE_LABEL_COLOR))
+                .append(Component.literal(EconomyCraft.formatMoney(balance))
+                        .withStyle(s -> s.withItalic(false).withColor(BALANCE_VALUE_COLOR)));
+    }
+
     private static ItemStack createBalanceItem(ServerPlayer player) {
         ItemStack head = new ItemStack(Items.PLAYER_HEAD);
         head.set(DataComponents.PROFILE,
                 net.minecraft.world.item.component.ResolvableProfile.createResolved(player.getGameProfile()));
         long balance = EconomyCraft.getManager(player.level().getServer()).getBalance(player.getUUID(), true);
         String name = IdentityCompat.of(player).name();
-        head.set(DataComponents.CUSTOM_NAME, Component.literal(name).withStyle(s -> s.withItalic(false).withColor(ChatFormatting.GOLD)));
-        head.set(DataComponents.LORE, new ItemLore(List.of(Component.literal("Balance: " + EconomyCraft.formatMoney(balance)).withStyle(s -> s.withItalic(false).withColor(ChatFormatting.GOLD)))));
+        head.set(DataComponents.CUSTOM_NAME, Component.literal(name).withStyle(s -> s.withItalic(false).withColor(BALANCE_NAME_COLOR)));
+        head.set(DataComponents.LORE, new ItemLore(List.of(balanceLore(balance))));
         return head;
     }
 
