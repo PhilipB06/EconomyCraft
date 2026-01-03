@@ -2544,1357 +2544,1357 @@
     "unit_sell": 11
   },
   "minecraft:black_banner": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 16,
     "unit_buy": 0,
     "unit_sell": 17
   },
   "minecraft:blue_banner": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 16,
     "unit_buy": 0,
     "unit_sell": 9
   },
   "minecraft:brown_banner": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 16,
     "unit_buy": 0,
     "unit_sell": 11
   },
   "minecraft:cyan_banner": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 16,
     "unit_buy": 0,
     "unit_sell": 10
   },
   "minecraft:gray_banner": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 16,
     "unit_buy": 0,
     "unit_sell": 14
   },
   "minecraft:green_banner": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 16,
     "unit_buy": 0,
     "unit_sell": 11
   },
   "minecraft:light_blue_banner": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 16,
     "unit_buy": 0,
     "unit_sell": 15
   },
   "minecraft:light_gray_banner": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 16,
     "unit_buy": 0,
     "unit_sell": 9
   },
   "minecraft:lime_banner": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 16,
     "unit_buy": 0,
     "unit_sell": 11
   },
   "minecraft:magenta_banner": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 16,
     "unit_buy": 0,
     "unit_sell": 15
   },
   "minecraft:orange_banner": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 16,
     "unit_buy": 0,
     "unit_sell": 11
   },
   "minecraft:pink_banner": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 16,
     "unit_buy": 0,
     "unit_sell": 9
   },
   "minecraft:purple_banner": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 16,
     "unit_buy": 0,
     "unit_sell": 9
   },
   "minecraft:red_banner": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 16,
     "unit_buy": 0,
     "unit_sell": 9
   },
   "minecraft:white_banner": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 16,
     "unit_buy": 0,
     "unit_sell": 8
   },
   "minecraft:yellow_banner": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 16,
     "unit_buy": 0,
     "unit_sell": 9
   },
   "minecraft:black_bed": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 10
   },
   "minecraft:blue_bed": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 6
   },
   "minecraft:brown_bed": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 7
   },
   "minecraft:cyan_bed": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 7
   },
   "minecraft:gray_bed": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 9
   },
   "minecraft:green_bed": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 7
   },
   "minecraft:light_blue_bed": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 9
   },
   "minecraft:light_gray_bed": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 6
   },
   "minecraft:lime_bed": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 7
   },
   "minecraft:magenta_bed": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 9
   },
   "minecraft:orange_bed": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 7
   },
   "minecraft:pink_bed": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 6
   },
   "minecraft:purple_bed": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 6
   },
   "minecraft:red_bed": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 6
   },
   "minecraft:yellow_bed": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 6
   },
   "minecraft:black_bundle": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 5
   },
   "minecraft:blue_bundle": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:brown_bundle": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 4
   },
   "minecraft:cyan_bundle": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 4
   },
   "minecraft:gray_bundle": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 4
   },
   "minecraft:green_bundle": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 4
   },
   "minecraft:light_blue_bundle": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 4
   },
   "minecraft:light_gray_bundle": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:lime_bundle": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 4
   },
   "minecraft:magenta_bundle": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 4
   },
   "minecraft:orange_bundle": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 4
   },
   "minecraft:pink_bundle": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:purple_bundle": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:red_bundle": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:white_bundle": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 4
   },
   "minecraft:yellow_bundle": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:black_candle": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:blue_candle": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:brown_candle": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:cyan_candle": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:gray_candle": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:green_candle": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:light_blue_candle": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:light_gray_candle": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:lime_candle": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:magenta_candle": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:orange_candle": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:pink_candle": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:purple_candle": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:red_candle": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:white_candle": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:yellow_candle": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:black_concrete": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:black_concrete_powder": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:blue_concrete": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:blue_concrete_powder": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:brown_concrete": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:brown_concrete_powder": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:cyan_concrete": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:cyan_concrete_powder": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:gray_concrete": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:gray_concrete_powder": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:green_concrete": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:green_concrete_powder": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:light_blue_concrete": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:light_blue_concrete_powder": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:light_gray_concrete": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:light_gray_concrete_powder": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:lime_concrete": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:lime_concrete_powder": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:magenta_concrete": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:magenta_concrete_powder": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:orange_concrete": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:orange_concrete_powder": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:pink_concrete": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:pink_concrete_powder": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:purple_concrete": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:purple_concrete_powder": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:red_concrete": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:red_concrete_powder": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:white_concrete": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:white_concrete_powder": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:yellow_concrete": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:yellow_concrete_powder": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:black_dye": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 5,
     "unit_sell": 2
   },
   "minecraft:blue_dye": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:brown_dye": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:cyan_dye": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:gray_dye": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 4,
     "unit_sell": 1
   },
   "minecraft:green_dye": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:light_blue_dye": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 4,
     "unit_sell": 1
   },
   "minecraft:light_gray_dye": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:lime_dye": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:magenta_dye": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 4,
     "unit_sell": 1
   },
   "minecraft:orange_dye": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:pink_dye": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:purple_dye": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:red_dye": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:white_dye": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:yellow_dye": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:black_stained_glass": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:blue_stained_glass": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:brown_stained_glass": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:cyan_stained_glass": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:glass": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:gray_stained_glass": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:green_stained_glass": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:light_blue_stained_glass": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:light_gray_stained_glass": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:lime_stained_glass": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:magenta_stained_glass": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:orange_stained_glass": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:pink_stained_glass": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:purple_stained_glass": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:red_stained_glass": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:white_stained_glass": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:yellow_stained_glass": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:black_stained_glass_pane": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:blue_stained_glass_pane": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:brown_stained_glass_pane": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:cyan_stained_glass_pane": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:glass_pane": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:gray_stained_glass_pane": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:green_stained_glass_pane": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:light_blue_stained_glass_pane": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:light_gray_stained_glass_pane": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:lime_stained_glass_pane": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:magenta_stained_glass_pane": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:orange_stained_glass_pane": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:pink_stained_glass_pane": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:purple_stained_glass_pane": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:red_stained_glass_pane": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:white_stained_glass_pane": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:yellow_stained_glass_pane": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:black_shulker_box": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 150
   },
   "minecraft:blue_shulker_box": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 150
   },
   "minecraft:brown_shulker_box": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 150
   },
   "minecraft:cyan_shulker_box": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 150
   },
   "minecraft:gray_shulker_box": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 150
   },
   "minecraft:green_shulker_box": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 150
   },
   "minecraft:light_blue_shulker_box": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 150
   },
   "minecraft:light_gray_shulker_box": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 150
   },
   "minecraft:lime_shulker_box": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 150
   },
   "minecraft:magenta_shulker_box": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 150
   },
   "minecraft:orange_shulker_box": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 150
   },
   "minecraft:pink_shulker_box": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 150
   },
   "minecraft:purple_shulker_box": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 150
   },
   "minecraft:red_shulker_box": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 150
   },
   "minecraft:white_shulker_box": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 150
   },
   "minecraft:yellow_shulker_box": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 1,
     "unit_buy": 0,
     "unit_sell": 150
   },
   "minecraft:black_terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:blue_terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:brown_terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:cyan_terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:gray_terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:green_terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:light_blue_terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:light_gray_terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:lime_terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:magenta_terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:orange_terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:pink_terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:purple_terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:red_terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:white_terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:yellow_terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:black_glazed_terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:blue_glazed_terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:brown_glazed_terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:cyan_glazed_terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:gray_glazed_terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:green_glazed_terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:light_blue_glazed_terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:light_gray_glazed_terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:lime_glazed_terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:magenta_glazed_terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:orange_glazed_terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:pink_glazed_terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:purple_glazed_terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:red_glazed_terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:white_glazed_terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:yellow_glazed_terracotta": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:black_wool": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:blue_wool": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:brown_wool": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:cyan_wool": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:gray_wool": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:green_wool": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:light_blue_wool": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:light_gray_wool": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:lime_wool": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:magenta_wool": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:orange_wool": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:pink_wool": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:purple_wool": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:red_wool": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:white_wool": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:yellow_wool": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:black_carpet": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:blue_carpet": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:brown_carpet": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:cyan_carpet": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:gray_carpet": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:green_carpet": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:light_blue_carpet": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:light_gray_carpet": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:lime_carpet": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:magenta_carpet": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:orange_carpet": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:pink_carpet": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:purple_carpet": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:red_carpet": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:white_carpet": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
   },
   "minecraft:yellow_carpet": {
-    "category": "dyed",
+    "category": "dyes",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 1
@@ -5100,37 +5100,37 @@
     "unit_sell": 3
   },
   "minecraft:blue_ice": {
-    "category": "blocks.ice",
+    "category": "ice",
     "stack": 64,
     "unit_buy": 162,
     "unit_sell": 49
   },
   "minecraft:ice": {
-    "category": "blocks.ice",
+    "category": "ice",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:packed_ice": {
-    "category": "blocks.ice",
+    "category": "ice",
     "stack": 64,
     "unit_buy": 18,
     "unit_sell": 5
   },
   "minecraft:snow": {
-    "category": "blocks.ice",
+    "category": "ice",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:snow_block": {
-    "category": "blocks.ice",
+    "category": "ice",
     "stack": 64,
     "unit_buy": 4,
     "unit_sell": 1
   },
   "minecraft:snowball": {
-    "category": "blocks.ice",
+    "category": "ice",
     "stack": 16,
     "unit_buy": 2,
     "unit_sell": 1
@@ -9468,511 +9468,511 @@
     "unit_sell": 2
   },
   "minecraft:acacia_planks": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:acacia_slab": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:acacia_stairs": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 3,
     "unit_sell": 1
   },
   "minecraft:acacia_wood": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 11,
     "unit_sell": 3
   },
   "minecraft:stripped_acacia_log": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:stripped_acacia_wood": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:acacia_log": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 8,
     "unit_sell": 2
   },
   "minecraft:bamboo_mosaic": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 5,
     "unit_sell": 1
   },
   "minecraft:bamboo_mosaic_slab": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:bamboo_mosaic_stairs": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 7,
     "unit_sell": 2
   },
   "minecraft:bamboo_planks": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 5,
     "unit_sell": 1
   },
   "minecraft:bamboo_slab": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:bamboo_stairs": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 7,
     "unit_sell": 2
   },
   "minecraft:bamboo_block": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 9,
     "unit_sell": 3
   },
   "minecraft:stripped_bamboo_block": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:birch_log": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 8,
     "unit_sell": 2
   },
   "minecraft:birch_planks": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:birch_slab": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:birch_stairs": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 3,
     "unit_sell": 1
   },
   "minecraft:birch_wood": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 11,
     "unit_sell": 3
   },
   "minecraft:stripped_birch_log": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:stripped_birch_wood": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:cherry_log": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 8,
     "unit_sell": 2
   },
   "minecraft:cherry_planks": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:cherry_slab": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:cherry_stairs": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 3,
     "unit_sell": 1
   },
   "minecraft:cherry_wood": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 11,
     "unit_sell": 3
   },
   "minecraft:stripped_cherry_log": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:stripped_cherry_wood": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:crimson_hyphae": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 14,
     "unit_sell": 4
   },
   "minecraft:crimson_planks": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 3,
     "unit_sell": 1
   },
   "minecraft:crimson_slab": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:crimson_stairs": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 5,
     "unit_sell": 2
   },
   "minecraft:crimson_stem": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 10,
     "unit_sell": 3
   },
   "minecraft:stripped_crimson_hyphae": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 4
   },
   "minecraft:stripped_crimson_stem": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:dark_oak_log": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 8,
     "unit_sell": 2
   },
   "minecraft:dark_oak_planks": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:dark_oak_slab": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:dark_oak_stairs": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 3,
     "unit_sell": 1
   },
   "minecraft:dark_oak_wood": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 11,
     "unit_sell": 3
   },
   "minecraft:stripped_dark_oak_log": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:stripped_dark_oak_wood": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:jungle_log": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 8,
     "unit_sell": 2
   },
   "minecraft:jungle_planks": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:jungle_slab": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:jungle_stairs": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 3,
     "unit_sell": 1
   },
   "minecraft:jungle_wood": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 11,
     "unit_sell": 3
   },
   "minecraft:stripped_jungle_log": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:stripped_jungle_wood": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:mangrove_log": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 10,
     "unit_sell": 3
   },
   "minecraft:mangrove_planks": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 3,
     "unit_sell": 1
   },
   "minecraft:mangrove_slab": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:mangrove_stairs": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 4,
     "unit_sell": 1
   },
   "minecraft:mangrove_wood": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 14,
     "unit_sell": 4
   },
   "minecraft:stripped_mangrove_log": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 5
   },
   "minecraft:stripped_mangrove_wood": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 7
   },
   "minecraft:oak_log": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 8,
     "unit_sell": 2
   },
   "minecraft:oak_planks": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:oak_slab": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:oak_stairs": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 3,
     "unit_sell": 1
   },
   "minecraft:oak_wood": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 11,
     "unit_sell": 3
   },
   "minecraft:stripped_oak_log": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:stripped_oak_wood": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:pale_oak_log": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 9,
     "unit_sell": 3
   },
   "minecraft:pale_oak_planks": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:pale_oak_slab": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:pale_oak_stairs": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 3,
     "unit_sell": 1
   },
   "minecraft:pale_oak_wood": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 12,
     "unit_sell": 4
   },
   "minecraft:stripped_pale_oak_log": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:stripped_pale_oak_wood": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 4
   },
   "minecraft:spruce_log": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 8,
     "unit_sell": 2
   },
   "minecraft:spruce_planks": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:spruce_slab": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:spruce_stairs": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 3,
     "unit_sell": 1
   },
   "minecraft:spruce_wood": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 11,
     "unit_sell": 3
   },
   "minecraft:stripped_spruce_log": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 2
   },
   "minecraft:stripped_spruce_wood": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:stripped_warped_hyphae": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 4
   },
   "minecraft:stripped_warped_stem": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 0,
     "unit_sell": 3
   },
   "minecraft:warped_hyphae": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 14,
     "unit_sell": 4
   },
   "minecraft:warped_planks": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 3,
     "unit_sell": 1
   },
   "minecraft:warped_slab": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 2,
     "unit_sell": 1
   },
   "minecraft:warped_stairs": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 5,
     "unit_sell": 2
   },
   "minecraft:warped_stem": {
-    "category": "wood",
+    "category": "blocks.wood",
     "stack": 64,
     "unit_buy": 10,
     "unit_sell": 3
