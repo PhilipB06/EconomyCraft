@@ -62,8 +62,9 @@ public final class OrdersUi {
             head.set(DataComponents.PROFILE, net.minecraft.world.item.component.ResolvableProfile.createUnresolved(playerId.toString()));
         }
         long balance = eco.getBalance(playerId, true);
-        head.set(DataComponents.CUSTOM_NAME, Component.literal((name != null ? name : playerId.toString()) + " Balance: " + EconomyCraft.formatMoney(balance)).withStyle(s -> s.withItalic(false).withColor(ChatFormatting.GOLD)));
-        head.set(DataComponents.LORE, new ItemLore(List.of(Component.literal(EconomyCraft.formatMoney(balance)).withStyle(s -> s.withItalic(false)))));
+        String displayName = name != null ? name : playerId.toString();
+        head.set(DataComponents.CUSTOM_NAME, Component.literal(displayName).withStyle(s -> s.withItalic(false).withColor(ChatFormatting.GOLD)));
+        head.set(DataComponents.LORE, new ItemLore(List.of(Component.literal("Balance: " + EconomyCraft.formatMoney(balance)).withStyle(s -> s.withItalic(false).withColor(ChatFormatting.GOLD)))));
         return head;
     }
 

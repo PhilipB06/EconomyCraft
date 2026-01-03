@@ -87,9 +87,9 @@ public final class ShopUi {
         head.set(net.minecraft.core.component.DataComponents.PROFILE, ResolvableProfile.createResolved(profile));
         long balance = EconomyCraft.getManager(player.level().getServer()).getBalance(player.getUUID(), true);
         head.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
-                Component.literal(IdentityCompat.of(player).name() + " Balance: " + EconomyCraft.formatMoney(balance)).withStyle(s -> s.withItalic(false).withColor(ChatFormatting.GOLD)));
+                Component.literal(IdentityCompat.of(player).name()).withStyle(s -> s.withItalic(false).withColor(ChatFormatting.GOLD)));
         head.set(net.minecraft.core.component.DataComponents.LORE,
-                new ItemLore(List.of(Component.literal(EconomyCraft.formatMoney(balance)).withStyle(s -> s.withItalic(false)))));
+                new ItemLore(List.of(Component.literal("Balance: " + EconomyCraft.formatMoney(balance)).withStyle(s -> s.withItalic(false).withColor(ChatFormatting.GOLD)))));
         return head;
     }
 
