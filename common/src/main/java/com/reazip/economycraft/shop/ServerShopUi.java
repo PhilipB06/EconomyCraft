@@ -78,9 +78,7 @@ public final class ServerShopUi {
     }
 
     private static void openRoot(ServerPlayer player, EconomyManager eco) {
-        String name = IdentityCompat.of(player).name();
-        long bal = eco.getBalance(player.getUUID(), true);
-        Component title = Component.literal(name + "\nBalance: " + EconomyCraft.formatMoney(bal)).withStyle(s -> s.withBold(true));
+        Component title = Component.literal("Server Shop");
 
         player.openMenu(new MenuProvider() {
             @Override
@@ -118,7 +116,7 @@ public final class ServerShopUi {
     private static void openItems(ServerPlayer player, EconomyManager eco, String category, @Nullable String displayTitle) {
         Component title;
         if (displayTitle != null) {
-            title = Component.literal(displayTitle).withStyle(s -> s.withBold(true));
+            title = Component.literal(formatCategoryTitle(displayTitle)).withStyle(s -> s.withBold(true));
         } else {
             title = Component.literal(formatCategoryTitle(category)).withStyle(s -> s.withBold(true));
         }
@@ -337,7 +335,7 @@ public final class ServerShopUi {
                 ItemStack icon = createCategoryIcon(sub, full, prices, viewer);
                 if (icon.isEmpty()) continue;
 
-                icon.set(DataComponents.CUSTOM_NAME, Component.literal(formatCategoryTitle(sub)).withStyle(s -> s.withItalic(false).withColor(getCategoryColor(full)).withBold(true)));
+                icon.set(DataComponents.CUSTOM_NAME, Component.literal(formatCategoryTitle(sub)).withStyle(s -> s.withItalic(false).withColor(getCategoryColor(topCategory)).withBold(true)));
                 icon.set(DataComponents.LORE, new ItemLore(List.of(Component.literal("Click to view items").withStyle(s -> s.withItalic(false)))));
                 container.setItem(i, icon);
             }
@@ -355,7 +353,7 @@ public final class ServerShopUi {
             }
 
             ItemStack back = new ItemStack(Items.BARRIER);
-            back.set(DataComponents.CUSTOM_NAME, Component.literal("Back").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.DARK_RED)));
+            back.set(DataComponents.CUSTOM_NAME, Component.literal("Back").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.DARK_RED).withBold(true)));
             container.setItem(navRowStart + 8, back);
 
             ItemStack balance = createBalanceItem(viewer);
@@ -485,7 +483,7 @@ public final class ServerShopUi {
             }
 
             ItemStack back = new ItemStack(Items.BARRIER);
-            back.set(DataComponents.CUSTOM_NAME, Component.literal("Back").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.DARK_RED)));
+            back.set(DataComponents.CUSTOM_NAME, Component.literal("Back").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.DARK_RED).withBold(true)));
             container.setItem(navRowStart + 8, back);
 
             ItemStack balance = createBalanceItem(viewer);
@@ -770,7 +768,8 @@ public final class ServerShopUi {
         head.set(DataComponents.PROFILE,
                 net.minecraft.world.item.component.ResolvableProfile.createResolved(player.getGameProfile()));
         long balance = EconomyCraft.getManager(player.level().getServer()).getBalance(player.getUUID(), true);
-        head.set(DataComponents.CUSTOM_NAME, Component.literal("Balance").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.GOLD)));
+        String name = IdentityCompat.of(player).name();
+        head.set(DataComponents.CUSTOM_NAME, Component.literal(name + " Balance: " + EconomyCraft.formatMoney(balance)).withStyle(s -> s.withItalic(false).withColor(ChatFormatting.GOLD)));
         head.set(DataComponents.LORE, new ItemLore(List.of(Component.literal(EconomyCraft.formatMoney(balance)).withStyle(s -> s.withItalic(false)))));
         return head;
     }

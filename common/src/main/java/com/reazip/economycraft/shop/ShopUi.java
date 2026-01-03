@@ -30,9 +30,7 @@ public final class ShopUi {
     private ShopUi() {}
 
     public static void open(ServerPlayer player, ShopManager shop) {
-        String name = IdentityCompat.of(player).name();
-        long balance = EconomyCraft.getManager(player.level().getServer()).getBalance(player.getUUID(), true);
-        Component title = Component.literal(name + "\nBalance: " + EconomyCraft.formatMoney(balance)).withStyle(s -> s.withBold(true));
+        Component title = Component.literal("Shop");
 
         player.openMenu(new MenuProvider() {
             @Override
@@ -89,7 +87,7 @@ public final class ShopUi {
         head.set(net.minecraft.core.component.DataComponents.PROFILE, ResolvableProfile.createResolved(profile));
         long balance = EconomyCraft.getManager(player.level().getServer()).getBalance(player.getUUID(), true);
         head.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
-                Component.literal("Balance").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.GOLD)));
+                Component.literal(IdentityCompat.of(player).name() + " Balance: " + EconomyCraft.formatMoney(balance)).withStyle(s -> s.withItalic(false).withColor(ChatFormatting.GOLD)));
         head.set(net.minecraft.core.component.DataComponents.LORE,
                 new ItemLore(List.of(Component.literal(EconomyCraft.formatMoney(balance)).withStyle(s -> s.withItalic(false)))));
         return head;
