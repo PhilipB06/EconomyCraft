@@ -5,6 +5,7 @@ import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyManager;
 import com.reazip.economycraft.util.ChatCompat;
 import com.reazip.economycraft.util.IdentityCompat;
+import com.reazip.economycraft.util.ProfileComponentCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
@@ -20,7 +21,6 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.ItemLore;
-import net.minecraft.world.item.component.ResolvableProfile;
 import com.mojang.authlib.GameProfile;
 
 import java.util.ArrayList;
@@ -91,7 +91,7 @@ public final class ShopUi {
     private static ItemStack createBalanceItem(ServerPlayer player) {
         ItemStack head = new ItemStack(Items.PLAYER_HEAD);
         GameProfile profile = player.getGameProfile();
-        head.set(net.minecraft.core.component.DataComponents.PROFILE, ResolvableProfile.createResolved(profile));
+        head.set(net.minecraft.core.component.DataComponents.PROFILE, ProfileComponentCompat.resolved(profile));
         long balance = EconomyCraft.getManager(player.level().getServer()).getBalance(player.getUUID(), true);
         head.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
                 Component.literal(IdentityCompat.of(player).name()).withStyle(s -> s.withItalic(false).withColor(BALANCE_NAME_COLOR)));

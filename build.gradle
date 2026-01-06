@@ -286,3 +286,15 @@ tasks.register("buildAll") {
     description = "Build all Fabric & NeoForge targets"
     dependsOn tasks.matching { it.name.startsWith("buildAndCopyFabricJars_") || it.name.startsWith("buildAndCopyNeoForgeJars_") }
 }
+
+tasks.register("buildAllFabric") {
+    group = "build"
+    description = "Build all Fabric targets"
+    dependsOn tasks.matching { it.name.startsWith("buildAndCopyFabricJars_") }
+}
+
+tasks.register("buildAllNeoForge") {
+    group = "build"
+    description = "Build all NeoForge targets"
+    dependsOn tasks.matching { it.name.startsWith("buildAndCopyNeoForgeJars_") }
+}

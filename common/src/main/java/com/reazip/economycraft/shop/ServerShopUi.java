@@ -5,6 +5,7 @@ import com.reazip.economycraft.EconomyManager;
 import com.reazip.economycraft.PriceRegistry;
 import com.reazip.economycraft.util.ChatCompat;
 import com.reazip.economycraft.util.IdentityCompat;
+import com.reazip.economycraft.util.ProfileComponentCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
@@ -786,7 +787,7 @@ public final class ServerShopUi {
     private static ItemStack createBalanceItem(ServerPlayer player) {
         ItemStack head = new ItemStack(Items.PLAYER_HEAD);
         head.set(DataComponents.PROFILE,
-                net.minecraft.world.item.component.ResolvableProfile.createResolved(player.getGameProfile()));
+                ProfileComponentCompat.resolved(player.getGameProfile()));
         long balance = EconomyCraft.getManager(player.level().getServer()).getBalance(player.getUUID(), true);
         String name = IdentityCompat.of(player).name();
         head.set(DataComponents.CUSTOM_NAME, Component.literal(name).withStyle(s -> s.withItalic(false).withColor(BALANCE_NAME_COLOR)));

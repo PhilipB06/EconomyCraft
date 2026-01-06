@@ -5,6 +5,7 @@ import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyManager;
 import com.reazip.economycraft.util.ChatCompat;
 import com.reazip.economycraft.util.IdentityCompat;
+import com.reazip.economycraft.util.ProfileComponentCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
@@ -64,8 +65,8 @@ public final class OrdersUi {
     private static ItemStack createBalanceItem(EconomyManager eco, UUID playerId, @Nullable ServerPlayer player, @Nullable String name) {
         ItemStack head = new ItemStack(Items.PLAYER_HEAD);
         var profile = player != null
-                ? net.minecraft.world.item.component.ResolvableProfile.createResolved(player.getGameProfile())
-                : net.minecraft.world.item.component.ResolvableProfile.createUnresolved(name != null && !name.isBlank() ? name : playerId.toString());
+                ? ProfileComponentCompat.resolved(player.getGameProfile())
+                : ProfileComponentCompat.unresolved(name != null && !name.isBlank() ? name : playerId.toString());
         head.set(DataComponents.PROFILE, profile);
         long balance = eco.getBalance(playerId, true);
         String displayName = name != null ? name : playerId.toString();
