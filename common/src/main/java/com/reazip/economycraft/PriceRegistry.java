@@ -399,7 +399,7 @@ public final class PriceRegistry {
                 Holder<Enchantment> holder = e.getKey();
                 int level = e.getIntValue();
                 if (level <= 0) continue;
-                IdentifierCompat.Id enchId = holder.unwrapKey().map(ResourceKey::identifier).map(IdentifierCompat::wrap).orElse(null);
+                IdentifierCompat.Id enchId = holder.unwrapKey().map(IdentifierCompat::fromResourceKey).orElse(null);
                 if (enchId == null) continue;
                 String base = "enchanted_book_" + enchId.path() + "_" + level;
                 IdentifierCompat.Id key = IdentifierCompat.fromNamespaceAndPath(enchId.namespace(), base);

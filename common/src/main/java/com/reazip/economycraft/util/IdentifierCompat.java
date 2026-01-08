@@ -16,6 +16,7 @@ public final class IdentifierCompat {
     private static final Method REGISTRY_CONTAINS_KEY;
     private static final Method REGISTRY_GET_OPTIONAL;
     private static final Method RESOURCE_KEY_CREATE;
+    private static final Method RESOURCE_KEY_IDENTIFIER;
 
     static {
         Class<?> idClass = null;
@@ -27,6 +28,7 @@ public final class IdentifierCompat {
         Method registryContainsKey = null;
         Method registryGetOptional = null;
         Method resourceKeyCreate = null;
+        Method resourceKeyIdentifier = null;
 
         for (String className : new String[] {
                 "net.minecraft.resources.Identifier",
@@ -42,6 +44,11 @@ public final class IdentifierCompat {
                 registryContainsKey = Registry.class.getMethod("containsKey", idClass);
                 registryGetOptional = Registry.class.getMethod("getOptional", idClass);
                 resourceKeyCreate = ResourceKey.class.getMethod("create", ResourceKey.class, idClass);
+                try {
+                    resourceKeyIdentifier = ResourceKey.class.getMethod("identifier");
+                } catch (NoSuchMethodException e) {
+                    resourceKeyIdentifier = ResourceKey.class.getMethod("location");
+                }
                 break;
             } catch (ClassNotFoundException ignored) {
                 // try next name
@@ -63,6 +70,7 @@ public final class IdentifierCompat {
         REGISTRY_CONTAINS_KEY = registryContainsKey;
         REGISTRY_GET_OPTIONAL = registryGetOptional;
         RESOURCE_KEY_CREATE = resourceKeyCreate;
+        RESOURCE_KEY_IDENTIFIER = resourceKeyIdentifier;
     }
 
     private IdentifierCompat() {}
@@ -117,6 +125,14 @@ public final class IdentifierCompat {
         @SuppressWarnings("unchecked")
         ResourceKey<T> result = (ResourceKey<T>) invokeStatic(RESOURCE_KEY_CREATE, registryKey, id.handle());
         return result;
+    }
+
+    public static Id fromResourceKey(ResourceKey<?> key) {
+        if (key == null) {
+            return null;
+        }
+        Object value = invoke(RESOURCE_KEY_IDENTIFIER, key);
+        return wrap(value);
     }
 
     private static Object invokeStatic(Method method, Object... args) {
