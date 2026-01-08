@@ -13,7 +13,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.SimpleContainer;
@@ -47,7 +47,7 @@ import java.util.Set;
 public final class ServerShopUi {
     private static final Component STORED_MSG = Component.literal("Item stored: ")
             .withStyle(ChatFormatting.YELLOW);
-    private static final Map<String, ResourceLocation> CATEGORY_ICONS = buildCategoryIcons();
+    private static final Map<String, Identifier> CATEGORY_ICONS = buildCategoryIcons();
     private static final List<Integer> STAR_SLOT_ORDER = buildStarSlotOrder(5);
     private static final ChatFormatting LABEL_PRIMARY_COLOR = ChatFormatting.GOLD;
     private static final ChatFormatting LABEL_SECONDARY_COLOR = ChatFormatting.AQUA;
@@ -603,7 +603,7 @@ public final class ServerShopUi {
     }
 
     private static ItemStack createCategoryIcon(String displayKey, String categoryKey, PriceRegistry prices, ServerPlayer viewer) {
-        ResourceLocation iconId = CATEGORY_ICONS.get(normalizeCategoryKey(displayKey));
+        Identifier iconId = CATEGORY_ICONS.get(normalizeCategoryKey(displayKey));
         if (iconId == null && categoryKey != null) {
             iconId = CATEGORY_ICONS.get(normalizeCategoryKey(categoryKey));
         }
@@ -633,36 +633,36 @@ public final class ServerShopUi {
         return ItemStack.EMPTY;
     }
 
-    private static Map<String, ResourceLocation> buildCategoryIcons() {
-        Map<String, ResourceLocation> map = new HashMap<>();
-        map.put(normalizeCategoryKey("Redstone"), ResourceLocation.withDefaultNamespace("redstone"));
-        map.put(normalizeCategoryKey("Food"), ResourceLocation.withDefaultNamespace("cooked_beef"));
-        map.put(normalizeCategoryKey("Ores"), ResourceLocation.withDefaultNamespace("iron_ingot"));
-        map.put(normalizeCategoryKey("Blocks"), ResourceLocation.withDefaultNamespace("grass_block"));
-        map.put(normalizeCategoryKey("Stones"), ResourceLocation.withDefaultNamespace("cobblestone"));
-        map.put(normalizeCategoryKey("Bricks"), ResourceLocation.withDefaultNamespace("bricks"));
-        map.put(normalizeCategoryKey("Copper"), ResourceLocation.withDefaultNamespace("copper_block"));
-        map.put(normalizeCategoryKey("Earth"), ResourceLocation.withDefaultNamespace("dirt"));
-        map.put(normalizeCategoryKey("Sand"), ResourceLocation.withDefaultNamespace("sand"));
-        map.put(normalizeCategoryKey("Wood"), ResourceLocation.withDefaultNamespace("oak_log"));
-        map.put(normalizeCategoryKey("Drops"), ResourceLocation.withDefaultNamespace("gunpowder"));
-        map.put(normalizeCategoryKey("Utility"), ResourceLocation.withDefaultNamespace("totem_of_undying"));
-        map.put(normalizeCategoryKey("Transport"), ResourceLocation.withDefaultNamespace("saddle"));
-        map.put(normalizeCategoryKey("Light"), ResourceLocation.withDefaultNamespace("lantern"));
-        map.put(normalizeCategoryKey("Plants"), ResourceLocation.withDefaultNamespace("wheat"));
-        map.put(normalizeCategoryKey("Tools"), ResourceLocation.withDefaultNamespace("diamond_pickaxe"));
-        map.put(normalizeCategoryKey("Weapons"), ResourceLocation.withDefaultNamespace("diamond_sword"));
-        map.put(normalizeCategoryKey("Armor"), ResourceLocation.withDefaultNamespace("diamond_chestplate"));
-        map.put(normalizeCategoryKey("Enchantments"), ResourceLocation.withDefaultNamespace("enchanted_book"));
-        map.put(normalizeCategoryKey("Brewing"), ResourceLocation.withDefaultNamespace("water_bottle"));
-        map.put(normalizeCategoryKey("Ocean"), ResourceLocation.withDefaultNamespace("tube_coral"));
-        map.put(normalizeCategoryKey("Nether"), ResourceLocation.withDefaultNamespace("netherrack"));
-        map.put(normalizeCategoryKey("End"), ResourceLocation.withDefaultNamespace("end_stone"));
-        map.put(normalizeCategoryKey("Deep dark"), ResourceLocation.withDefaultNamespace("sculk"));
-        map.put(normalizeCategoryKey("Archaeology"), ResourceLocation.withDefaultNamespace("brush"));
-        map.put(normalizeCategoryKey("Ice"), ResourceLocation.withDefaultNamespace("ice"));
-        map.put(normalizeCategoryKey("Dyed"), ResourceLocation.withDefaultNamespace("blue_dye"));
-        map.put(normalizeCategoryKey("Discs"), ResourceLocation.withDefaultNamespace("music_disc_strad"));
+    private static Map<String, Identifier> buildCategoryIcons() {
+        Map<String, Identifier> map = new HashMap<>();
+        map.put(normalizeCategoryKey("Redstone"), Identifier.withDefaultNamespace("redstone"));
+        map.put(normalizeCategoryKey("Food"), Identifier.withDefaultNamespace("cooked_beef"));
+        map.put(normalizeCategoryKey("Ores"), Identifier.withDefaultNamespace("iron_ingot"));
+        map.put(normalizeCategoryKey("Blocks"), Identifier.withDefaultNamespace("grass_block"));
+        map.put(normalizeCategoryKey("Stones"), Identifier.withDefaultNamespace("cobblestone"));
+        map.put(normalizeCategoryKey("Bricks"), Identifier.withDefaultNamespace("bricks"));
+        map.put(normalizeCategoryKey("Copper"), Identifier.withDefaultNamespace("copper_block"));
+        map.put(normalizeCategoryKey("Earth"), Identifier.withDefaultNamespace("dirt"));
+        map.put(normalizeCategoryKey("Sand"), Identifier.withDefaultNamespace("sand"));
+        map.put(normalizeCategoryKey("Wood"), Identifier.withDefaultNamespace("oak_log"));
+        map.put(normalizeCategoryKey("Drops"), Identifier.withDefaultNamespace("gunpowder"));
+        map.put(normalizeCategoryKey("Utility"), Identifier.withDefaultNamespace("totem_of_undying"));
+        map.put(normalizeCategoryKey("Transport"), Identifier.withDefaultNamespace("saddle"));
+        map.put(normalizeCategoryKey("Light"), Identifier.withDefaultNamespace("lantern"));
+        map.put(normalizeCategoryKey("Plants"), Identifier.withDefaultNamespace("wheat"));
+        map.put(normalizeCategoryKey("Tools"), Identifier.withDefaultNamespace("diamond_pickaxe"));
+        map.put(normalizeCategoryKey("Weapons"), Identifier.withDefaultNamespace("diamond_sword"));
+        map.put(normalizeCategoryKey("Armor"), Identifier.withDefaultNamespace("diamond_chestplate"));
+        map.put(normalizeCategoryKey("Enchantments"), Identifier.withDefaultNamespace("enchanted_book"));
+        map.put(normalizeCategoryKey("Brewing"), Identifier.withDefaultNamespace("water_bottle"));
+        map.put(normalizeCategoryKey("Ocean"), Identifier.withDefaultNamespace("tube_coral"));
+        map.put(normalizeCategoryKey("Nether"), Identifier.withDefaultNamespace("netherrack"));
+        map.put(normalizeCategoryKey("End"), Identifier.withDefaultNamespace("end_stone"));
+        map.put(normalizeCategoryKey("Deep dark"), Identifier.withDefaultNamespace("sculk"));
+        map.put(normalizeCategoryKey("Archaeology"), Identifier.withDefaultNamespace("brush"));
+        map.put(normalizeCategoryKey("Ice"), Identifier.withDefaultNamespace("ice"));
+        map.put(normalizeCategoryKey("Dyed"), Identifier.withDefaultNamespace("blue_dye"));
+        map.put(normalizeCategoryKey("Discs"), Identifier.withDefaultNamespace("music_disc_strad"));
         return map;
     }
 
@@ -822,7 +822,7 @@ public final class ServerShopUi {
     }
 
     private static ItemStack createDisplayStack(PriceRegistry.PriceEntry entry, ServerPlayer viewer) {
-        ResourceLocation id = entry.id();
+        Identifier id = entry.id();
         if (BuiltInRegistries.ITEM.containsKey(id)) {
             Optional<Item> item = BuiltInRegistries.ITEM.getOptional(id);
             if (item.isEmpty() || item.get() == Items.AIR) return ItemStack.EMPTY;
@@ -837,7 +837,7 @@ public final class ServerShopUi {
         return createPotionStack(id);
     }
 
-    private static ItemStack createEnchantedBookStack(ResourceLocation key, ServerPlayer viewer) {
+    private static ItemStack createEnchantedBookStack(Identifier key, ServerPlayer viewer) {
         String path = key.getPath();
         String suffix = path.substring("enchanted_book_".length());
         int lastUnderscore = suffix.lastIndexOf('_');
@@ -856,7 +856,7 @@ public final class ServerShopUi {
         if (enchantPath.equals("curse_of_binding")) enchantPath = "binding_curse";
         else if (enchantPath.equals("curse_of_vanishing")) enchantPath = "vanishing_curse";
 
-        ResourceLocation enchantId = ResourceLocation.fromNamespaceAndPath(key.getNamespace(), enchantPath);
+        Identifier enchantId = Identifier.fromNamespaceAndPath(key.getNamespace(), enchantPath);
         HolderLookup.RegistryLookup<Enchantment> lookup = viewer.registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
         Optional<Holder.Reference<Enchantment>> holder = lookup.get(ResourceKey.create(Registries.ENCHANTMENT, enchantId));
         if (holder.isEmpty()) return ItemStack.EMPTY;
@@ -868,7 +868,7 @@ public final class ServerShopUi {
         return stack;
     }
 
-    private static ItemStack createPotionStack(ResourceLocation key) {
+    private static ItemStack createPotionStack(Identifier key) {
         String path = key.getPath();
         Item baseItem = Items.POTION;
         String working = path;
@@ -920,7 +920,7 @@ public final class ServerShopUi {
             potionPath = "turtle_master";
         }
 
-        ResourceLocation potionId = ResourceLocation.fromNamespaceAndPath(key.getNamespace(), potionPath);
+        Identifier potionId = Identifier.fromNamespaceAndPath(key.getNamespace(), potionPath);
         Optional<Potion> potion = BuiltInRegistries.POTION.getOptional(potionId);
         if (potion.isEmpty()) return ItemStack.EMPTY;
 
