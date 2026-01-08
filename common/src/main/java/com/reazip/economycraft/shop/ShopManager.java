@@ -9,7 +9,7 @@ import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.util.IdentityCompat;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.RegistryOps;
-import net.minecraft.resources.Identifier;
+import com.reazip.economycraft.util.IdentifierCompat;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
@@ -150,9 +150,9 @@ public class ShopManager {
                         } else {
                             String itemId = o.get("item").getAsString();
                             int count = o.get("count").getAsInt();
-                            Identifier rl = Identifier.tryParse(itemId);
+                            IdentifierCompat.Id rl = IdentifierCompat.tryParse(itemId);
                             if (rl != null) {
-                                java.util.Optional<Item> opt = BuiltInRegistries.ITEM.getOptional(rl);
+                                java.util.Optional<Item> opt = BuiltInRegistries.ITEM.getOptional(IdentifierCompat.unwrap(rl));
 
                                 if (opt.isPresent()) {
                                     Item item = opt.get();

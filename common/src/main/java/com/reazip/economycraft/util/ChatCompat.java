@@ -3,7 +3,7 @@ package com.reazip.economycraft.util;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.permissions.LevelBasedPermissionSet;
+import com.reazip.economycraft.util.PermissionCompat;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -107,7 +107,7 @@ public final class ChatCompat {
 
             var srv = target.level().getServer();
             srv.getCommands().performPrefixedCommand(
-                    srv.createCommandSourceStack().withPermission(LevelBasedPermissionSet.OWNER),
+                    PermissionCompat.withOwnerPermission(srv.createCommandSourceStack()),
                     line);
         } catch (Throwable ignored) {
             System.out.println("[EC-CC] tw");

@@ -5,12 +5,12 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.reazip.economycraft.PriceRegistry.ResolvedPrice;
 import com.reazip.economycraft.util.ChatCompat;
+import com.reazip.economycraft.util.IdentifierCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 
@@ -141,7 +141,7 @@ public final class SellCommand {
             return 0;
         }
 
-        Identifier heldItemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(hand.getItem());
+        IdentifierCompat.Id heldItemId = IdentifierCompat.wrap(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(hand.getItem()));
         PENDING.put(player.getUUID(), new PendingSale(resolved.key(), totalCount, total,
                 System.currentTimeMillis() + CONFIRM_EXPIRY_MS, heldItemId));
 
@@ -185,7 +185,7 @@ public final class SellCommand {
             return 0;
         }
 
-        Identifier currentItemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(hand.getItem());
+        IdentifierCompat.Id currentItemId = IdentifierCompat.wrap(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(hand.getItem()));
         if (!currentItemId.equals(pending.heldItemId())) {
             source.sendFailure(Component.literal("Held item changed. Run /sell all again.").withStyle(ChatFormatting.RED));
             PENDING.remove(player.getUUID());
@@ -227,7 +227,7 @@ public final class SellCommand {
         return pending.count();
     }
 
-    private static int countMatchingSellable(ServerPlayer player, PriceRegistry prices, Identifier key) {
+    private static int countMatchingSellable(ServerPlayer player, PriceRegistry prices, IdentifierCompat.Id key) {
         var inv = player.getInventory();
         int total = 0;
         for (int i = 0; i < 36; i++) {
@@ -244,7 +244,7 @@ public final class SellCommand {
         return total;
     }
 
-    private static void removeMatching(ServerPlayer player, PriceRegistry prices, Identifier key, int toRemove) {
+    private static void removeMatching(ServerPlayer player, PriceRegistry prices, IdentifierCompat.Id key, int toRemove) {
         var inv = player.getInventory();
         int remaining = toRemove;
         for (int i = 0; i < 36; i++) {
@@ -263,7 +263,7 @@ public final class SellCommand {
         }
     }
 
-    private static int drainStack(PriceRegistry prices, ItemStack stack, Identifier key, int remaining) {
+    private static int drainStack(PriceRegistry prices, ItemStack stack, IdentifierCompat.Id key, int remaining) {
         if (remaining <= 0) return 0;
         if (!isMatchingSellable(prices, stack, key)) return remaining;
 
@@ -275,7 +275,7 @@ public final class SellCommand {
         return remaining - remove;
     }
 
-    private static boolean isMatchingSellable(PriceRegistry prices, ItemStack stack, Identifier key) {
+    private static boolean isMatchingSellable(PriceRegistry prices, ItemStack stack, IdentifierCompat.Id key) {
         if (stack == null || stack.isEmpty()) return false;
         if (prices.isSellBlockedByDamage(stack)) return false;
         if (prices.isSellBlockedByContents(stack)) return false;
@@ -300,8 +300,8 @@ public final class SellCommand {
         }
     }
 
-    private record PendingSale(Identifier key, int count, long total, long expiresAt,
-                               Identifier heldItemId) {}
+    private record PendingSale(IdentifierCompat.Id key, int count, long total, long expiresAt,
+                               IdentifierCompat.Id heldItemId) {}
 
     private static int handleDailyLimitFailure(EconomyManager manager, ServerPlayer player, CommandSourceStack source) {
         long remaining = manager.getDailySellRemaining(player.getUUID());

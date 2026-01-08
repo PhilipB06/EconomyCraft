@@ -7,13 +7,13 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import com.reazip.economycraft.util.IdentityCompat;
+import com.reazip.economycraft.util.IdentifierArgumentCompat;
+import com.reazip.economycraft.util.IdentifierCompat;
+import com.reazip.economycraft.util.PermissionCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.GameProfileArgument;
-import net.minecraft.commands.arguments.IdentifierArgument;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.*;
@@ -277,7 +277,7 @@ public final class EconomyCommands {
     // =====================================================================
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildAddMoney() {
-        return literal("addmoney").requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+        return literal("addmoney").requires(PermissionCompat.gamemaster())
                 .then(argument("targets", GameProfileArgument.gameProfile())
                         .then(argument("amount", LongArgumentType.longArg(1, EconomyManager.MAX))
                                 .executes(ctx -> addMoney(
@@ -287,7 +287,7 @@ public final class EconomyCommands {
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildSetMoney() {
-        return literal("setmoney").requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+        return literal("setmoney").requires(PermissionCompat.gamemaster())
                 .then(argument("targets", GameProfileArgument.gameProfile())
                         .then(argument("amount", LongArgumentType.longArg(0, EconomyManager.MAX))
                                 .executes(ctx -> setMoney(
@@ -297,7 +297,7 @@ public final class EconomyCommands {
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildRemoveMoney() {
-        return literal("removemoney").requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+        return literal("removemoney").requires(PermissionCompat.gamemaster())
                 .then(argument("targets", GameProfileArgument.gameProfile())
                         .executes(ctx -> removeMoney(
                                 IdentityCompat.getArgAsPlayerRefs(ctx, "targets"),
@@ -311,7 +311,7 @@ public final class EconomyCommands {
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildRemovePlayer() {
-        return literal("removeplayer").requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+        return literal("removeplayer").requires(PermissionCompat.gamemaster())
                 .then(argument("targets", GameProfileArgument.gameProfile())
                         .executes(ctx -> removePlayers(
                                 IdentityCompat.getArgAsPlayerRefs(ctx, "targets"),
@@ -575,7 +575,7 @@ public final class EconomyCommands {
     // =====================================================================
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildToggleScoreboard() {
-        return literal("toggleScoreboard").requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+        return literal("toggleScoreboard").requires(PermissionCompat.gamemaster())
                 .executes(ctx -> toggleScoreboard(ctx.getSource()));
     }
 
@@ -672,11 +672,11 @@ public final class EconomyCommands {
         return literal("orders")
                 .executes(ctx -> openOrders(ctx.getSource().getPlayerOrException(), ctx.getSource()))
                 .then(literal("request")
-                        .then(argument("item", IdentifierArgument.id())
+                        .then(argument("item", IdentifierArgumentCompat.id())
                                 .then(argument("amount", LongArgumentType.longArg(1, EconomyManager.MAX))
                                         .then(argument("price", LongArgumentType.longArg(1, EconomyManager.MAX))
                                                 .executes(ctx -> requestItem(ctx.getSource().getPlayerOrException(),
-                                                        IdentifierArgument.getId(ctx, "item"),
+                                                        IdentifierArgumentCompat.getId(ctx, "item"),
                                                         (int) Math.min(LongArgumentType.getLong(ctx, "amount"), EconomyManager.MAX),
                                                         LongArgumentType.getLong(ctx, "price"),
                                                         ctx.getSource()))))))
@@ -688,8 +688,8 @@ public final class EconomyCommands {
         return 1;
     }
 
-    private static int requestItem(ServerPlayer player, Identifier item, int amount, long price, CommandSourceStack source) {
-        var holder = net.minecraft.core.registries.BuiltInRegistries.ITEM.getOptional(item);
+    private static int requestItem(ServerPlayer player, IdentifierCompat.Id item, int amount, long price, CommandSourceStack source) {
+        var holder = net.minecraft.core.registries.BuiltInRegistries.ITEM.getOptional(IdentifierCompat.unwrap(item));
         if (holder.isEmpty()) {
             source.sendFailure(Component.literal("Invalid item").withStyle(ChatFormatting.RED));
             return 0;
