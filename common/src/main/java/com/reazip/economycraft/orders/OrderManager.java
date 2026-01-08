@@ -114,7 +114,7 @@ public class OrderManager {
                             int count = o.get("count").getAsInt();
                             IdentifierCompat.Id rl = IdentifierCompat.tryParse(itemId);
                             if (rl != null) {
-                                java.util.Optional<Item> opt = BuiltInRegistries.ITEM.getOptional(IdentifierCompat.unwrap(rl));
+                                java.util.Optional<Item> opt = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, rl);
 
                                 if (opt.isPresent()) {
                                     Item item = opt.get();

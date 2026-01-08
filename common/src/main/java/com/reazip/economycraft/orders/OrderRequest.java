@@ -44,7 +44,7 @@ public class OrderRequest {
             String itemId = obj.get("item").getAsString();
             IdentifierCompat.Id rl = IdentifierCompat.tryParse(itemId);
             if (rl != null) {
-                java.util.Optional<net.minecraft.world.item.Item> opt = BuiltInRegistries.ITEM.getOptional(IdentifierCompat.unwrap(rl));
+                java.util.Optional<net.minecraft.world.item.Item> opt = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, rl);
                 opt.ifPresent(item -> r.item = new ItemStack(item));
             }
         }

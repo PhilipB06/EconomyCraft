@@ -85,7 +85,7 @@ public final class PriceRegistry {
                     continue;
                 }
 
-                boolean isRealItem = BuiltInRegistries.ITEM.containsKey(id);
+                boolean isRealItem = IdentifierCompat.registryContainsKey(BuiltInRegistries.ITEM, id);
                 boolean isVirtual = isVirtualPriceId(id);
 
                 if (!isRealItem && !isVirtual) {

@@ -1,6 +1,10 @@
 package com.reazip.economycraft.util;
 
+import net.minecraft.core.Registry;
+import net.minecraft.resources.ResourceKey;
+
 import java.lang.reflect.Method;
+import java.util.Optional;
 
 public final class IdentifierCompat {
     private static final Class<?> ID_CLASS;
@@ -9,6 +13,9 @@ public final class IdentifierCompat {
     private static final Method FROM_NAMESPACE_AND_PATH;
     private static final Method GET_NAMESPACE;
     private static final Method GET_PATH;
+    private static final Method REGISTRY_CONTAINS_KEY;
+    private static final Method REGISTRY_GET_OPTIONAL;
+    private static final Method RESOURCE_KEY_CREATE;
 
     static {
         Class<?> idClass = null;
@@ -17,6 +24,9 @@ public final class IdentifierCompat {
         Method fromNamespaceAndPath = null;
         Method getNamespace = null;
         Method getPath = null;
+        Method registryContainsKey = null;
+        Method registryGetOptional = null;
+        Method resourceKeyCreate = null;
 
         for (String className : new String[] {
                 "net.minecraft.resources.Identifier",
@@ -29,6 +39,9 @@ public final class IdentifierCompat {
                 fromNamespaceAndPath = idClass.getMethod("fromNamespaceAndPath", String.class, String.class);
                 getNamespace = idClass.getMethod("getNamespace");
                 getPath = idClass.getMethod("getPath");
+                registryContainsKey = Registry.class.getMethod("containsKey", idClass);
+                registryGetOptional = Registry.class.getMethod("getOptional", idClass);
+                resourceKeyCreate = ResourceKey.class.getMethod("create", ResourceKey.class, idClass);
                 break;
             } catch (ClassNotFoundException ignored) {
                 // try next name
@@ -47,6 +60,9 @@ public final class IdentifierCompat {
         FROM_NAMESPACE_AND_PATH = fromNamespaceAndPath;
         GET_NAMESPACE = getNamespace;
         GET_PATH = getPath;
+        REGISTRY_CONTAINS_KEY = registryContainsKey;
+        REGISTRY_GET_OPTIONAL = registryGetOptional;
+        RESOURCE_KEY_CREATE = resourceKeyCreate;
     }
 
     private IdentifierCompat() {}
@@ -76,6 +92,31 @@ public final class IdentifierCompat {
     @SuppressWarnings("unchecked")
     public static <T> T unwrap(Id id) {
         return id == null ? null : (T) id.handle();
+    }
+
+    public static boolean registryContainsKey(Registry<?> registry, Id id) {
+        if (id == null) {
+            return false;
+        }
+        return (boolean) invoke(REGISTRY_CONTAINS_KEY, registry, id.handle());
+    }
+
+    public static <T> Optional<T> registryGetOptional(Registry<T> registry, Id id) {
+        if (id == null) {
+            return Optional.empty();
+        }
+        @SuppressWarnings("unchecked")
+        Optional<T> result = (Optional<T>) invoke(REGISTRY_GET_OPTIONAL, registry, id.handle());
+        return result;
+    }
+
+    public static <T> ResourceKey<T> createResourceKey(ResourceKey<? extends Registry<T>> registryKey, Id id) {
+        if (id == null) {
+            return null;
+        }
+        @SuppressWarnings("unchecked")
+        ResourceKey<T> result = (ResourceKey<T>) invokeStatic(RESOURCE_KEY_CREATE, registryKey, id.handle());
+        return result;
     }
 
     private static Object invokeStatic(Method method, Object... args) {

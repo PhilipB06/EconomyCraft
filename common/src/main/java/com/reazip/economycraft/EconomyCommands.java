@@ -689,7 +689,7 @@ public final class EconomyCommands {
     }
 
     private static int requestItem(ServerPlayer player, IdentifierCompat.Id item, int amount, long price, CommandSourceStack source) {
-        var holder = net.minecraft.core.registries.BuiltInRegistries.ITEM.getOptional(IdentifierCompat.unwrap(item));
+        var holder = IdentifierCompat.registryGetOptional(net.minecraft.core.registries.BuiltInRegistries.ITEM, item);
         if (holder.isEmpty()) {
             source.sendFailure(Component.literal("Invalid item").withStyle(ChatFormatting.RED));
             return 0;

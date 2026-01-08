@@ -609,7 +609,7 @@ public final class ServerShopUi {
         }
 
         if (iconId != null) {
-            Optional<Item> item = BuiltInRegistries.ITEM.getOptional(IdentifierCompat.unwrap(iconId));
+            Optional<Item> item = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, iconId);
             if (item.isPresent()) {
                 return new ItemStack(item.get());
             }
@@ -823,8 +823,8 @@ public final class ServerShopUi {
 
     private static ItemStack createDisplayStack(PriceRegistry.PriceEntry entry, ServerPlayer viewer) {
         IdentifierCompat.Id id = entry.id();
-        if (BuiltInRegistries.ITEM.containsKey(id)) {
-            Optional<Item> item = BuiltInRegistries.ITEM.getOptional(IdentifierCompat.unwrap(id));
+        if (IdentifierCompat.registryContainsKey(BuiltInRegistries.ITEM, id)) {
+            Optional<Item> item = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, id);
             if (item.isEmpty() || item.get() == Items.AIR) return ItemStack.EMPTY;
             return new ItemStack(item.get());
         }
@@ -858,7 +858,7 @@ public final class ServerShopUi {
 
         IdentifierCompat.Id enchantId = IdentifierCompat.fromNamespaceAndPath(key.namespace(), enchantPath);
         HolderLookup.RegistryLookup<Enchantment> lookup = viewer.registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
-        Optional<Holder.Reference<Enchantment>> holder = lookup.get(ResourceKey.create(Registries.ENCHANTMENT, enchantId));
+        Optional<Holder.Reference<Enchantment>> holder = lookup.get(IdentifierCompat.createResourceKey(Registries.ENCHANTMENT, enchantId));
         if (holder.isEmpty()) return ItemStack.EMPTY;
 
         ItemStack stack = new ItemStack(Items.ENCHANTED_BOOK);
@@ -921,7 +921,7 @@ public final class ServerShopUi {
         }
 
         IdentifierCompat.Id potionId = IdentifierCompat.fromNamespaceAndPath(key.namespace(), potionPath);
-        Optional<Potion> potion = BuiltInRegistries.POTION.getOptional(IdentifierCompat.unwrap(potionId));
+        Optional<Potion> potion = IdentifierCompat.registryGetOptional(BuiltInRegistries.POTION, potionId);
         if (potion.isEmpty()) return ItemStack.EMPTY;
 
         Holder<Potion> holder = BuiltInRegistries.POTION.wrapAsHolder(potion.get());

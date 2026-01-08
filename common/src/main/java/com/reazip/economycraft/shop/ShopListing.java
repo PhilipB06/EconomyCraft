@@ -49,7 +49,7 @@ public class ShopListing {
             IdentifierCompat.Id rl = IdentifierCompat.tryParse(itemId);
 
             if (rl != null) {
-                java.util.Optional<Item> opt = BuiltInRegistries.ITEM.getOptional(IdentifierCompat.unwrap(rl));
+                java.util.Optional<Item> opt = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, rl);
                 opt.ifPresent(item -> l.item = new ItemStack(item, count)); // directly set l.item
             }
         }
