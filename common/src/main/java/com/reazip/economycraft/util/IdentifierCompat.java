@@ -1,18 +1,17 @@
 package com.reazip.economycraft.util;
 
 import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.item.Items;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.Optional;
 
 public final class IdentifierCompat {
     private static final Class<?> ID_CLASS;
-    private static final Method TRY_PARSE;
-    private static final Method WITH_DEFAULT_NAMESPACE;
-    private static final Method FROM_NAMESPACE_AND_PATH;
-    private static final Method GET_NAMESPACE;
-    private static final Method GET_PATH;
+    private static final Constructor<?> ID_CONSTRUCTOR;
     private static final Method REGISTRY_CONTAINS_KEY;
     private static final Method REGISTRY_GET_OPTIONAL;
     private static final Method RESOURCE_KEY_CREATE;
@@ -20,53 +19,30 @@ public final class IdentifierCompat {
 
     static {
         Class<?> idClass = null;
-        Method tryParse = null;
-        Method withDefaultNamespace = null;
-        Method fromNamespaceAndPath = null;
-        Method getNamespace = null;
-        Method getPath = null;
+        Constructor<?> idConstructor = null;
         Method registryContainsKey = null;
         Method registryGetOptional = null;
         Method resourceKeyCreate = null;
         Method resourceKeyIdentifier = null;
-
-        for (String className : new String[] {
-                "net.minecraft.resources.Identifier",
-                "net.minecraft.resources.ResourceLocation"
-        }) {
-            try {
-                idClass = Class.forName(className);
-                tryParse = idClass.getMethod("tryParse", String.class);
-                withDefaultNamespace = idClass.getMethod("withDefaultNamespace", String.class);
-                fromNamespaceAndPath = idClass.getMethod("fromNamespaceAndPath", String.class, String.class);
-                getNamespace = idClass.getMethod("getNamespace");
-                getPath = idClass.getMethod("getPath");
-                registryContainsKey = Registry.class.getMethod("containsKey", idClass);
-                registryGetOptional = Registry.class.getMethod("getOptional", idClass);
-                resourceKeyCreate = ResourceKey.class.getMethod("create", ResourceKey.class, idClass);
-                try {
-                    resourceKeyIdentifier = ResourceKey.class.getMethod("identifier");
-                } catch (NoSuchMethodException e) {
-                    resourceKeyIdentifier = ResourceKey.class.getMethod("location");
-                }
-                break;
-            } catch (ClassNotFoundException ignored) {
-                // try next name
-            } catch (NoSuchMethodException e) {
-                throw new ExceptionInInitializerError(e);
-            }
+        Object sample = BuiltInRegistries.ITEM.getKey(Items.AIR);
+        if (sample == null) {
+            throw new ExceptionInInitializerError("Identifier sample not found");
         }
 
-        if (idClass == null) {
-            throw new ExceptionInInitializerError("Identifier/ResourceLocation class not found");
+        idClass = sample.getClass();
+        try {
+            idConstructor = idClass.getConstructor(String.class, String.class);
+        } catch (NoSuchMethodException e) {
+            throw new ExceptionInInitializerError(e);
         }
+
+        registryContainsKey = findRegistryMethod(Registry.class, boolean.class, idClass);
+        registryGetOptional = findRegistryMethod(Registry.class, Optional.class, idClass);
+        resourceKeyCreate = findResourceKeyCreate(idClass);
+        resourceKeyIdentifier = findResourceKeyIdentifier(idClass);
 
         ID_CLASS = idClass;
-        TRY_PARSE = tryParse;
-        WITH_DEFAULT_NAMESPACE = withDefaultNamespace;
-        FROM_NAMESPACE_AND_PATH = fromNamespaceAndPath;
-        GET_NAMESPACE = getNamespace;
-        GET_PATH = getPath;
+        ID_CONSTRUCTOR = idConstructor;
         REGISTRY_CONTAINS_KEY = registryContainsKey;
         REGISTRY_GET_OPTIONAL = registryGetOptional;
         RESOURCE_KEY_CREATE = resourceKeyCreate;
@@ -76,25 +52,48 @@ public final class IdentifierCompat {
     private IdentifierCompat() {}
 
     public static Id tryParse(String input) {
-        Object value = invokeStatic(TRY_PARSE, input);
-        return value == null ? null : wrap(value);
+        if (input == null) {
+            return null;
+        }
+        String trimmed = input.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        String namespace;
+        String path;
+        int idx = trimmed.indexOf(':');
+        if (idx >= 0) {
+            namespace = trimmed.substring(0, idx);
+            path = trimmed.substring(idx + 1);
+        } else {
+            namespace = "minecraft";
+            path = trimmed;
+        }
+        if (!isValidNamespace(namespace) || !isValidPath(path)) {
+            return null;
+        }
+        return new Id(construct(namespace, path), namespace, path);
     }
 
     public static Id withDefaultNamespace(String path) {
-        return wrap(invokeStatic(WITH_DEFAULT_NAMESPACE, path));
+        if (!isValidPath(path)) {
+            return null;
+        }
+        return new Id(construct("minecraft", path), "minecraft", path);
     }
 
     public static Id fromNamespaceAndPath(String namespace, String path) {
-        return wrap(invokeStatic(FROM_NAMESPACE_AND_PATH, namespace, path));
+        if (!isValidNamespace(namespace) || !isValidPath(path)) {
+            return null;
+        }
+        return new Id(construct(namespace, path), namespace, path);
     }
 
     public static Id wrap(Object value) {
         if (value == null) {
             return null;
         }
-        String namespace = (String) invoke(GET_NAMESPACE, value);
-        String path = (String) invoke(GET_PATH, value);
-        return new Id(value, namespace, path);
+        return parseFromString(value.toString(), value);
     }
 
     @SuppressWarnings("unchecked")
@@ -133,6 +132,96 @@ public final class IdentifierCompat {
         }
         Object value = invoke(RESOURCE_KEY_IDENTIFIER, key);
         return wrap(value);
+    }
+
+    private static Id parseFromString(String raw, Object handle) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String namespace;
+        String path;
+        int idx = raw.indexOf(':');
+        if (idx >= 0) {
+            namespace = raw.substring(0, idx);
+            path = raw.substring(idx + 1);
+        } else {
+            namespace = "minecraft";
+            path = raw;
+        }
+        if (!isValidNamespace(namespace) || !isValidPath(path)) {
+            return null;
+        }
+        return new Id(handle, namespace, path);
+    }
+
+    private static Object construct(String namespace, String path) {
+        try {
+            return ID_CONSTRUCTOR.newInstance(namespace, path);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private static boolean isValidNamespace(String namespace) {
+        if (namespace == null || namespace.isEmpty()) {
+            return false;
+        }
+        for (int i = 0; i < namespace.length(); i++) {
+            char c = namespace.charAt(i);
+            if (!(c == '_' || c == '-' || c == '.' || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean isValidPath(String path) {
+        if (path == null || path.isEmpty()) {
+            return false;
+        }
+        for (int i = 0; i < path.length(); i++) {
+            char c = path.charAt(i);
+            if (!(c == '_' || c == '-' || c == '.' || c == '/' || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static Method findRegistryMethod(Class<?> registryClass, Class<?> returnType, Class<?> idClass) {
+        for (Method method : registryClass.getMethods()) {
+            if (method.getParameterCount() == 1 && returnType.equals(method.getReturnType())) {
+                Class<?> param = method.getParameterTypes()[0];
+                if (param.isAssignableFrom(idClass)) {
+                    return method;
+                }
+            }
+        }
+        throw new ExceptionInInitializerError("Registry method not found");
+    }
+
+    private static Method findResourceKeyCreate(Class<?> idClass) {
+        for (Method method : ResourceKey.class.getMethods()) {
+            if (!java.lang.reflect.Modifier.isStatic(method.getModifiers())) {
+                continue;
+            }
+            if (method.getParameterCount() == 2 && ResourceKey.class.equals(method.getReturnType())) {
+                Class<?>[] params = method.getParameterTypes();
+                if (ResourceKey.class.equals(params[0]) && params[1].isAssignableFrom(idClass)) {
+                    return method;
+                }
+            }
+        }
+        throw new ExceptionInInitializerError("ResourceKey.create method not found");
+    }
+
+    private static Method findResourceKeyIdentifier(Class<?> idClass) {
+        for (Method method : ResourceKey.class.getMethods()) {
+            if (method.getParameterCount() == 0 && idClass.isAssignableFrom(method.getReturnType())) {
+                return method;
+            }
+        }
+        throw new ExceptionInInitializerError("ResourceKey identifier method not found");
     }
 
     private static Object invokeStatic(Method method, Object... args) {
