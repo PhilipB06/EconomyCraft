@@ -7,7 +7,6 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import com.reazip.economycraft.util.IdentityCompat;
-import com.reazip.economycraft.util.IdentifierArgumentCompat;
 import com.reazip.economycraft.util.IdentifierCompat;
 import com.reazip.economycraft.util.PermissionCompat;
 import net.minecraft.ChatFormatting;
@@ -672,11 +671,11 @@ public final class EconomyCommands {
         return literal("orders")
                 .executes(ctx -> openOrders(ctx.getSource().getPlayerOrException(), ctx.getSource()))
                 .then(literal("request")
-                        .then(argument("item", IdentifierArgumentCompat.id())
+                        .then(argument("item", StringArgumentType.word())
                                 .then(argument("amount", LongArgumentType.longArg(1, EconomyManager.MAX))
                                         .then(argument("price", LongArgumentType.longArg(1, EconomyManager.MAX))
                                                 .executes(ctx -> requestItem(ctx.getSource().getPlayerOrException(),
-                                                        IdentifierArgumentCompat.getId(ctx, "item"),
+                                                        StringArgumentType.getString(ctx, "item"),
                                                         (int) Math.min(LongArgumentType.getLong(ctx, "amount"), EconomyManager.MAX),
                                                         LongArgumentType.getLong(ctx, "price"),
                                                         ctx.getSource()))))))
@@ -688,7 +687,8 @@ public final class EconomyCommands {
         return 1;
     }
 
-    private static int requestItem(ServerPlayer player, IdentifierCompat.Id item, int amount, long price, CommandSourceStack source) {
+    private static int requestItem(ServerPlayer player, String itemId, int amount, long price, CommandSourceStack source) {
+        IdentifierCompat.Id item = IdentifierCompat.tryParse(itemId);
         var holder = IdentifierCompat.registryGetOptional(net.minecraft.core.registries.BuiltInRegistries.ITEM, item);
         if (holder.isEmpty()) {
             source.sendFailure(Component.literal("Invalid item").withStyle(ChatFormatting.RED));
