@@ -857,8 +857,15 @@ public final class ServerShopUi {
         else if (enchantPath.equals("curse_of_vanishing")) enchantPath = "vanishing_curse";
 
         IdentifierCompat.Id enchantId = IdentifierCompat.fromNamespaceAndPath(key.namespace(), enchantPath);
+        if (enchantId == null) {
+            return ItemStack.EMPTY;
+        }
         HolderLookup.RegistryLookup<Enchantment> lookup = viewer.registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
-        Optional<Holder.Reference<Enchantment>> holder = lookup.get(IdentifierCompat.createResourceKey(Registries.ENCHANTMENT, enchantId));
+        ResourceKey<Enchantment> resourceKey = IdentifierCompat.createResourceKey(Registries.ENCHANTMENT, enchantId);
+        if (resourceKey == null) {
+            return ItemStack.EMPTY;
+        }
+        Optional<Holder.Reference<Enchantment>> holder = lookup.get(resourceKey);
         if (holder.isEmpty()) return ItemStack.EMPTY;
 
         ItemStack stack = new ItemStack(Items.ENCHANTED_BOOK);
@@ -921,6 +928,9 @@ public final class ServerShopUi {
         }
 
         IdentifierCompat.Id potionId = IdentifierCompat.fromNamespaceAndPath(key.namespace(), potionPath);
+        if (potionId == null) {
+            return ItemStack.EMPTY;
+        }
         Optional<Potion> potion = IdentifierCompat.registryGetOptional(BuiltInRegistries.POTION, potionId);
         if (potion.isEmpty()) return ItemStack.EMPTY;
 
