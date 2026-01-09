@@ -11,7 +11,10 @@ import java.util.Optional;
 
 public final class IdentifierCompat {
     private static final Class<?> ID_CLASS;
-    private static final Constructor<?> ID_CONSTRUCTOR;
+    private static final Constructor<?> ID_CONSTRUCTOR_TWO;
+    private static final Constructor<?> ID_CONSTRUCTOR_ONE;
+    private static final Method ID_FACTORY_ONE;
+    private static final Method ID_FACTORY_TWO;
     private static final Method REGISTRY_CONTAINS_KEY;
     private static final Method REGISTRY_GET_OPTIONAL;
     private static final Method RESOURCE_KEY_CREATE;
@@ -19,7 +22,10 @@ public final class IdentifierCompat {
 
     static {
         Class<?> idClass = null;
-        Constructor<?> idConstructor = null;
+        Constructor<?> idConstructorTwo = null;
+        Constructor<?> idConstructorOne = null;
+        Method idFactoryOne = null;
+        Method idFactoryTwo = null;
         Method registryContainsKey = null;
         Method registryGetOptional = null;
         Method resourceKeyCreate = null;
@@ -30,10 +36,30 @@ public final class IdentifierCompat {
         }
 
         idClass = sample.getClass();
-        try {
-            idConstructor = idClass.getConstructor(String.class, String.class);
-        } catch (NoSuchMethodException e) {
-            throw new ExceptionInInitializerError(e);
+        for (Constructor<?> constructor : idClass.getConstructors()) {
+            Class<?>[] params = constructor.getParameterTypes();
+            if (params.length == 2 && params[0] == String.class && params[1] == String.class) {
+                idConstructorTwo = constructor;
+            } else if (params.length == 1 && params[0] == String.class) {
+                idConstructorOne = constructor;
+            }
+        }
+        for (Method method : idClass.getMethods()) {
+            if (!java.lang.reflect.Modifier.isStatic(method.getModifiers())) {
+                continue;
+            }
+            if (!idClass.isAssignableFrom(method.getReturnType())) {
+                continue;
+            }
+            Class<?>[] params = method.getParameterTypes();
+            if (params.length == 1 && params[0] == String.class) {
+                idFactoryOne = method;
+            } else if (params.length == 2 && params[0] == String.class && params[1] == String.class) {
+                idFactoryTwo = method;
+            }
+        }
+        if (idConstructorTwo == null && idConstructorOne == null && idFactoryOne == null && idFactoryTwo == null) {
+            throw new ExceptionInInitializerError("Identifier constructor not found");
         }
 
         registryContainsKey = findRegistryMethod(Registry.class, boolean.class, idClass);
@@ -42,7 +68,10 @@ public final class IdentifierCompat {
         resourceKeyIdentifier = findResourceKeyIdentifier(idClass);
 
         ID_CLASS = idClass;
-        ID_CONSTRUCTOR = idConstructor;
+        ID_CONSTRUCTOR_TWO = idConstructorTwo;
+        ID_CONSTRUCTOR_ONE = idConstructorOne;
+        ID_FACTORY_ONE = idFactoryOne;
+        ID_FACTORY_TWO = idFactoryTwo;
         REGISTRY_CONTAINS_KEY = registryContainsKey;
         REGISTRY_GET_OPTIONAL = registryGetOptional;
         RESOURCE_KEY_CREATE = resourceKeyCreate;
@@ -155,8 +184,21 @@ public final class IdentifierCompat {
     }
 
     private static Object construct(String namespace, String path) {
+        String combined = namespace + ":" + path;
         try {
-            return ID_CONSTRUCTOR.newInstance(namespace, path);
+            if (ID_CONSTRUCTOR_TWO != null) {
+                return ID_CONSTRUCTOR_TWO.newInstance(namespace, path);
+            }
+            if (ID_FACTORY_TWO != null) {
+                return ID_FACTORY_TWO.invoke(null, namespace, path);
+            }
+            if (ID_CONSTRUCTOR_ONE != null) {
+                return ID_CONSTRUCTOR_ONE.newInstance(combined);
+            }
+            if (ID_FACTORY_ONE != null) {
+                return ID_FACTORY_ONE.invoke(null, combined);
+            }
+            throw new IllegalStateException("Identifier constructor not found");
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException(e);
         }
