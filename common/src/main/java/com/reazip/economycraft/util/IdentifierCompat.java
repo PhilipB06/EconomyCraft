@@ -35,7 +35,12 @@ public final class IdentifierCompat {
             throw new ExceptionInInitializerError("Identifier sample not found");
         }
 
-        idClass = sample.getClass();
+        Object idSample = extractIdentifierSample(sample);
+        if (idSample == null) {
+            throw new ExceptionInInitializerError("Identifier sample not found");
+        }
+
+        idClass = idSample.getClass();
         for (Constructor<?> constructor : idClass.getConstructors()) {
             Class<?>[] params = constructor.getParameterTypes();
             if (params.length == 2 && params[0] == String.class && params[1] == String.class) {
@@ -264,6 +269,25 @@ public final class IdentifierCompat {
             }
         }
         throw new ExceptionInInitializerError("ResourceKey identifier method not found");
+    }
+
+    private static Object extractIdentifierSample(Object sample) {
+        if (sample == null) {
+            return null;
+        }
+        Class<?> sampleClass = sample.getClass();
+        for (String methodName : new String[] {"location", "identifier"}) {
+            try {
+                Method method = sampleClass.getMethod(methodName);
+                Object id = method.invoke(sample);
+                if (id != null) {
+                    return id;
+                }
+            } catch (ReflectiveOperationException ignored) {
+                // try next name
+            }
+        }
+        return sample;
     }
 
     private static Object invokeStatic(Method method, Object... args) {
