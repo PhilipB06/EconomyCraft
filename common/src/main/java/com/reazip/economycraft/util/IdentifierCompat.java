@@ -1,5 +1,6 @@
 package com.reazip.economycraft.util;
 
+import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceKey;
@@ -19,6 +20,7 @@ public final class IdentifierCompat {
     private static final Method REGISTRY_GET_OPTIONAL;
     private static final Method RESOURCE_KEY_CREATE;
     private static final Method RESOURCE_KEY_IDENTIFIER;
+    private static final Method HOLDER_VALUE;
 
     static {
         Class<?> idClass = null;
@@ -30,6 +32,7 @@ public final class IdentifierCompat {
         Method registryGetOptional = null;
         Method resourceKeyCreate = null;
         Method resourceKeyIdentifier = null;
+        Method holderValue = null;
         Object sample = BuiltInRegistries.ITEM.getKey(Items.AIR);
         if (sample == null) {
             throw new ExceptionInInitializerError("Identifier sample not found");
@@ -71,6 +74,11 @@ public final class IdentifierCompat {
         registryGetOptional = findRegistryMethod(Registry.class, Optional.class, idClass);
         resourceKeyCreate = findResourceKeyCreate(idClass);
         resourceKeyIdentifier = findResourceKeyIdentifier(idClass);
+        try {
+            holderValue = Holder.class.getMethod("value");
+        } catch (NoSuchMethodException e) {
+            throw new ExceptionInInitializerError(e);
+        }
 
         ID_CLASS = idClass;
         ID_CONSTRUCTOR_TWO = idConstructorTwo;
@@ -81,6 +89,7 @@ public final class IdentifierCompat {
         REGISTRY_GET_OPTIONAL = registryGetOptional;
         RESOURCE_KEY_CREATE = resourceKeyCreate;
         RESOURCE_KEY_IDENTIFIER = resourceKeyIdentifier;
+        HOLDER_VALUE = holderValue;
     }
 
     private IdentifierCompat() {}
@@ -147,8 +156,19 @@ public final class IdentifierCompat {
             return Optional.empty();
         }
         @SuppressWarnings("unchecked")
-        Optional<T> result = (Optional<T>) invoke(REGISTRY_GET_OPTIONAL, registry, id.handle());
-        return result;
+        Optional<Object> result = (Optional<Object>) invoke(REGISTRY_GET_OPTIONAL, registry, id.handle());
+        if (result.isEmpty()) {
+            return Optional.empty();
+        }
+        Object value = result.get();
+        if (value instanceof Holder<?>) {
+            @SuppressWarnings("unchecked")
+            T unwrapped = (T) invoke(HOLDER_VALUE, value);
+            return Optional.ofNullable(unwrapped);
+        }
+        @SuppressWarnings("unchecked")
+        T direct = (T) value;
+        return Optional.ofNullable(direct);
     }
 
     public static <T> ResourceKey<T> createResourceKey(ResourceKey<? extends Registry<T>> registryKey, Id id) {
