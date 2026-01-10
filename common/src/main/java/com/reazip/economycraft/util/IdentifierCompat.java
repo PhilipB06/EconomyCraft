@@ -74,11 +74,7 @@ public final class IdentifierCompat {
         registryGetOptional = findRegistryMethod(Registry.class, Optional.class, idClass);
         resourceKeyCreate = findResourceKeyCreate(idClass);
         resourceKeyIdentifier = findResourceKeyIdentifier(idClass);
-        try {
-            holderValue = Holder.class.getMethod("value");
-        } catch (NoSuchMethodException e) {
-            throw new ExceptionInInitializerError(e);
-        }
+        holderValue = findHolderValue();
 
         ID_CLASS = idClass;
         ID_CONSTRUCTOR_TWO = idConstructorTwo;
@@ -161,7 +157,7 @@ public final class IdentifierCompat {
             return Optional.empty();
         }
         Object value = result.get();
-        if (value instanceof Holder<?>) {
+        if (HOLDER_VALUE != null && value instanceof Holder<?>) {
             @SuppressWarnings("unchecked")
             T unwrapped = (T) invoke(HOLDER_VALUE, value);
             return Optional.ofNullable(unwrapped);
@@ -289,6 +285,15 @@ public final class IdentifierCompat {
             }
         }
         throw new ExceptionInInitializerError("ResourceKey identifier method not found");
+    }
+
+    private static Method findHolderValue() {
+        for (Method method : Holder.class.getMethods()) {
+            if (method.getParameterCount() == 0 && !method.getReturnType().equals(void.class)) {
+                return method;
+            }
+        }
+        return null;
     }
 
     private static Object extractIdentifierSample(Object sample) {
