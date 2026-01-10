@@ -289,9 +289,17 @@ public final class IdentifierCompat {
 
     private static Method findHolderValue() {
         for (Method method : Holder.class.getMethods()) {
-            if (method.getParameterCount() == 0 && !method.getReturnType().equals(void.class)) {
-                return method;
+            if (method.getParameterCount() != 0) {
+                continue;
             }
+            Class<?> returnType = method.getReturnType();
+            if (returnType.equals(void.class)
+                    || returnType.equals(boolean.class)
+                    || Optional.class.isAssignableFrom(returnType)
+                    || ResourceKey.class.isAssignableFrom(returnType)) {
+                continue;
+            }
+            return method;
         }
         return null;
     }

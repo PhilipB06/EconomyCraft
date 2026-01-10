@@ -35,6 +35,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public final class EconomyCommands {
+    private static final org.slf4j.Logger LOGGER = com.mojang.logging.LogUtils.getLogger();
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(buildRoot());
 
@@ -615,8 +616,14 @@ public final class EconomyCommands {
     }
 
     private static int openShop(ServerPlayer player, CommandSourceStack source) {
-        ShopUi.open(player, EconomyCraft.getManager(source.getServer()).getShop());
-        return 1;
+        try {
+            ShopUi.open(player, EconomyCraft.getManager(source.getServer()).getShop());
+            return 1;
+        } catch (Exception e) {
+            LOGGER.error("[EconomyCraft] Failed to open /shop for {}", player.getGameProfile().getName(), e);
+            source.sendFailure(Component.literal("Failed to open shop. Check server logs."));
+            return 0;
+        }
     }
 
     private static int listItem(ServerPlayer player, long price, CommandSourceStack source) {
@@ -659,8 +666,15 @@ public final class EconomyCommands {
 
     private static int openServerShop(ServerPlayer player, CommandSourceStack source, @Nullable String category) {
         EconomyManager manager = EconomyCraft.getManager(source.getServer());
-        ServerShopUi.open(player, manager, category);
-        return 1;
+        try {
+            ServerShopUi.open(player, manager, category);
+            return 1;
+        } catch (Exception e) {
+            LOGGER.error("[EconomyCraft] Failed to open /servershop for {} (category={})",
+                    player.getGameProfile().getName(), category, e);
+            source.sendFailure(Component.literal("Failed to open server shop. Check server logs."));
+            return 0;
+        }
     }
 
     // =====================================================================
@@ -683,8 +697,14 @@ public final class EconomyCommands {
     }
 
     private static int openOrders(ServerPlayer player, CommandSourceStack source) {
-        OrdersUi.open(player, EconomyCraft.getManager(source.getServer()));
-        return 1;
+        try {
+            OrdersUi.open(player, EconomyCraft.getManager(source.getServer()));
+            return 1;
+        } catch (Exception e) {
+            LOGGER.error("[EconomyCraft] Failed to open /orders for {}", player.getGameProfile().getName(), e);
+            source.sendFailure(Component.literal("Failed to open orders. Check server logs."));
+            return 0;
+        }
     }
 
     private static int requestItem(ServerPlayer player, String itemId, int amount, long price, CommandSourceStack source) {
