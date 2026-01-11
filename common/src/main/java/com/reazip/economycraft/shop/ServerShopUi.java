@@ -45,6 +45,7 @@ import java.util.Optional;
 import java.util.Set;
 
 public final class ServerShopUi {
+    private static final org.slf4j.Logger LOGGER = com.mojang.logging.LogUtils.getLogger();
     private static final Component STORED_MSG = Component.literal("Item stored: ")
             .withStyle(ChatFormatting.YELLOW);
     private static final Map<String, IdentifierCompat.Id> CATEGORY_ICONS = buildCategoryIcons();
@@ -63,6 +64,7 @@ public final class ServerShopUi {
     }
 
     public static void open(ServerPlayer player, EconomyManager eco, @Nullable String category) {
+        LOGGER.info("[EconomyCraft] Opening ServerShop UI for {} (category={})", player.getGameProfile().getName(), category);
         if (category == null || category.isBlank()) {
             openRoot(player, eco);
             return;
@@ -87,6 +89,7 @@ public final class ServerShopUi {
     private static void openRoot(ServerPlayer player, EconomyManager eco) {
         Component title = Component.literal("Server Shop");
 
+        LOGGER.info("[EconomyCraft] Opening ServerShop root for {}", player.getGameProfile().getName());
         player.openMenu(new MenuProvider() {
             @Override
             public Component getDisplayName() {
@@ -95,7 +98,13 @@ public final class ServerShopUi {
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                return new CategoryMenu(id, inv, eco, player);
+                LOGGER.info("[EconomyCraft] Creating ServerShop root menu id={} for {}", id, player.getGameProfile().getName());
+                try {
+                    return new CategoryMenu(id, inv, eco, player);
+                } catch (Exception e) {
+                    LOGGER.error("[EconomyCraft] Failed to create ServerShop root menu id={} for {}", id, player.getGameProfile().getName(), e);
+                    throw e;
+                }
             }
         });
     }
@@ -103,6 +112,7 @@ public final class ServerShopUi {
     private static void openSubcategories(ServerPlayer player, EconomyManager eco, String topCategory) {
         Component title = Component.literal(formatCategoryTitle(topCategory));
 
+        LOGGER.info("[EconomyCraft] Opening ServerShop subcategories {} for {}", topCategory, player.getGameProfile().getName());
         player.openMenu(new MenuProvider() {
             @Override
             public Component getDisplayName() {
@@ -111,7 +121,15 @@ public final class ServerShopUi {
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                return new SubcategoryMenu(id, inv, eco, topCategory, player);
+                LOGGER.info("[EconomyCraft] Creating ServerShop subcategory menu id={} for {} (category={})",
+                        id, player.getGameProfile().getName(), topCategory);
+                try {
+                    return new SubcategoryMenu(id, inv, eco, topCategory, player);
+                } catch (Exception e) {
+                    LOGGER.error("[EconomyCraft] Failed to create ServerShop subcategory menu id={} for {} (category={})",
+                            id, player.getGameProfile().getName(), topCategory, e);
+                    throw e;
+                }
             }
         });
     }
@@ -128,6 +146,7 @@ public final class ServerShopUi {
             title = Component.literal(formatCategoryTitle(category));
         }
 
+        LOGGER.info("[EconomyCraft] Opening ServerShop items {} for {}", category, player.getGameProfile().getName());
         player.openMenu(new MenuProvider() {
             @Override
             public Component getDisplayName() {
@@ -136,7 +155,15 @@ public final class ServerShopUi {
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                return new ItemMenu(id, inv, eco, category, player);
+                LOGGER.info("[EconomyCraft] Creating ServerShop item menu id={} for {} (category={})",
+                        id, player.getGameProfile().getName(), category);
+                try {
+                    return new ItemMenu(id, inv, eco, category, player);
+                } catch (Exception e) {
+                    LOGGER.error("[EconomyCraft] Failed to create ServerShop item menu id={} for {} (category={})",
+                            id, player.getGameProfile().getName(), category, e);
+                    throw e;
+                }
             }
         });
     }
