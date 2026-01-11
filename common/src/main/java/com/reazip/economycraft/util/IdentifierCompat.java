@@ -238,8 +238,9 @@ public final class IdentifierCompat {
         if (value == null) {
             return null;
         }
-        if (HOLDER_VALUE != null && value instanceof Holder<?>) {
-            return invoke(HOLDER_VALUE, value);
+        Object holderValue = unwrapHolderLike(value);
+        if (holderValue != value) {
+            return unwrapRegistryValue(holderValue);
         }
         if (EITHER_LEFT != null && EITHER_RIGHT != null && isEither(value)) {
             Optional<?> left = invokeEitherOptional(EITHER_LEFT, value);
@@ -251,6 +252,20 @@ public final class IdentifierCompat {
                 return unwrapRegistryValue(right.get());
             }
             return null;
+        }
+        return value;
+    }
+
+    private static Object unwrapHolderLike(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (HOLDER_VALUE != null && value instanceof Holder<?>) {
+            return invoke(HOLDER_VALUE, value);
+        }
+        Method method = findNoArgMethod(value.getClass(), "value", "get");
+        if (method != null) {
+            return invoke(method, value);
         }
         return value;
     }
@@ -307,6 +322,25 @@ public final class IdentifierCompat {
             }
         }
         throw new ExceptionInInitializerError("Registry method not found");
+    }
+
+    private static Method findNoArgMethod(Class<?> type, String... names) {
+        for (String name : names) {
+            try {
+                Method method = type.getMethod(name);
+                Class<?> returnType = method.getReturnType();
+                if (returnType.equals(void.class)
+                        || returnType.equals(boolean.class)
+                        || Optional.class.isAssignableFrom(returnType)
+                        || ResourceKey.class.isAssignableFrom(returnType)) {
+                    continue;
+                }
+                return method;
+            } catch (NoSuchMethodException ignored) {
+                // try next name
+            }
+        }
+        return null;
     }
 
     private static Method findResourceKeyCreate(Class<?> idClass) {
