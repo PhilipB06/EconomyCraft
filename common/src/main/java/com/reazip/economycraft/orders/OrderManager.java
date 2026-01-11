@@ -7,7 +7,7 @@ import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.RegistryOps;
-import net.minecraft.resources.ResourceLocation;
+import com.reazip.economycraft.util.IdentifierCompat;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Item;
@@ -112,9 +112,9 @@ public class OrderManager {
                         } else {
                             String itemId = o.get("item").getAsString();
                             int count = o.get("count").getAsInt();
-                            ResourceLocation rl = ResourceLocation.tryParse(itemId);
+                            IdentifierCompat.Id rl = IdentifierCompat.tryParse(itemId);
                             if (rl != null) {
-                                java.util.Optional<Item> opt = BuiltInRegistries.ITEM.getOptional(rl);
+                                java.util.Optional<Item> opt = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, rl);
 
                                 if (opt.isPresent()) {
                                     Item item = opt.get();

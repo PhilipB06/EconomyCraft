@@ -30,6 +30,7 @@ import org.jetbrains.annotations.Nullable;
 
 public final class OrdersUi {
     private OrdersUi() {}
+    private static final org.slf4j.Logger LOGGER = com.mojang.logging.LogUtils.getLogger();
 
     private static final ChatFormatting LABEL_PRIMARY_COLOR = ChatFormatting.GOLD;
     private static final ChatFormatting LABEL_SECONDARY_COLOR = ChatFormatting.AQUA;
@@ -41,6 +42,7 @@ public final class OrdersUi {
     public static void open(ServerPlayer player, EconomyManager eco) {
         Component title = Component.literal("Orders");
 
+        LOGGER.info("[EconomyCraft] Opening Orders UI for {}", player.getDisplayName().getString());
         player.openMenu(new MenuProvider() {
             @Override
             public Component getDisplayName() {
@@ -49,7 +51,13 @@ public final class OrdersUi {
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                return new RequestMenu(id, inv, eco.getOrders(), eco, player);
+                LOGGER.info("[EconomyCraft] Creating Orders menu id={} for {}", id, player.getDisplayName().getString());
+                try {
+                    return new RequestMenu(id, inv, eco.getOrders(), eco, player);
+                } catch (Exception e) {
+                    LOGGER.error("[EconomyCraft] Failed to create Orders menu id={} for {}", id, player.getDisplayName().getString(), e);
+                    throw e;
+                }
             }
         });
     }
@@ -65,9 +73,9 @@ public final class OrdersUi {
     private static ItemStack createBalanceItem(EconomyManager eco, UUID playerId, @Nullable ServerPlayer player, @Nullable String name) {
         ItemStack head = new ItemStack(Items.PLAYER_HEAD);
         var profile = player != null
-                ? ProfileComponentCompat.resolved(player.getGameProfile())
-                : ProfileComponentCompat.unresolved(name != null && !name.isBlank() ? name : playerId.toString());
-        head.set(DataComponents.PROFILE, profile);
+                ? ProfileComponentCompat.tryResolvedOrUnresolved(player.getGameProfile())
+                : ProfileComponentCompat.tryUnresolved(name != null && !name.isBlank() ? name : playerId.toString());
+        profile.ifPresent(resolvable -> head.set(DataComponents.PROFILE, resolvable));
         long balance = eco.getBalance(playerId, true);
         String displayName = name != null ? name : playerId.toString();
         head.set(DataComponents.CUSTOM_NAME, Component.literal(displayName).withStyle(s -> s.withItalic(false).withColor(BALANCE_NAME_COLOR)));

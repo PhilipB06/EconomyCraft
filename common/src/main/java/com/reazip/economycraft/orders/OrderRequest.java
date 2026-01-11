@@ -6,7 +6,7 @@ import com.mojang.serialization.JsonOps;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.RegistryOps;
-import net.minecraft.resources.ResourceLocation;
+import com.reazip.economycraft.util.IdentifierCompat;
 import net.minecraft.world.item.ItemStack;
 
 
@@ -42,9 +42,9 @@ public class OrderRequest {
         }
         if (r.item == null || r.item.isEmpty()) {
             String itemId = obj.get("item").getAsString();
-            ResourceLocation rl = ResourceLocation.tryParse(itemId);
+            IdentifierCompat.Id rl = IdentifierCompat.tryParse(itemId);
             if (rl != null) {
-                java.util.Optional<net.minecraft.world.item.Item> opt = BuiltInRegistries.ITEM.getOptional(rl);
+                java.util.Optional<net.minecraft.world.item.Item> opt = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, rl);
                 opt.ifPresent(item -> r.item = new ItemStack(item));
             }
         }

@@ -28,6 +28,7 @@ import java.util.List;
 
 public final class ShopUi {
     private ShopUi() {}
+    private static final org.slf4j.Logger LOGGER = com.mojang.logging.LogUtils.getLogger();
 
     private static final ChatFormatting LABEL_PRIMARY_COLOR = ChatFormatting.GOLD;
     private static final ChatFormatting LABEL_SECONDARY_COLOR = ChatFormatting.AQUA;
@@ -39,6 +40,7 @@ public final class ShopUi {
     public static void open(ServerPlayer player, ShopManager shop) {
         Component title = Component.literal("Shop");
 
+        LOGGER.info("[EconomyCraft] Opening Shop UI for {}", player.getName().getString());
         player.openMenu(new MenuProvider() {
             @Override
             public Component getDisplayName() {
@@ -47,7 +49,13 @@ public final class ShopUi {
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                return new ShopMenu(id, inv, shop, player);
+                LOGGER.info("[EconomyCraft] Creating Shop menu id={} for {}", id, player.getName().getString());
+                try {
+                    return new ShopMenu(id, inv, shop, player);
+                } catch (Exception e) {
+                    LOGGER.error("[EconomyCraft] Failed to create Shop menu id={} for {}", id, player.getName().getString(), e);
+                    throw e;
+                }
             }
         });
     }
@@ -61,7 +69,13 @@ public final class ShopUi {
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                return new ConfirmMenu(id, inv, shop, listing, player);
+                LOGGER.info("[EconomyCraft] Creating Shop confirm menu id={} for {}", id, player.getName().getString());
+                try {
+                    return new ConfirmMenu(id, inv, shop, listing, player);
+                } catch (Exception e) {
+                    LOGGER.error("[EconomyCraft] Failed to create Shop confirm menu id={} for {}", id, player.getName().getString(), e);
+                    throw e;
+                }
             }
         });
     }
@@ -75,7 +89,13 @@ public final class ShopUi {
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                return new RemoveMenu(id, inv, shop, listing, player);
+                LOGGER.info("[EconomyCraft] Creating Shop remove menu id={} for {}", id, player.getName().getString());
+                try {
+                    return new RemoveMenu(id, inv, shop, listing, player);
+                } catch (Exception e) {
+                    LOGGER.error("[EconomyCraft] Failed to create Shop remove menu id={} for {}", id, player.getName().getString(), e);
+                    throw e;
+                }
             }
         });
     }
@@ -91,7 +111,8 @@ public final class ShopUi {
     private static ItemStack createBalanceItem(ServerPlayer player) {
         ItemStack head = new ItemStack(Items.PLAYER_HEAD);
         GameProfile profile = player.getGameProfile();
-        head.set(net.minecraft.core.component.DataComponents.PROFILE, ProfileComponentCompat.resolved(profile));
+        ProfileComponentCompat.tryResolvedOrUnresolved(profile).ifPresent(resolvable ->
+                head.set(net.minecraft.core.component.DataComponents.PROFILE, resolvable));
         long balance = EconomyCraft.getManager(player.level().getServer()).getBalance(player.getUUID(), true);
         head.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
                 Component.literal(IdentityCompat.of(player).name()).withStyle(s -> s.withItalic(false).withColor(BALANCE_NAME_COLOR)));

@@ -7,12 +7,13 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import com.reazip.economycraft.util.IdentityCompat;
+import com.reazip.economycraft.util.IdentifierCompat;
+import com.reazip.economycraft.util.PermissionCompat;
+import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.arguments.GameProfileArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.commands.arguments.ResourceLocationArgument;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.ChatFormatting;
 
 import java.util.*;
 
@@ -30,11 +31,11 @@ import com.reazip.economycraft.PriceRegistry;
 import static net.minecraft.commands.Commands.argument;
 import static net.minecraft.commands.Commands.literal;
 
-import net.minecraft.commands.arguments.GameProfileArgument;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public final class EconomyCommands {
+    private static final org.slf4j.Logger LOGGER = com.mojang.logging.LogUtils.getLogger();
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(buildRoot());
 
@@ -276,7 +277,7 @@ public final class EconomyCommands {
     // =====================================================================
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildAddMoney() {
-        return literal("addmoney").requires(s -> s.hasPermission(2))
+        return literal("addmoney").requires(PermissionCompat.gamemaster())
                 .then(argument("targets", GameProfileArgument.gameProfile())
                         .then(argument("amount", LongArgumentType.longArg(1, EconomyManager.MAX))
                                 .executes(ctx -> addMoney(
@@ -286,7 +287,7 @@ public final class EconomyCommands {
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildSetMoney() {
-        return literal("setmoney").requires(s -> s.hasPermission(2))
+        return literal("setmoney").requires(PermissionCompat.gamemaster())
                 .then(argument("targets", GameProfileArgument.gameProfile())
                         .then(argument("amount", LongArgumentType.longArg(0, EconomyManager.MAX))
                                 .executes(ctx -> setMoney(
@@ -296,7 +297,7 @@ public final class EconomyCommands {
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildRemoveMoney() {
-        return literal("removemoney").requires(s -> s.hasPermission(2))
+        return literal("removemoney").requires(PermissionCompat.gamemaster())
                 .then(argument("targets", GameProfileArgument.gameProfile())
                         .executes(ctx -> removeMoney(
                                 IdentityCompat.getArgAsPlayerRefs(ctx, "targets"),
@@ -310,7 +311,7 @@ public final class EconomyCommands {
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildRemovePlayer() {
-        return literal("removeplayer").requires(s -> s.hasPermission(2))
+        return literal("removeplayer").requires(PermissionCompat.gamemaster())
                 .then(argument("targets", GameProfileArgument.gameProfile())
                         .executes(ctx -> removePlayers(
                                 IdentityCompat.getArgAsPlayerRefs(ctx, "targets"),
@@ -574,7 +575,7 @@ public final class EconomyCommands {
     // =====================================================================
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildToggleScoreboard() {
-        return literal("toggleScoreboard").requires(s -> s.hasPermission(2))
+        return literal("toggleScoreboard").requires(PermissionCompat.gamemaster())
                 .executes(ctx -> toggleScoreboard(ctx.getSource()));
     }
 
@@ -615,8 +616,14 @@ public final class EconomyCommands {
     }
 
     private static int openShop(ServerPlayer player, CommandSourceStack source) {
-        ShopUi.open(player, EconomyCraft.getManager(source.getServer()).getShop());
-        return 1;
+        try {
+            ShopUi.open(player, EconomyCraft.getManager(source.getServer()).getShop());
+            return 1;
+        } catch (Exception e) {
+            LOGGER.error("[EconomyCraft] Failed to open /shop for {}", player.getDisplayName().getString(), e);
+            source.sendFailure(Component.literal("Failed to open shop. Check server logs."));
+            return 0;
+        }
     }
 
     private static int listItem(ServerPlayer player, long price, CommandSourceStack source) {
@@ -659,8 +666,15 @@ public final class EconomyCommands {
 
     private static int openServerShop(ServerPlayer player, CommandSourceStack source, @Nullable String category) {
         EconomyManager manager = EconomyCraft.getManager(source.getServer());
-        ServerShopUi.open(player, manager, category);
-        return 1;
+        try {
+            ServerShopUi.open(player, manager, category);
+            return 1;
+        } catch (Exception e) {
+            LOGGER.error("[EconomyCraft] Failed to open /servershop for {} (category={})",
+                    player.getDisplayName().getString(), category, e);
+            source.sendFailure(Component.literal("Failed to open server shop. Check server logs."));
+            return 0;
+        }
     }
 
     // =====================================================================
@@ -671,11 +685,11 @@ public final class EconomyCommands {
         return literal("orders")
                 .executes(ctx -> openOrders(ctx.getSource().getPlayerOrException(), ctx.getSource()))
                 .then(literal("request")
-                        .then(argument("item", ResourceLocationArgument.id())
+                        .then(argument("item", StringArgumentType.word())
                                 .then(argument("amount", LongArgumentType.longArg(1, EconomyManager.MAX))
                                         .then(argument("price", LongArgumentType.longArg(1, EconomyManager.MAX))
                                                 .executes(ctx -> requestItem(ctx.getSource().getPlayerOrException(),
-                                                        ResourceLocationArgument.getId(ctx, "item"),
+                                                        StringArgumentType.getString(ctx, "item"),
                                                         (int) Math.min(LongArgumentType.getLong(ctx, "amount"), EconomyManager.MAX),
                                                         LongArgumentType.getLong(ctx, "price"),
                                                         ctx.getSource()))))))
@@ -683,12 +697,19 @@ public final class EconomyCommands {
     }
 
     private static int openOrders(ServerPlayer player, CommandSourceStack source) {
-        OrdersUi.open(player, EconomyCraft.getManager(source.getServer()));
-        return 1;
+        try {
+            OrdersUi.open(player, EconomyCraft.getManager(source.getServer()));
+            return 1;
+        } catch (Exception e) {
+            LOGGER.error("[EconomyCraft] Failed to open /orders for {}", player.getDisplayName().getString(), e);
+            source.sendFailure(Component.literal("Failed to open orders. Check server logs."));
+            return 0;
+        }
     }
 
-    private static int requestItem(ServerPlayer player, ResourceLocation item, int amount, long price, CommandSourceStack source) {
-        var holder = net.minecraft.core.registries.BuiltInRegistries.ITEM.getOptional(item);
+    private static int requestItem(ServerPlayer player, String itemId, int amount, long price, CommandSourceStack source) {
+        IdentifierCompat.Id item = IdentifierCompat.tryParse(itemId);
+        var holder = IdentifierCompat.registryGetOptional(net.minecraft.core.registries.BuiltInRegistries.ITEM, item);
         if (holder.isEmpty()) {
             source.sendFailure(Component.literal("Invalid item").withStyle(ChatFormatting.RED));
             return 0;
