@@ -620,7 +620,7 @@ public final class EconomyCommands {
             ShopUi.open(player, EconomyCraft.getManager(source.getServer()).getShop());
             return 1;
         } catch (Exception e) {
-            LOGGER.error("[EconomyCraft] Failed to open /shop for {}", player.getGameProfile().getName(), e);
+            LOGGER.error("[EconomyCraft] Failed to open /shop for {}", player.getDisplayName().getString(), e);
             source.sendFailure(Component.literal("Failed to open shop. Check server logs."));
             return 0;
         }
@@ -671,7 +671,7 @@ public final class EconomyCommands {
             return 1;
         } catch (Exception e) {
             LOGGER.error("[EconomyCraft] Failed to open /servershop for {} (category={})",
-                    player.getGameProfile().getName(), category, e);
+                    player.getDisplayName().getString(), category, e);
             source.sendFailure(Component.literal("Failed to open server shop. Check server logs."));
             return 0;
         }
@@ -701,7 +701,7 @@ public final class EconomyCommands {
             OrdersUi.open(player, EconomyCraft.getManager(source.getServer()));
             return 1;
         } catch (Exception e) {
-            LOGGER.error("[EconomyCraft] Failed to open /orders for {}", player.getGameProfile().getName(), e);
+            LOGGER.error("[EconomyCraft] Failed to open /orders for {}", player.getDisplayName().getString(), e);
             source.sendFailure(Component.literal("Failed to open orders. Check server logs."));
             return 0;
         }

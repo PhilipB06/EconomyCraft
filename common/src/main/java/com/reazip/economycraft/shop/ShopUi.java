@@ -40,7 +40,7 @@ public final class ShopUi {
     public static void open(ServerPlayer player, ShopManager shop) {
         Component title = Component.literal("Shop");
 
-        LOGGER.info("[EconomyCraft] Opening Shop UI for {}", player.getGameProfile().getName());
+        LOGGER.info("[EconomyCraft] Opening Shop UI for {}", player.getName().getString());
         player.openMenu(new MenuProvider() {
             @Override
             public Component getDisplayName() {
@@ -49,11 +49,11 @@ public final class ShopUi {
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                LOGGER.info("[EconomyCraft] Creating Shop menu id={} for {}", id, player.getGameProfile().getName());
+                LOGGER.info("[EconomyCraft] Creating Shop menu id={} for {}", id, player.getName().getString());
                 try {
                     return new ShopMenu(id, inv, shop, player);
                 } catch (Exception e) {
-                    LOGGER.error("[EconomyCraft] Failed to create Shop menu id={} for {}", id, player.getGameProfile().getName(), e);
+                    LOGGER.error("[EconomyCraft] Failed to create Shop menu id={} for {}", id, player.getName().getString(), e);
                     throw e;
                 }
             }
@@ -69,11 +69,11 @@ public final class ShopUi {
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                LOGGER.info("[EconomyCraft] Creating Shop confirm menu id={} for {}", id, player.getGameProfile().getName());
+                LOGGER.info("[EconomyCraft] Creating Shop confirm menu id={} for {}", id, player.getName().getString());
                 try {
                     return new ConfirmMenu(id, inv, shop, listing, player);
                 } catch (Exception e) {
-                    LOGGER.error("[EconomyCraft] Failed to create Shop confirm menu id={} for {}", id, player.getGameProfile().getName(), e);
+                    LOGGER.error("[EconomyCraft] Failed to create Shop confirm menu id={} for {}", id, player.getName().getString(), e);
                     throw e;
                 }
             }
@@ -89,11 +89,11 @@ public final class ShopUi {
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                LOGGER.info("[EconomyCraft] Creating Shop remove menu id={} for {}", id, player.getGameProfile().getName());
+                LOGGER.info("[EconomyCraft] Creating Shop remove menu id={} for {}", id, player.getName().getString());
                 try {
                     return new RemoveMenu(id, inv, shop, listing, player);
                 } catch (Exception e) {
-                    LOGGER.error("[EconomyCraft] Failed to create Shop remove menu id={} for {}", id, player.getGameProfile().getName(), e);
+                    LOGGER.error("[EconomyCraft] Failed to create Shop remove menu id={} for {}", id, player.getName().getString(), e);
                     throw e;
                 }
             }
