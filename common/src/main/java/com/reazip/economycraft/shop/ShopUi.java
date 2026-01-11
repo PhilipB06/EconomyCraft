@@ -111,7 +111,8 @@ public final class ShopUi {
     private static ItemStack createBalanceItem(ServerPlayer player) {
         ItemStack head = new ItemStack(Items.PLAYER_HEAD);
         GameProfile profile = player.getGameProfile();
-        head.set(net.minecraft.core.component.DataComponents.PROFILE, ProfileComponentCompat.resolvedOrUnresolved(profile));
+        ProfileComponentCompat.tryResolvedOrUnresolved(profile).ifPresent(resolvable ->
+                head.set(net.minecraft.core.component.DataComponents.PROFILE, resolvable));
         long balance = EconomyCraft.getManager(player.level().getServer()).getBalance(player.getUUID(), true);
         head.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
                 Component.literal(IdentityCompat.of(player).name()).withStyle(s -> s.withItalic(false).withColor(BALANCE_NAME_COLOR)));

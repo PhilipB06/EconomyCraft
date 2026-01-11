@@ -21,6 +21,8 @@ public final class IdentifierCompat {
     private static final Method RESOURCE_KEY_CREATE;
     private static final Method RESOURCE_KEY_IDENTIFIER;
     private static final Method HOLDER_VALUE;
+    private static final Method EITHER_LEFT;
+    private static final Method EITHER_RIGHT;
 
     static {
         Class<?> idClass = null;
@@ -33,6 +35,8 @@ public final class IdentifierCompat {
         Method resourceKeyCreate = null;
         Method resourceKeyIdentifier = null;
         Method holderValue = null;
+        Method eitherLeft = null;
+        Method eitherRight = null;
         Object sample = BuiltInRegistries.ITEM.getKey(Items.AIR);
         if (sample == null) {
             throw new ExceptionInInitializerError("Identifier sample not found");
@@ -75,6 +79,11 @@ public final class IdentifierCompat {
         resourceKeyCreate = findResourceKeyCreate(idClass);
         resourceKeyIdentifier = findResourceKeyIdentifier(idClass);
         holderValue = findHolderValue();
+        Method[] eitherMethods = findEitherMethods();
+        if (eitherMethods != null) {
+            eitherLeft = eitherMethods[0];
+            eitherRight = eitherMethods[1];
+        }
 
         ID_CLASS = idClass;
         ID_CONSTRUCTOR_TWO = idConstructorTwo;
@@ -86,6 +95,8 @@ public final class IdentifierCompat {
         RESOURCE_KEY_CREATE = resourceKeyCreate;
         RESOURCE_KEY_IDENTIFIER = resourceKeyIdentifier;
         HOLDER_VALUE = holderValue;
+        EITHER_LEFT = eitherLeft;
+        EITHER_RIGHT = eitherRight;
     }
 
     private IdentifierCompat() {}
@@ -156,15 +167,13 @@ public final class IdentifierCompat {
         if (result.isEmpty()) {
             return Optional.empty();
         }
-        Object value = result.get();
-        if (HOLDER_VALUE != null && value instanceof Holder<?>) {
-            @SuppressWarnings("unchecked")
-            T unwrapped = (T) invoke(HOLDER_VALUE, value);
-            return Optional.ofNullable(unwrapped);
+        Object value = unwrapRegistryValue(result.get());
+        if (value == null) {
+            return Optional.empty();
         }
         @SuppressWarnings("unchecked")
         T direct = (T) value;
-        return Optional.ofNullable(direct);
+        return Optional.of(direct);
     }
 
     public static <T> ResourceKey<T> createResourceKey(ResourceKey<? extends Registry<T>> registryKey, Id id) {
@@ -223,6 +232,43 @@ public final class IdentifierCompat {
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    private static Object unwrapRegistryValue(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (HOLDER_VALUE != null && value instanceof Holder<?>) {
+            return invoke(HOLDER_VALUE, value);
+        }
+        if (EITHER_LEFT != null && EITHER_RIGHT != null && isEither(value)) {
+            Optional<?> left = invokeEitherOptional(EITHER_LEFT, value);
+            if (left != null && left.isPresent()) {
+                return unwrapRegistryValue(left.get());
+            }
+            Optional<?> right = invokeEitherOptional(EITHER_RIGHT, value);
+            if (right != null && right.isPresent()) {
+                return unwrapRegistryValue(right.get());
+            }
+            return null;
+        }
+        return value;
+    }
+
+    private static boolean isEither(Object value) {
+        return value != null && value.getClass().getName().equals("com.mojang.datafixers.util.Either");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Optional<?> invokeEitherOptional(Method method, Object target) {
+        if (method == null || target == null) {
+            return null;
+        }
+        Object result = invoke(method, target);
+        if (result instanceof Optional<?> optional) {
+            return optional;
+        }
+        return null;
     }
 
     private static boolean isValidNamespace(String namespace) {
@@ -302,6 +348,17 @@ public final class IdentifierCompat {
             return method;
         }
         return null;
+    }
+
+    private static Method[] findEitherMethods() {
+        try {
+            Class<?> eitherClass = Class.forName("com.mojang.datafixers.util.Either");
+            Method left = eitherClass.getMethod("left");
+            Method right = eitherClass.getMethod("right");
+            return new Method[] { left, right };
+        } catch (ClassNotFoundException | NoSuchMethodException e) {
+            return null;
+        }
     }
 
     private static Object extractIdentifierSample(Object sample) {

@@ -73,9 +73,9 @@ public final class OrdersUi {
     private static ItemStack createBalanceItem(EconomyManager eco, UUID playerId, @Nullable ServerPlayer player, @Nullable String name) {
         ItemStack head = new ItemStack(Items.PLAYER_HEAD);
         var profile = player != null
-                ? ProfileComponentCompat.resolvedOrUnresolved(player.getGameProfile())
-                : ProfileComponentCompat.unresolved(name != null && !name.isBlank() ? name : playerId.toString());
-        head.set(DataComponents.PROFILE, profile);
+                ? ProfileComponentCompat.tryResolvedOrUnresolved(player.getGameProfile())
+                : ProfileComponentCompat.tryUnresolved(name != null && !name.isBlank() ? name : playerId.toString());
+        profile.ifPresent(resolvable -> head.set(DataComponents.PROFILE, resolvable));
         long balance = eco.getBalance(playerId, true);
         String displayName = name != null ? name : playerId.toString();
         head.set(DataComponents.CUSTOM_NAME, Component.literal(displayName).withStyle(s -> s.withItalic(false).withColor(BALANCE_NAME_COLOR)));

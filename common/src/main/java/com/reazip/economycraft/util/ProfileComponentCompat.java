@@ -48,15 +48,28 @@ public final class ProfileComponentCompat {
     }
 
     public static ResolvableProfile resolvedOrUnresolved(GameProfile profile) {
+        return tryResolvedOrUnresolved(profile)
+                .orElseThrow(() -> new IllegalStateException("No compatible ResolvableProfile factory found"));
+    }
+
+    public static Optional<ResolvableProfile> tryResolvedOrUnresolved(GameProfile profile) {
         try {
-            return resolved(profile);
+            return Optional.of(resolved(profile));
         } catch (IllegalStateException e) {
             String name = extractName(profile);
             if (name != null && !name.isBlank()) {
-                return unresolved(name);
+                return tryUnresolved(name);
             }
             UUID id = extractId(profile);
-            return unresolved(id != null ? id.toString() : "");
+            return tryUnresolved(id != null ? id.toString() : "");
+        }
+    }
+
+    public static Optional<ResolvableProfile> tryUnresolved(String nameOrId) {
+        try {
+            return Optional.of(unresolved(nameOrId));
+        } catch (IllegalStateException e) {
+            return Optional.empty();
         }
     }
 

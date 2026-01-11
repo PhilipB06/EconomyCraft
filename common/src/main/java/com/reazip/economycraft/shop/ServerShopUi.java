@@ -813,8 +813,8 @@ public final class ServerShopUi {
 
     private static ItemStack createBalanceItem(ServerPlayer player) {
         ItemStack head = new ItemStack(Items.PLAYER_HEAD);
-        head.set(DataComponents.PROFILE,
-                ProfileComponentCompat.resolvedOrUnresolved(player.getGameProfile()));
+        ProfileComponentCompat.tryResolvedOrUnresolved(player.getGameProfile()).ifPresent(resolvable ->
+                head.set(DataComponents.PROFILE, resolvable));
         long balance = EconomyCraft.getManager(player.level().getServer()).getBalance(player.getUUID(), true);
         String name = IdentityCompat.of(player).name();
         head.set(DataComponents.CUSTOM_NAME, Component.literal(name).withStyle(s -> s.withItalic(false).withColor(BALANCE_NAME_COLOR)));
