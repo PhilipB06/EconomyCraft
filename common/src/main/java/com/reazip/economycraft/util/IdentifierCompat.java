@@ -341,13 +341,21 @@ public final class IdentifierCompat {
     }
 
     private static Method findRegistryMethod(Class<?> registryClass, Class<?> returnType, Class<?> idClass) {
+        Method assignableMatch = null;
         for (Method method : registryClass.getMethods()) {
-            if (method.getParameterCount() == 1 && returnType.equals(method.getReturnType())) {
-                Class<?> param = method.getParameterTypes()[0];
-                if (param.isAssignableFrom(idClass)) {
-                    return method;
-                }
+            if (method.getParameterCount() != 1 || !returnType.equals(method.getReturnType())) {
+                continue;
             }
+            Class<?> param = method.getParameterTypes()[0];
+            if (param.equals(idClass)) {
+                return method;
+            }
+            if (param.isAssignableFrom(idClass)) {
+                assignableMatch = method;
+            }
+        }
+        if (assignableMatch != null) {
+            return assignableMatch;
         }
         throw new ExceptionInInitializerError("Registry method not found");
     }
