@@ -644,9 +644,14 @@ public final class ServerShopUi {
         }
 
         if (iconId != null) {
-            Optional<Item> item = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, iconId);
+            Optional<?> item = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, iconId);
             if (item.isPresent()) {
-                return new ItemStack(item.get());
+                Object value = item.get();
+                if (value instanceof Item resolved) {
+                    return new ItemStack(resolved);
+                }
+                LOGGER.error("[EconomyCraft] Unexpected category icon value {} (class {}) for {}",
+                        value, value.getClass().getName(), iconId.asString());
             }
         }
 
@@ -862,9 +867,18 @@ public final class ServerShopUi {
     private static ItemStack createDisplayStack(PriceRegistry.PriceEntry entry, ServerPlayer viewer) {
         IdentifierCompat.Id id = entry.id();
         if (IdentifierCompat.registryContainsKey(BuiltInRegistries.ITEM, id)) {
-            Optional<Item> item = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, id);
-            if (item.isEmpty() || item.get() == Items.AIR) return ItemStack.EMPTY;
-            return new ItemStack(item.get());
+            Optional<?> item = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, id);
+            if (item.isEmpty()) {
+                return ItemStack.EMPTY;
+            }
+            Object value = item.get();
+            if (value instanceof Item resolved) {
+                if (resolved == Items.AIR) return ItemStack.EMPTY;
+                return new ItemStack(resolved);
+            }
+            LOGGER.error("[EconomyCraft] Unexpected display stack value {} (class {}) for {}",
+                    value, value.getClass().getName(), id.asString());
+            return ItemStack.EMPTY;
         }
 
         String path = id.path();

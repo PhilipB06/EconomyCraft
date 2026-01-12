@@ -5,12 +5,16 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.Items;
+import org.slf4j.Logger;
+
+import com.mojang.logging.LogUtils;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.Optional;
 
 public final class IdentifierCompat {
+    private static final Logger LOGGER = LogUtils.getLogger();
     private static final Class<?> ID_CLASS;
     private static final Constructor<?> ID_CONSTRUCTOR_TWO;
     private static final Constructor<?> ID_CONSTRUCTOR_ONE;
@@ -176,6 +180,8 @@ public final class IdentifierCompat {
         try {
             direct = (T) value;
         } catch (ClassCastException e) {
+            LOGGER.error("[EconomyCraft] Registry lookup for {} returned unexpected value {} (class {}) from {}",
+                    id.asString(), value, value.getClass().getName(), registry, e);
             return Optional.empty();
         }
         return Optional.of(direct);
@@ -336,21 +342,67 @@ public final class IdentifierCompat {
 
     private static Method findNoArgMethod(Class<?> type, String... names) {
         for (String name : names) {
+            Method method = null;
             try {
-                Method method = type.getMethod(name);
-                Class<?> returnType = method.getReturnType();
-                if (returnType.equals(void.class)
-                        || returnType.equals(boolean.class)
-                        || Optional.class.isAssignableFrom(returnType)
-                        || ResourceKey.class.isAssignableFrom(returnType)) {
-                    continue;
-                }
-                return method;
+                method = type.getMethod(name);
             } catch (NoSuchMethodException ignored) {
-                // try next name
+                // try declared method instead
+            }
+            if (method == null) {
+                try {
+                    method = type.getDeclaredMethod(name);
+                    method.setAccessible(true);
+                } catch (NoSuchMethodException ignored) {
+                    // try next name
+                }
+            }
+            if (method == null) {
+                continue;
+            }
+            if (isValueLikeMethod(method)) {
+                return method;
+            }
+        }
+        Method fallback = findValueLikeMethod(type.getMethods());
+        if (fallback == null) {
+            fallback = findValueLikeMethod(type.getDeclaredMethods());
+            if (fallback != null) {
+                fallback.setAccessible(true);
+            }
+        }
+        return fallback;
+    }
+
+    private static Method findValueLikeMethod(Method[] methods) {
+        for (Method method : methods) {
+            if (method.getParameterCount() != 0) {
+                continue;
+            }
+            if (isValueLikeMethod(method)) {
+                return method;
             }
         }
         return null;
+    }
+
+    private static boolean isValueLikeMethod(Method method) {
+        if (method.getDeclaringClass().equals(Object.class)) {
+            return false;
+        }
+        String name = method.getName();
+        if (name.equals("toString") || name.equals("hashCode") || name.equals("clone") || name.equals("getClass")) {
+            return false;
+        }
+        Class<?> returnType = method.getReturnType();
+        if (returnType.equals(void.class)
+                || returnType.equals(boolean.class)
+                || Optional.class.isAssignableFrom(returnType)
+                || ResourceKey.class.isAssignableFrom(returnType)
+                || returnType.isPrimitive()
+                || returnType.isEnum()) {
+            return false;
+        }
+        return true;
     }
 
     private static Method findResourceKeyCreate(Class<?> idClass) {
