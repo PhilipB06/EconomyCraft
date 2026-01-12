@@ -16,7 +16,7 @@ import java.util.UUID;
 
 public final class ProfileComponentCompat {
     private static final boolean IS_ABSTRACT = Modifier.isAbstract(ResolvableProfile.class.getModifiers());
-    private static final Method CREATE_RESOLVED = findMethod("createResolved", GameProfile.class);
+    private static final Method CREATE_RESOLVED = findResolvedFactory();
     private static final Method CREATE_UNRESOLVED_STRING = findMethod("createUnresolved", String.class);
     private static final Method CREATE_UNRESOLVED_UUID = findMethod("createUnresolved", UUID.class);
     private static final Constructor<ResolvableProfile> CTOR_GAME_PROFILE = findConstructor(GameProfile.class);
@@ -40,11 +40,37 @@ public final class ProfileComponentCompat {
                 return newInstance(CTOR_FULL_WITH_PROFILE,
                         Optional.ofNullable(extractName(profile)),
                         Optional.ofNullable(extractId(profile)),
-                        newPropertyMap(),
+                        extractProperties(profile),
                         profile);
             }
         }
         throw new IllegalStateException("No compatible ResolvableProfile factory found for resolved profile");
+    }
+
+    public static ResolvableProfile resolvedOrUnresolved(GameProfile profile) {
+        return tryResolvedOrUnresolved(profile)
+                .orElseThrow(() -> new IllegalStateException("No compatible ResolvableProfile factory found"));
+    }
+
+    public static Optional<ResolvableProfile> tryResolvedOrUnresolved(GameProfile profile) {
+        try {
+            return Optional.of(resolved(profile));
+        } catch (IllegalStateException e) {
+            String name = extractName(profile);
+            if (name != null && !name.isBlank()) {
+                return tryUnresolved(name);
+            }
+            UUID id = extractId(profile);
+            return tryUnresolved(id != null ? id.toString() : "");
+        }
+    }
+
+    public static Optional<ResolvableProfile> tryUnresolved(String nameOrId) {
+        try {
+            return Optional.of(unresolved(nameOrId));
+        } catch (IllegalStateException e) {
+            return Optional.empty();
+        }
     }
 
     public static ResolvableProfile unresolved(String nameOrId) {
@@ -138,6 +164,19 @@ public final class ProfileComponentCompat {
         throw new IllegalStateException("No compatible PropertyMap constructor found");
     }
 
+    private static PropertyMap extractProperties(GameProfile profile) {
+        try {
+            Method method = profile.getClass().getMethod("getProperties");
+            Object value = method.invoke(profile);
+            if (value instanceof PropertyMap map) {
+                return map;
+            }
+        } catch (ReflectiveOperationException ignored) {
+            // fall through
+        }
+        return newPropertyMap();
+    }
+
     private static ResolvableProfile invokeStatic(Method method, Object... args) {
         try {
             return (ResolvableProfile) method.invoke(null, args);
@@ -160,6 +199,26 @@ public final class ProfileComponentCompat {
         } catch (NoSuchMethodException e) {
             return null;
         }
+    }
+
+    private static Method findResolvedFactory() {
+        Method method = findMethod("createResolved", GameProfile.class);
+        if (method != null) {
+            return method;
+        }
+        for (Method candidate : ResolvableProfile.class.getMethods()) {
+            if (!Modifier.isStatic(candidate.getModifiers())) {
+                continue;
+            }
+            if (!ResolvableProfile.class.isAssignableFrom(candidate.getReturnType())) {
+                continue;
+            }
+            Class<?>[] params = candidate.getParameterTypes();
+            if (params.length == 1 && params[0].isAssignableFrom(GameProfile.class)) {
+                return candidate;
+            }
+        }
+        return null;
     }
 
     @SuppressWarnings("unchecked")

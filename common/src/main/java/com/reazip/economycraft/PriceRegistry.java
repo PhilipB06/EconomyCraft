@@ -6,7 +6,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import com.reazip.economycraft.util.IdentifierCompat;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.core.Holder;
@@ -37,9 +37,9 @@ public final class PriceRegistry {
             .setPrettyPrinting()
             .create();
     private final Path file;
-    private final Map<ResourceLocation, PriceEntry> prices = new LinkedHashMap<>();
+    private final Map<IdentifierCompat.Id, PriceEntry> prices = new LinkedHashMap<>();
 
-    public record ResolvedPrice(ResourceLocation key, PriceEntry entry) {}
+    public record ResolvedPrice(IdentifierCompat.Id key, PriceEntry entry) {}
 
     public PriceRegistry(MinecraftServer server) {
         Path dir = server.getFile("config/economycraft");
@@ -79,13 +79,13 @@ public final class PriceRegistry {
             int missingItemCount = 0;
             for (Map.Entry<String, JsonElement> e : root.entrySet()) {
                 String key = e.getKey();
-                ResourceLocation id = ResourceLocation.tryParse(key);
+                IdentifierCompat.Id id = IdentifierCompat.tryParse(key);
                 if (id == null) {
                     LOGGER.warn("[EconomyCraft] Invalid item id in prices.json: {}", key);
                     continue;
                 }
 
-                boolean isRealItem = BuiltInRegistries.ITEM.containsKey(id);
+                boolean isRealItem = IdentifierCompat.registryContainsKey(BuiltInRegistries.ITEM, id);
                 boolean isVirtual = isVirtualPriceId(id);
 
                 if (!isRealItem && !isVirtual) {
@@ -119,7 +119,7 @@ public final class PriceRegistry {
         }
     }
 
-    public PriceEntry get(ResourceLocation id) {
+    public PriceEntry get(IdentifierCompat.Id id) {
         return prices.get(id);
     }
 
@@ -131,7 +131,7 @@ public final class PriceRegistry {
     public ResolvedPrice resolve(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return null;
 
-        for (ResourceLocation key : resolvePriceKeys(stack)) {
+        for (IdentifierCompat.Id key : resolvePriceKeys(stack)) {
             PriceEntry p = prices.get(key);
             if (p != null) return new ResolvedPrice(key, p);
         }
@@ -293,7 +293,7 @@ public final class PriceRegistry {
         for (Map.Entry<String, JsonElement> e : defaults.entrySet()) {
             String key = e.getKey();
 
-            if (ResourceLocation.tryParse(key) == null) {
+            if (IdentifierCompat.tryParse(key) == null) {
                 LOGGER.warn("[EconomyCraft] Bundled default contains invalid key '{}', skipping.", key);
                 continue;
             }
@@ -341,10 +341,10 @@ public final class PriceRegistry {
         }
     }
 
-    private static boolean isVirtualPriceId(ResourceLocation id) {
-        if (!"minecraft".equals(id.getNamespace())) return false;
+    private static boolean isVirtualPriceId(IdentifierCompat.Id id) {
+        if (!"minecraft".equals(id.namespace())) return false;
 
-        String p = id.getPath();
+        String p = id.path();
 
         if (p.equals("potion") || p.equals("splash_potion") || p.equals("lingering_potion") || p.equals("tipped_arrow")) {
             return false;
@@ -378,18 +378,18 @@ public final class PriceRegistry {
         }
     }
 
-    private static List<ResourceLocation> resolvePriceKeys(ItemStack stack) {
-        List<ResourceLocation> out = new ArrayList<>(4);
+    private static List<IdentifierCompat.Id> resolvePriceKeys(ItemStack stack) {
+        List<IdentifierCompat.Id> out = new ArrayList<>(4);
 
-        ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        IdentifierCompat.Id itemId = IdentifierCompat.wrap(BuiltInRegistries.ITEM.getKey(stack.getItem()));
 
         if (stack.is(Items.POTION) || stack.is(Items.SPLASH_POTION) || stack.is(Items.LINGERING_POTION) || stack.is(Items.TIPPED_ARROW)) {
-            ResourceLocation potionId = readPotionId(stack);
+            IdentifierCompat.Id potionId = readPotionId(stack);
 
             if (potionId != null) {
                 out.addAll(buildVirtualPotionKeys(stack, potionId));
             } else {
-                out.addAll(buildVirtualPotionKeys(stack, ResourceLocation.withDefaultNamespace("water")));
+                out.addAll(buildVirtualPotionKeys(stack, IdentifierCompat.withDefaultNamespace("water")));
             }
         }
 
@@ -399,16 +399,16 @@ public final class PriceRegistry {
                 Holder<Enchantment> holder = e.getKey();
                 int level = e.getIntValue();
                 if (level <= 0) continue;
-                ResourceLocation enchId = holder.unwrapKey().map(ResourceKey::location).orElse(null);
+                IdentifierCompat.Id enchId = holder.unwrapKey().map(IdentifierCompat::fromResourceKey).orElse(null);
                 if (enchId == null) continue;
-                String base = "enchanted_book_" + enchId.getPath() + "_" + level;
-                ResourceLocation key = ResourceLocation.fromNamespaceAndPath(enchId.getNamespace(), base);
+                String base = "enchanted_book_" + enchId.path() + "_" + level;
+                IdentifierCompat.Id key = IdentifierCompat.fromNamespaceAndPath(enchId.namespace(), base);
                 out.add(key);
 
-                if ("binding_curse".equals(enchId.getPath())) {
-                    out.add(ResourceLocation.fromNamespaceAndPath(enchId.getNamespace(), "enchanted_book_curse_of_binding_" + level));
-                } else if ("vanishing_curse".equals(enchId.getPath())) {
-                    out.add(ResourceLocation.fromNamespaceAndPath(enchId.getNamespace(), "enchanted_book_curse_of_vanishing_" + level));
+                if ("binding_curse".equals(enchId.path())) {
+                    out.add(IdentifierCompat.fromNamespaceAndPath(enchId.namespace(), "enchanted_book_curse_of_binding_" + level));
+                } else if ("vanishing_curse".equals(enchId.path())) {
+                    out.add(IdentifierCompat.fromNamespaceAndPath(enchId.namespace(), "enchanted_book_curse_of_vanishing_" + level));
                 }
             }
         }
@@ -417,7 +417,7 @@ public final class PriceRegistry {
         return out;
     }
 
-    private static ResourceLocation readPotionId(ItemStack stack) {
+    private static IdentifierCompat.Id readPotionId(ItemStack stack) {
         PotionContents contents = stack.get(DataComponents.POTION_CONTENTS);
         if (contents == null) return null;
 
@@ -425,11 +425,11 @@ public final class PriceRegistry {
         if (opt.isEmpty()) return null;
 
         Potion potion = opt.get().value();
-        return BuiltInRegistries.POTION.getKey(potion);
+        return IdentifierCompat.wrap(BuiltInRegistries.POTION.getKey(potion));
     }
 
-    private static List<ResourceLocation> buildVirtualPotionKeys(ItemStack stack, ResourceLocation potionId) {
-        String potionPath = potionId.getPath();
+    private static List<IdentifierCompat.Id> buildVirtualPotionKeys(ItemStack stack, IdentifierCompat.Id potionId) {
+        String potionPath = potionId.path();
         String form;
         if (stack.is(Items.SPLASH_POTION)) form = "splash";
         else if (stack.is(Items.LINGERING_POTION)) form = "lingering";
@@ -444,7 +444,7 @@ public final class PriceRegistry {
                 case "arrow" -> "arrow_of_water_1";
                 default -> "water_bottle";
             };
-            return List.of(ResourceLocation.withDefaultNamespace(key));
+            return List.of(IdentifierCompat.withDefaultNamespace(key));
         }
 
         if (potionPath.equals("awkward") || potionPath.equals("mundane") || potionPath.equals("thick")) {
@@ -455,7 +455,7 @@ public final class PriceRegistry {
                 case "arrow" -> "arrow_of_" + potionPath + "_1";
                 default -> potionPath + "_potion";
             };
-            return List.of(ResourceLocation.withDefaultNamespace(key));
+            return List.of(IdentifierCompat.withDefaultNamespace(key));
         }
 
         String effect = potionPath;
@@ -482,11 +482,11 @@ public final class PriceRegistry {
 
         if (suffix.equals("_1")) {
             return List.of(
-                    ResourceLocation.withDefaultNamespace(base + "_1"),
-                    ResourceLocation.withDefaultNamespace(base)
+                    IdentifierCompat.withDefaultNamespace(base + "_1"),
+                    IdentifierCompat.withDefaultNamespace(base)
             );
         } else {
-            return List.of(ResourceLocation.withDefaultNamespace(base + suffix));
+            return List.of(IdentifierCompat.withDefaultNamespace(base + suffix));
         }
     }
 
@@ -516,7 +516,7 @@ public final class PriceRegistry {
     }
 
     public record PriceEntry(
-            ResourceLocation id,
+            IdentifierCompat.Id id,
             String category,
             int stack,
             long unitBuy,
