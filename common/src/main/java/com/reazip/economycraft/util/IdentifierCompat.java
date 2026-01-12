@@ -172,7 +172,12 @@ public final class IdentifierCompat {
             return Optional.empty();
         }
         @SuppressWarnings("unchecked")
-        T direct = (T) value;
+        T direct;
+        try {
+            direct = (T) value;
+        } catch (ClassCastException e) {
+            return Optional.empty();
+        }
         return Optional.of(direct);
     }
 
@@ -260,8 +265,13 @@ public final class IdentifierCompat {
         if (value == null) {
             return null;
         }
-        if (HOLDER_VALUE != null && value instanceof Holder<?>) {
-            return invoke(HOLDER_VALUE, value);
+        if (value instanceof Holder<?>) {
+            Method method = HOLDER_VALUE != null
+                    ? HOLDER_VALUE
+                    : findNoArgMethod(value.getClass(), "value", "get");
+            if (method != null) {
+                return invoke(method, value);
+            }
         }
         Method method = findNoArgMethod(value.getClass(), "value", "get");
         if (method != null) {
