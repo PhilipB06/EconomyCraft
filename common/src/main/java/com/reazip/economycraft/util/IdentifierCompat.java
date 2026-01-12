@@ -276,12 +276,24 @@ public final class IdentifierCompat {
                     ? HOLDER_VALUE
                     : findNoArgMethod(value.getClass(), "value", "get");
             if (method != null) {
-                return invoke(method, value);
+                try {
+                    return invoke(method, value);
+                } catch (IllegalStateException e) {
+                    LOGGER.error("[EconomyCraft] Failed to unwrap holder value for {} (class {})",
+                            value, value.getClass().getName(), e);
+                    return value;
+                }
             }
         }
         Method method = findNoArgMethod(value.getClass(), "value", "get");
         if (method != null) {
-            return invoke(method, value);
+            try {
+                return invoke(method, value);
+            } catch (IllegalStateException e) {
+                LOGGER.error("[EconomyCraft] Failed to unwrap holder-like value for {} (class {})",
+                        value, value.getClass().getName(), e);
+                return value;
+            }
         }
         return value;
     }
@@ -354,55 +366,23 @@ public final class IdentifierCompat {
                     method.setAccessible(true);
                 } catch (NoSuchMethodException ignored) {
                     // try next name
+                } catch (RuntimeException ignored) {
+                    // access failure; try next name
                 }
             }
             if (method == null) {
                 continue;
             }
-            if (isValueLikeMethod(method)) {
-                return method;
-            }
-        }
-        Method fallback = findValueLikeMethod(type.getMethods());
-        if (fallback == null) {
-            fallback = findValueLikeMethod(type.getDeclaredMethods());
-            if (fallback != null) {
-                fallback.setAccessible(true);
-            }
-        }
-        return fallback;
-    }
-
-    private static Method findValueLikeMethod(Method[] methods) {
-        for (Method method : methods) {
-            if (method.getParameterCount() != 0) {
+            Class<?> returnType = method.getReturnType();
+            if (returnType.equals(void.class)
+                    || returnType.equals(boolean.class)
+                    || Optional.class.isAssignableFrom(returnType)
+                    || ResourceKey.class.isAssignableFrom(returnType)) {
                 continue;
             }
-            if (isValueLikeMethod(method)) {
-                return method;
-            }
+            return method;
         }
         return null;
-    }
-
-    private static boolean isValueLikeMethod(Method method) {
-        if (method.getDeclaringClass().equals(Object.class)) {
-            return false;
-        }
-        String name = method.getName();
-        if (name.equals("toString") || name.equals("hashCode") || name.equals("clone") || name.equals("getClass")) {
-            return false;
-        }
-        Class<?> returnType = method.getReturnType();
-        if (returnType.equals(void.class)
-                || returnType.equals(boolean.class)
-                || Optional.class.isAssignableFrom(returnType)
-                || ResourceKey.class.isAssignableFrom(returnType)
-                || returnType.isPrimitive()
-                || returnType.isEnum()) {
-            return false;
-        }
-        return true;
     }
 
     private static Method findResourceKeyCreate(Class<?> idClass) {
