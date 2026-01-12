@@ -864,16 +864,13 @@ public final class ServerShopUi {
 
     private static ItemStack createDisplayStack(PriceRegistry.PriceEntry entry, ServerPlayer viewer) {
         IdentifierCompat.Id id = entry.id();
-        if (IdentifierCompat.registryContainsKey(BuiltInRegistries.ITEM, id)) {
-            Optional<?> item = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, id);
-            if (item.isEmpty()) {
-                return ItemStack.EMPTY;
-            }
+        Optional<?> item = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, id);
+        if (item.isPresent()) {
             Item resolved = resolveItemValue(item.get(), id, "display stack");
-            if (resolved == null || resolved == Items.AIR) {
-                return ItemStack.EMPTY;
+            if (resolved != null && resolved != Items.AIR) {
+                return new ItemStack(resolved);
             }
-            return new ItemStack(resolved);
+            return ItemStack.EMPTY;
         }
 
         String path = id.path();
