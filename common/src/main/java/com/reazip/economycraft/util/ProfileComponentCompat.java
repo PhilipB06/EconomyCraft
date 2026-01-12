@@ -40,7 +40,7 @@ public final class ProfileComponentCompat {
                 return newInstance(CTOR_FULL_WITH_PROFILE,
                         Optional.ofNullable(extractName(profile)),
                         Optional.ofNullable(extractId(profile)),
-                        profile.getProperties(),
+                        extractProperties(profile),
                         profile);
             }
         }
@@ -162,6 +162,19 @@ public final class ProfileComponentCompat {
             }
         }
         throw new IllegalStateException("No compatible PropertyMap constructor found");
+    }
+
+    private static PropertyMap extractProperties(GameProfile profile) {
+        try {
+            Method method = profile.getClass().getMethod("getProperties");
+            Object value = method.invoke(profile);
+            if (value instanceof PropertyMap map) {
+                return map;
+            }
+        } catch (ReflectiveOperationException ignored) {
+            // fall through
+        }
+        return newPropertyMap();
     }
 
     private static ResolvableProfile invokeStatic(Method method, Object... args) {

@@ -411,15 +411,7 @@ public final class ServerShopUi {
                 }
                 if (slot == navRowStart + 3 && page > 0) { page--; updatePage(); return; }
                 if (slot == navRowStart + 5 && (page + 1) * itemsPerPage < subcategories.size()) { page++; updatePage(); return; }
-                if (slot == navRowStart + 8) {
-                    if (category.contains(".")) {
-                        String topCategory = category.substring(0, category.indexOf('.'));
-                        openSubcategories(viewer, eco, topCategory);
-                    } else {
-                        openRoot(viewer, eco);
-                    }
-                    return;
-                }
+                if (slot == navRowStart + 8) { openRoot(viewer, eco); return; }
             }
             super.clicked(slot, dragType, type, player);
         }
