@@ -30,8 +30,6 @@ import org.jetbrains.annotations.Nullable;
 
 public final class OrdersUi {
     private OrdersUi() {}
-    private static final org.slf4j.Logger LOGGER = com.mojang.logging.LogUtils.getLogger();
-
     private static final ChatFormatting LABEL_PRIMARY_COLOR = ChatFormatting.GOLD;
     private static final ChatFormatting LABEL_SECONDARY_COLOR = ChatFormatting.AQUA;
     private static final ChatFormatting VALUE_COLOR = ChatFormatting.DARK_PURPLE;
@@ -41,8 +39,6 @@ public final class OrdersUi {
 
     public static void open(ServerPlayer player, EconomyManager eco) {
         Component title = Component.literal("Orders");
-
-        LOGGER.info("[EconomyCraft] Opening Orders UI for {}", player.getDisplayName().getString());
         player.openMenu(new MenuProvider() {
             @Override
             public Component getDisplayName() {
@@ -51,11 +47,9 @@ public final class OrdersUi {
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                LOGGER.info("[EconomyCraft] Creating Orders menu id={} for {}", id, player.getDisplayName().getString());
                 try {
                     return new RequestMenu(id, inv, eco.getOrders(), eco, player);
                 } catch (Exception e) {
-                    LOGGER.error("[EconomyCraft] Failed to create Orders menu id={} for {}", id, player.getDisplayName().getString(), e);
                     throw e;
                 }
             }
