@@ -5,12 +5,16 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.Items;
+import org.slf4j.Logger;
+
+import com.mojang.logging.LogUtils;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.Optional;
 
 public final class IdentifierCompat {
+    private static final Logger LOGGER = LogUtils.getLogger();
     private static final Class<?> ID_CLASS;
     private static final Constructor<?> ID_CONSTRUCTOR_TWO;
     private static final Constructor<?> ID_CONSTRUCTOR_ONE;
@@ -176,6 +180,8 @@ public final class IdentifierCompat {
         try {
             direct = (T) value;
         } catch (ClassCastException e) {
+            LOGGER.error("[EconomyCraft] Registry lookup for {} returned unexpected value {} (class {}) from {}",
+                    id.asString(), value, value.getClass().getName(), registry, e);
             return Optional.empty();
         }
         return Optional.of(direct);
@@ -270,12 +276,24 @@ public final class IdentifierCompat {
                     ? HOLDER_VALUE
                     : findNoArgMethod(value.getClass(), "value", "get");
             if (method != null) {
-                return invoke(method, value);
+                try {
+                    return invoke(method, value);
+                } catch (IllegalStateException e) {
+                    LOGGER.error("[EconomyCraft] Failed to unwrap holder value for {} (class {})",
+                            value, value.getClass().getName(), e);
+                    return value;
+                }
             }
         }
         Method method = findNoArgMethod(value.getClass(), "value", "get");
         if (method != null) {
-            return invoke(method, value);
+            try {
+                return invoke(method, value);
+            } catch (IllegalStateException e) {
+                LOGGER.error("[EconomyCraft] Failed to unwrap holder-like value for {} (class {})",
+                        value, value.getClass().getName(), e);
+                return value;
+            }
         }
         return value;
     }
@@ -323,32 +341,54 @@ public final class IdentifierCompat {
     }
 
     private static Method findRegistryMethod(Class<?> registryClass, Class<?> returnType, Class<?> idClass) {
+        Method assignableMatch = null;
         for (Method method : registryClass.getMethods()) {
-            if (method.getParameterCount() == 1 && returnType.equals(method.getReturnType())) {
-                Class<?> param = method.getParameterTypes()[0];
-                if (param.isAssignableFrom(idClass)) {
-                    return method;
-                }
+            if (method.getParameterCount() != 1 || !returnType.equals(method.getReturnType())) {
+                continue;
             }
+            Class<?> param = method.getParameterTypes()[0];
+            if (param.equals(idClass)) {
+                return method;
+            }
+            if (param.isAssignableFrom(idClass)) {
+                assignableMatch = method;
+            }
+        }
+        if (assignableMatch != null) {
+            return assignableMatch;
         }
         throw new ExceptionInInitializerError("Registry method not found");
     }
 
     private static Method findNoArgMethod(Class<?> type, String... names) {
         for (String name : names) {
+            Method method = null;
             try {
-                Method method = type.getMethod(name);
-                Class<?> returnType = method.getReturnType();
-                if (returnType.equals(void.class)
-                        || returnType.equals(boolean.class)
-                        || Optional.class.isAssignableFrom(returnType)
-                        || ResourceKey.class.isAssignableFrom(returnType)) {
-                    continue;
-                }
-                return method;
+                method = type.getMethod(name);
             } catch (NoSuchMethodException ignored) {
-                // try next name
+                // try declared method instead
             }
+            if (method == null) {
+                try {
+                    method = type.getDeclaredMethod(name);
+                    method.setAccessible(true);
+                } catch (NoSuchMethodException ignored) {
+                    // try next name
+                } catch (RuntimeException ignored) {
+                    // access failure; try next name
+                }
+            }
+            if (method == null) {
+                continue;
+            }
+            Class<?> returnType = method.getReturnType();
+            if (returnType.equals(void.class)
+                    || returnType.equals(boolean.class)
+                    || Optional.class.isAssignableFrom(returnType)
+                    || ResourceKey.class.isAssignableFrom(returnType)) {
+                continue;
+            }
+            return method;
         }
         return null;
     }

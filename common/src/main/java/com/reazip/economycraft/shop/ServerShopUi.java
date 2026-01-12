@@ -644,9 +644,12 @@ public final class ServerShopUi {
         }
 
         if (iconId != null) {
-            Optional<Item> item = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, iconId);
+            Optional<?> item = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, iconId);
             if (item.isPresent()) {
-                return new ItemStack(item.get());
+                Item resolved = resolveItemValue(item.get(), iconId, "category icon");
+                if (resolved != null) {
+                    return new ItemStack(resolved);
+                }
             }
         }
 
@@ -861,10 +864,13 @@ public final class ServerShopUi {
 
     private static ItemStack createDisplayStack(PriceRegistry.PriceEntry entry, ServerPlayer viewer) {
         IdentifierCompat.Id id = entry.id();
-        if (IdentifierCompat.registryContainsKey(BuiltInRegistries.ITEM, id)) {
-            Optional<Item> item = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, id);
-            if (item.isEmpty() || item.get() == Items.AIR) return ItemStack.EMPTY;
-            return new ItemStack(item.get());
+        Optional<?> item = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, id);
+        if (item.isPresent()) {
+            Item resolved = resolveItemValue(item.get(), id, "display stack");
+            if (resolved != null && resolved != Items.AIR) {
+                return new ItemStack(resolved);
+            }
+            return ItemStack.EMPTY;
         }
 
         String path = id.path();
@@ -969,11 +975,51 @@ public final class ServerShopUi {
         if (potionId == null) {
             return ItemStack.EMPTY;
         }
-        Optional<Potion> potion = IdentifierCompat.registryGetOptional(BuiltInRegistries.POTION, potionId);
+        Optional<?> potion = IdentifierCompat.registryGetOptional(BuiltInRegistries.POTION, potionId);
         if (potion.isEmpty()) return ItemStack.EMPTY;
 
-        Holder<Potion> holder = BuiltInRegistries.POTION.wrapAsHolder(potion.get());
+        Holder<Potion> holder = resolvePotionHolder(potion.get(), potionId);
+        if (holder == null) {
+            return ItemStack.EMPTY;
+        }
         return PotionContents.createItemStack(baseItem, holder);
+    }
+
+    private static Item resolveItemValue(Object value, IdentifierCompat.Id id, String context) {
+        if (value instanceof Item resolved) {
+            return resolved;
+        }
+        if (value instanceof Holder<?> holder) {
+            Object inner = holder.value();
+            if (inner instanceof Item resolved) {
+                return resolved;
+            }
+            LOGGER.error("[EconomyCraft] Unexpected {} holder value {} (class {}) for {}",
+                    context, inner, inner == null ? "null" : inner.getClass().getName(), id.asString());
+            return null;
+        }
+        LOGGER.error("[EconomyCraft] Unexpected {} value {} (class {}) for {}",
+                context, value, value.getClass().getName(), id.asString());
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Holder<Potion> resolvePotionHolder(Object value, IdentifierCompat.Id id) {
+        if (value instanceof Potion potion) {
+            return BuiltInRegistries.POTION.wrapAsHolder(potion);
+        }
+        if (value instanceof Holder<?> holder) {
+            Object inner = holder.value();
+            if (inner instanceof Potion) {
+                return (Holder<Potion>) holder;
+            }
+            LOGGER.error("[EconomyCraft] Unexpected potion holder value {} (class {}) for {}",
+                    inner, inner == null ? "null" : inner.getClass().getName(), id.asString());
+            return null;
+        }
+        LOGGER.error("[EconomyCraft] Unexpected potion value {} (class {}) for {}",
+                value, value.getClass().getName(), id.asString());
+        return null;
     }
 
     private static Long safeMultiply(long a, int b) {
