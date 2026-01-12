@@ -16,7 +16,7 @@ import java.util.UUID;
 
 public final class ProfileComponentCompat {
     private static final boolean IS_ABSTRACT = Modifier.isAbstract(ResolvableProfile.class.getModifiers());
-    private static final Method CREATE_RESOLVED = findMethod("createResolved", GameProfile.class);
+    private static final Method CREATE_RESOLVED = findResolvedFactory();
     private static final Method CREATE_UNRESOLVED_STRING = findMethod("createUnresolved", String.class);
     private static final Method CREATE_UNRESOLVED_UUID = findMethod("createUnresolved", UUID.class);
     private static final Constructor<ResolvableProfile> CTOR_GAME_PROFILE = findConstructor(GameProfile.class);
@@ -40,7 +40,7 @@ public final class ProfileComponentCompat {
                 return newInstance(CTOR_FULL_WITH_PROFILE,
                         Optional.ofNullable(extractName(profile)),
                         Optional.ofNullable(extractId(profile)),
-                        newPropertyMap(),
+                        profile.getProperties(),
                         profile);
             }
         }
@@ -186,6 +186,26 @@ public final class ProfileComponentCompat {
         } catch (NoSuchMethodException e) {
             return null;
         }
+    }
+
+    private static Method findResolvedFactory() {
+        Method method = findMethod("createResolved", GameProfile.class);
+        if (method != null) {
+            return method;
+        }
+        for (Method candidate : ResolvableProfile.class.getMethods()) {
+            if (!Modifier.isStatic(candidate.getModifiers())) {
+                continue;
+            }
+            if (!ResolvableProfile.class.isAssignableFrom(candidate.getReturnType())) {
+                continue;
+            }
+            Class<?>[] params = candidate.getParameterTypes();
+            if (params.length == 1 && params[0].isAssignableFrom(GameProfile.class)) {
+                return candidate;
+            }
+        }
+        return null;
     }
 
     @SuppressWarnings("unchecked")
