@@ -12,7 +12,7 @@ The mod requires Architectury API and targets **Minecraft 1.21.x**.
 - `/daily` - Claim a daily login bonus.
 - `/shop` - Player-driven marketplace where players list items for sale.
   - `list <price>` - List the item in your hand.
-- `/servershop` - Server-managed shop with unlimited supply.
+- `/servershop` - Server-managed shop with unlimited supply. Prices can be edited in config/prices.json.
 - `/sell [<amount>|all]` - Sell the item in your hand. Use `all` to sell all matching items from your inventory.
 - `/orders` - Request-based trading system.
   - `request <item> <amount> <price>` - Create an item request.
