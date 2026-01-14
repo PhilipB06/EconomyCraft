@@ -33,7 +33,6 @@ subprojects {
     repositories {
         maven { url "https://maven.fabricmc.net/" }
         maven { url "https://maven.architectury.dev/" }
-        maven { url "https://maven.neoforged.net/releases" }
         mavenCentral()
     }
 
@@ -57,42 +56,6 @@ subprojects {
         repositories { /* leer gelassen */ }
     }
 
-    if (project.name == "neoforge") {
-        tasks.named("processResources") {
-            def mcFull = (rootProject.findProperty("minecraft_version") ?: rootProject.minecraft_version).toString()
-            def parts = mcFull.tokenize('.')
-            if (parts.size() < 2) throw new GradleException("Invalid minecraft_version: ${mcFull}")
-            def major = parts[0] as int
-            def minor = parts[1] as int
-            def mcLo = "${major}.${minor}"
-            def mcHi = "${major}.${minor + 1}"
-
-            def nfLo = (rootProject.findProperty("neoforge_line_lo") ?: "21.0").toString()
-            def nfHi = (rootProject.findProperty("neoforge_line_hi") ?: "22.0").toString()
-
-            def archVer = (rootProject.findProperty("architectury_version_plain")
-                    ?: project.findProperty("architectury_version_plain")
-                    ?: "13.0.0").toString()
-
-            inputs.property "mcLo", mcLo
-            inputs.property "mcHi", mcHi
-            inputs.property "nfLo", nfLo
-            inputs.property "nfHi", nfHi
-            inputs.property "archVer", archVer
-
-            filesMatching("META-INF/neoforge.mods.toml") {
-                expand([
-                        mcLo    : mcLo,
-                        mcHi    : mcHi,
-                        nfLo    : nfLo,
-                        nfHi    : nfHi,
-                        archVer : archVer,
-                        version : project.version
-                ])
-                filteringCharset = 'UTF-8'
-            }
-        }
-    }
 }
 
 // ---- TARGET RESOLVER
@@ -114,19 +77,7 @@ ext.mcTaskVer = { String v ->
 
 // ---- BUILD TARGETS
 ext.mcTargets = [
-        [ mc: "1.20.1", fabricApi: "0.92.5+1.20.1", architecturyVer: "9.2.14", neoforge: "20.1.0", neoforgeLineLo: "20.1", neoforgeLineHi: "20.2", yarnBuild: "build.1" ],
-        [ mc: "1.21",   fabricApi: "0.102.0+1.21",   architecturyVer: "13.0.8", neoforge: "21.0.167",    neoforgeLineLo: "21.0", neoforgeLineHi: "21.1", yarnBuild: "build.1" ],
-        [ mc: "1.21.1", fabricApi: "0.116.5+1.21.1", architecturyVer: "13.0.8", neoforge: "21.1.217",    neoforgeLineLo: "21.1", neoforgeLineHi: "21.2", yarnBuild: "build.1" ],
-        [ mc: "1.21.2", fabricApi: "0.106.1+1.21.2", architecturyVer: "14.0.4", neoforge: "21.2.1-beta", neoforgeLineLo: "21.2", neoforgeLineHi: "21.3", yarnBuild: "build.1" ],
-        [ mc: "1.21.3", fabricApi: "0.114.1+1.21.3", architecturyVer: "14.0.4", neoforge: "21.3.95",     neoforgeLineLo: "21.3", neoforgeLineHi: "21.4", yarnBuild: "build.1" ],
-        [ mc: "1.21.4", fabricApi: "0.119.4+1.21.4", architecturyVer: "15.0.3", neoforge: "21.4.156",    neoforgeLineLo: "21.4", neoforgeLineHi: "21.5", yarnBuild: "build.1" ],
-        [ mc: "1.21.5", fabricApi: "0.128.2+1.21.5", architecturyVer: "16.1.4", neoforge: "21.5.96",     neoforgeLineLo: "21.5", neoforgeLineHi: "21.6", yarnBuild: "build.1" ],
-        [ mc: "1.21.6", fabricApi: "0.128.2+1.21.6", architecturyVer: "17.0.6", neoforge: "21.6.20-beta",neoforgeLineLo: "21.6", neoforgeLineHi: "21.7", yarnBuild: "build.1" ],
-        [ mc: "1.21.7", fabricApi: "0.129.0+1.21.7", architecturyVer: "17.0.8", neoforge: "21.7.25-beta",neoforgeLineLo: "21.7", neoforgeLineHi: "21.8", yarnBuild: "build.1" ],
-        [ mc: "1.21.8", fabricApi: "0.136.1+1.21.8", architecturyVer: "17.0.8", neoforge: "21.8.52",     neoforgeLineLo: "21.8", neoforgeLineHi: "21.9", yarnBuild: "build.1" ],
-        [ mc: "1.21.9", fabricApi: "0.134.1+1.21.9", architecturyVer: "18.0.5", neoforge: "21.9.16-beta", neoforgeLineLo: "21.9", neoforgeLineHi: "21.10", yarnBuild: "build.1" ],
-        [ mc: "1.21.10", fabricApi: "0.138.3+1.21.10", architecturyVer: "18.0.8", neoforge: "21.10.64", neoforgeLineLo: "21.10", neoforgeLineHi: "21.11", yarnBuild: "build.1" ],
-        [ mc: "1.21.11", fabricApi: "0.140.2+1.21.11", architecturyVer: "19.0.1", neoforge: "21.11.14-beta", neoforgeLineLo: "21.11", neoforgeLineHi: "21.12", yarnBuild: "build.1" ],
+        [ mc: "1.20.1", fabricApi: "0.92.5+1.20.1", architecturyVer: "9.2.14", yarnBuild: "build.1" ],
 ]
 
 // ---- Build per version via external gradlew
@@ -205,97 +156,17 @@ ext.mcTargets.each { t ->
         commandLine "java", "-Xmx4G", "-jar", "server.jar", "nogui"
     }
 
-    // NeoForge only
-    def buildNeoForgeTask = tasks.register("buildNeoForge_${mcTask}", Exec) {
-        workingDir rootProject.projectDir
-        commandLine gradleWrapper,
-                "--no-daemon",
-                "-Pfilter_platforms=neoforge",
-                "-Pminecraft_version=${t.mc}",
-                "-Pneoforge_version=${t.neoforge}",
-                "-Parchitectury_version_plain=${t.architecturyVer}",
-                "-Pneoforge_line_lo=${t.neoforgeLineLo}",
-                "-Pneoforge_line_hi=${t.neoforgeLineHi}",
-                ":neoforge:clean", ":neoforge:build"
-    }
-
-    tasks.register("buildAndCopyNeoForgeJars_${mcTask}") {
-        group = "build/neoforge"
-        description = "Build and copy NeoForge Jar for MC ${t.mc}"
-        dependsOn buildNeoForgeTask
-        doLast {
-            def nfLibsDir = file("${rootProject.projectDir}/neoforge/build/libs")
-            if (!nfLibsDir.exists()) {
-                throw new GradleException("NeoForge libs dir not found: ${nfLibsDir}")
-            }
-
-            def nfJars = nfLibsDir.listFiles().findAll { File f ->
-                f.name.endsWith(".jar") &&
-                        !f.name.endsWith("-sources.jar") &&
-                        !f.name.contains("dev-shadow")
-            }
-            if (nfJars.isEmpty()) {
-                throw new GradleException("No NeoForge jars found in ${nfLibsDir}")
-            }
-
-            def nfOut = file("${rootProject.projectDir}/build/neoforge/${t.mc}")
-            copy {
-                from nfJars
-                into nfOut
-            }
-
-            def localModsDir = file("${rootProject.projectDir}/local_servers/neoforge/${t.mc}/mods")
-            if (!localModsDir.exists()) {
-                println "local_servers/neoforge/${t.mc}/mods not found – skipped local deploy."
-                return
-            }
-
-            localModsDir.listFiles()?.findAll { File f ->
-                f.name.endsWith(".jar") &&
-                        f.name.toLowerCase().contains(rootProject.archives_name.toString().toLowerCase())
-            }?.each { it.delete() }
-
-            copy {
-                from nfJars
-                into localModsDir
-            }
-
-            println "Deployed NeoForge ${t.mc} jar to ${nfOut} and ${localModsDir}"
-        }
-    }
-
-    tasks.register("runLocalNeoForge_${mcTask}", Exec) {
-        group = "run/neoforge"
-        description = "Build, deploy and run local NeoForge server for MC ${t.mc}"
-        dependsOn "buildAndCopyNeoForgeJars_${mcTask}"
-
-        workingDir "$rootProject.projectDir/local_servers/neoforge/${t.mc}"
-
-        if (OperatingSystem.current().isWindows()) {
-            // cmd /c run.bat
-            commandLine "cmd", "/c", "run.bat"
-        } else {
-            // bash run.sh
-            commandLine "bash", "run.sh"
-        }
-    }
 }
 
 // Convenience task: build everything
 tasks.register("buildAll") {
     group = "build"
-    description = "Build all Fabric & NeoForge targets"
-    dependsOn tasks.matching { it.name.startsWith("buildAndCopyFabricJars_") || it.name.startsWith("buildAndCopyNeoForgeJars_") }
+    description = "Build all Fabric targets"
+    dependsOn tasks.matching { it.name.startsWith("buildAndCopyFabricJars_") }
 }
 
 tasks.register("buildAllFabric") {
     group = "build"
     description = "Build all Fabric targets"
     dependsOn tasks.matching { it.name.startsWith("buildAndCopyFabricJars_") }
-}
-
-tasks.register("buildAllNeoForge") {
-    group = "build"
-    description = "Build all NeoForge targets"
-    dependsOn tasks.matching { it.name.startsWith("buildAndCopyNeoForgeJars_") }
 }
