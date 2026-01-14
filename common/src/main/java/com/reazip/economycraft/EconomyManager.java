@@ -6,7 +6,6 @@ import com.reazip.economycraft.util.IdentityCompat;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.scores.DisplaySlot;
 import net.minecraft.world.scores.Objective;
 import net.minecraft.world.scores.Scoreboard;
 import net.minecraft.world.scores.criteria.ObjectiveCriteria;
@@ -44,7 +43,7 @@ public class EconomyManager {
 
     public EconomyManager(MinecraftServer server) {
         this.server = server;
-        Path dir = server.getFile("config/economycraft");
+        Path dir = server.getFile("config/economycraft").toPath();
         Path dataDir = dir.resolve("data");
         try { Files.createDirectories(dataDir); } catch (IOException ignored) {}
 
@@ -75,7 +74,7 @@ public class EconomyManager {
         if (diskUserCache != null) return;
         diskUserCache = new HashMap<>();
         try {
-            Path uc = server.getFile("usercache.json");
+            Path uc = server.getFile("usercache.json").toPath();
             if (!Files.exists(uc)) return;
 
             String json = Files.readString(uc);
@@ -238,7 +237,7 @@ public class EconomyManager {
             return;
         }
 
-        board.setDisplayObjective(DisplaySlot.SIDEBAR, null);
+        board.setDisplayObjective(Scoreboard.DISPLAY_SLOT_SIDEBAR, null);
 
         Objective existing = board.getObjective("eco_balance");
         if (existing != null) {
@@ -258,19 +257,17 @@ public class EconomyManager {
                     "eco_balance",
                     ObjectiveCriteria.DUMMY,
                     Component.literal("Balance"),
-                    ObjectiveCriteria.RenderType.INTEGER,
-                    true,
-                    null
+                    ObjectiveCriteria.RenderType.INTEGER
             );
         }
-        board.setDisplayObjective(DisplaySlot.SIDEBAR, objective);
+        board.setDisplayObjective(Scoreboard.DISPLAY_SLOT_SIDEBAR, objective);
         updateLeaderboard();
     }
 
     private void updateLeaderboard() {
         if (!EconomyConfig.get().scoreboardEnabled) {
             Scoreboard board = server.getScoreboard();
-            board.setDisplayObjective(DisplaySlot.SIDEBAR, null);
+            board.setDisplayObjective(Scoreboard.DISPLAY_SLOT_SIDEBAR, null);
             if (objective != null) board.removeObjective(objective);
             objective = null;
             displayed.clear();
@@ -284,11 +281,9 @@ public class EconomyManager {
                 "eco_balance",
                 ObjectiveCriteria.DUMMY,
                 Component.literal("Balance"),
-                ObjectiveCriteria.RenderType.INTEGER,
-                true,
-                null
+                ObjectiveCriteria.RenderType.INTEGER
         );
-        board.setDisplayObjective(DisplaySlot.SIDEBAR, objective);
+        board.setDisplayObjective(Scoreboard.DISPLAY_SLOT_SIDEBAR, objective);
         displayed.clear();
 
         List<Map.Entry<UUID, Long>> sorted = new ArrayList<>(balances.entrySet());
@@ -307,10 +302,7 @@ public class EconomyManager {
         for (var e : sorted.stream().limit(5).toList()) {
             UUID id = e.getKey();
             String name = resolveName(server, id);
-            board.getOrCreatePlayerScore(
-                    net.minecraft.world.scores.ScoreHolder.forNameOnly(name),
-                    objective
-            ).set(e.getValue().intValue());
+            board.getOrCreatePlayerScore(name, objective).setScore(e.getValue().intValue());
             displayed.add(id);
         }
     }
@@ -323,7 +315,7 @@ public class EconomyManager {
         if (EconomyConfig.get().scoreboardEnabled) {
             setupObjective();
         } else {
-            board.setDisplayObjective(DisplaySlot.SIDEBAR, null);
+            board.setDisplayObjective(Scoreboard.DISPLAY_SLOT_SIDEBAR, null);
             if (objective != null) {
                 board.removeObjective(objective);
                 objective = null;

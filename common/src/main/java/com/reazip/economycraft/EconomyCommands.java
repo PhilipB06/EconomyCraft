@@ -8,6 +8,7 @@ import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import com.reazip.economycraft.util.IdentityCompat;
 import com.reazip.economycraft.util.IdentifierCompat;
+import com.reazip.economycraft.util.ItemStackCompat;
 import com.reazip.economycraft.util.PermissionCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
@@ -639,7 +640,7 @@ public final class EconomyCommands {
 
         ItemStack hand = player.getMainHandItem();
         int count = Math.min(hand.getCount(), hand.getMaxStackSize());
-        listing.item = hand.copyWithCount(count);
+        listing.item = ItemStackCompat.copyWithCount(hand, count);
         hand.shrink(count);
         shop.addListing(listing);
 

@@ -5,11 +5,10 @@ import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyManager;
 import com.reazip.economycraft.util.ChatCompat;
 import com.reazip.economycraft.util.IdentityCompat;
-import com.reazip.economycraft.util.ProfileComponentCompat;
+import com.reazip.economycraft.util.ItemStackCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.SimpleContainer;
@@ -21,7 +20,6 @@ import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.component.ItemLore;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -66,14 +64,16 @@ public final class OrdersUi {
 
     private static ItemStack createBalanceItem(EconomyManager eco, UUID playerId, @Nullable ServerPlayer player, @Nullable String name) {
         ItemStack head = new ItemStack(Items.PLAYER_HEAD);
-        var profile = player != null
-                ? ProfileComponentCompat.tryResolvedOrUnresolved(player.getGameProfile())
-                : ProfileComponentCompat.tryUnresolved(name != null && !name.isBlank() ? name : playerId.toString());
-        profile.ifPresent(resolvable -> head.set(DataComponents.PROFILE, resolvable));
+        if (player != null) {
+            ItemStackCompat.setSkullOwner(head, player.getGameProfile(), name);
+        } else {
+            String fallback = name != null && !name.isBlank() ? name : playerId.toString();
+            ItemStackCompat.setSkullOwner(head, null, fallback);
+        }
         long balance = eco.getBalance(playerId, true);
         String displayName = name != null ? name : playerId.toString();
-        head.set(DataComponents.CUSTOM_NAME, Component.literal(displayName).withStyle(s -> s.withItalic(false).withColor(BALANCE_NAME_COLOR)));
-        head.set(DataComponents.LORE, new ItemLore(List.of(balanceLore(balance))));
+        ItemStackCompat.setCustomName(head, Component.literal(displayName).withStyle(s -> s.withItalic(false).withColor(BALANCE_NAME_COLOR)));
+        ItemStackCompat.setLore(head, List.of(balanceLore(balance)));
         return head;
     }
 
@@ -163,25 +163,24 @@ public final class OrdersUi {
                 }
 
                 long tax = Math.round(r.price * EconomyConfig.get().taxRate);
-                display.set(net.minecraft.core.component.DataComponents.LORE,
-                        new net.minecraft.world.item.component.ItemLore(List.of(
-                                createRewardLore(r.price, tax),
-                                labeledValue("Amount", String.valueOf(r.amount), LABEL_PRIMARY_COLOR),
-                                labeledValue("Requester", reqName, LABEL_SECONDARY_COLOR)
-                        )));
+                ItemStackCompat.setLore(display, List.of(
+                        createRewardLore(r.price, tax),
+                        labeledValue("Amount", String.valueOf(r.amount), LABEL_PRIMARY_COLOR),
+                        labeledValue("Requester", reqName, LABEL_SECONDARY_COLOR)
+                ));
                 display.setCount(1);
                 container.setItem(i, display);
             }
 
             if (page > 0) {
                 ItemStack prev = new ItemStack(Items.ARROW);
-                prev.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Previous page").withStyle(s -> s.withItalic(false)));
+                ItemStackCompat.setCustomName(prev, Component.literal("Previous page").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 2, prev);
             }
 
             if (start + 45 < requests.size()) {
                 ItemStack next = new ItemStack(Items.ARROW);
-                next.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Next page").withStyle(s -> s.withItalic(false)));
+                ItemStackCompat.setCustomName(next, Component.literal("Next page").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 6, next);
             }
 
@@ -189,7 +188,7 @@ public final class OrdersUi {
             container.setItem(navRowStart, balance);
 
             ItemStack paper = new ItemStack(Items.PAPER);
-            paper.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+            ItemStackCompat.setCustomName(paper,
                     Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
             container.setItem(navRowStart + 4, paper);
         }
@@ -283,7 +282,7 @@ public final class OrdersUi {
             this.parent = parent;
 
             ItemStack confirm = new ItemStack(Items.LIME_STAINED_GLASS_PANE);
-            confirm.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+            ItemStackCompat.setCustomName(confirm,
                     Component.literal("Confirm").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.GREEN)));
             container.setItem(2, confirm);
 
@@ -299,16 +298,15 @@ public final class OrdersUi {
             }
 
             long tax = Math.round(req.price * EconomyConfig.get().taxRate);
-            item.set(net.minecraft.core.component.DataComponents.LORE,
-                    new net.minecraft.world.item.component.ItemLore(List.of(
-                            createRewardLore(req.price, tax),
-                            labeledValue("Amount", String.valueOf(req.amount), LABEL_PRIMARY_COLOR),
-                            labeledValue("Requester", requesterName, LABEL_SECONDARY_COLOR)
-                    )));
+            ItemStackCompat.setLore(item, List.of(
+                    createRewardLore(req.price, tax),
+                    labeledValue("Amount", String.valueOf(req.amount), LABEL_PRIMARY_COLOR),
+                    labeledValue("Requester", requesterName, LABEL_SECONDARY_COLOR)
+            ));
             container.setItem(4, item);
 
             ItemStack cancel = new ItemStack(Items.RED_STAINED_GLASS_PANE);
-            cancel.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+            ItemStackCompat.setCustomName(cancel,
                     Component.literal("Cancel").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.DARK_RED)));
             container.setItem(6, cancel);
 
@@ -430,20 +428,20 @@ public final class OrdersUi {
             this.parent = parent;
 
             ItemStack confirm = new ItemStack(Items.LIME_STAINED_GLASS_PANE);
-            confirm.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+            ItemStackCompat.setCustomName(confirm,
                     Component.literal("Confirm").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.GREEN)));
             container.setItem(2, confirm);
 
             ItemStack item = req.item.copy();
             long tax = Math.round(req.price * EconomyConfig.get().taxRate);
-            item.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
+            ItemStackCompat.setLore(item, java.util.List.of(
                     createRewardLore(req.price, tax),
                     labeledValue("Amount", String.valueOf(req.amount), LABEL_PRIMARY_COLOR),
-                    Component.literal("This will remove the request").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.RED)))));
+                    Component.literal("This will remove the request").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.RED))));
             container.setItem(4, item);
 
             ItemStack cancel = new ItemStack(Items.RED_STAINED_GLASS_PANE);
-            cancel.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+            ItemStackCompat.setCustomName(cancel,
                     Component.literal("Cancel").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.DARK_RED)));
             container.setItem(6, cancel);
 
@@ -540,12 +538,12 @@ public final class OrdersUi {
             }
             if (page > 0) {
                 ItemStack prev = new ItemStack(Items.ARROW);
-                prev.set(DataComponents.CUSTOM_NAME, Component.literal("Previous page").withStyle(s -> s.withItalic(false)));
+                ItemStackCompat.setCustomName(prev, Component.literal("Previous page").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 2, prev);
             }
             if (start + 45 < items.size()) {
                 ItemStack next = new ItemStack(Items.ARROW);
-                next.set(DataComponents.CUSTOM_NAME, Component.literal("Next page").withStyle(s -> s.withItalic(false)));
+                ItemStackCompat.setCustomName(next, Component.literal("Next page").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 6, next);
             }
             String name = null;
@@ -558,7 +556,7 @@ public final class OrdersUi {
             ItemStack balance = createBalanceItem(eco, owner, viewer, name);
             container.setItem(navRowStart, balance);
             ItemStack paper = new ItemStack(Items.PAPER);
-            paper.set(DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
+            ItemStackCompat.setCustomName(paper, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
             container.setItem(navRowStart + 4, paper);
         }
 

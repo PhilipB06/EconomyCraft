@@ -5,7 +5,7 @@ import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyManager;
 import com.reazip.economycraft.util.ChatCompat;
 import com.reazip.economycraft.util.IdentityCompat;
-import com.reazip.economycraft.util.ProfileComponentCompat;
+import com.reazip.economycraft.util.ItemStackCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
@@ -20,8 +20,6 @@ import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.component.ItemLore;
-import com.mojang.authlib.GameProfile;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -102,14 +100,11 @@ public final class ShopUi {
 
     private static ItemStack createBalanceItem(ServerPlayer player) {
         ItemStack head = new ItemStack(Items.PLAYER_HEAD);
-        GameProfile profile = player.getGameProfile();
-        ProfileComponentCompat.tryResolvedOrUnresolved(profile).ifPresent(resolvable ->
-                head.set(net.minecraft.core.component.DataComponents.PROFILE, resolvable));
+        ItemStackCompat.setSkullOwner(head, player.getGameProfile(), IdentityCompat.of(player).name());
         long balance = EconomyCraft.getManager(player.level().getServer()).getBalance(player.getUUID(), true);
-        head.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+        ItemStackCompat.setCustomName(head,
                 Component.literal(IdentityCompat.of(player).name()).withStyle(s -> s.withItalic(false).withColor(BALANCE_NAME_COLOR)));
-        head.set(net.minecraft.core.component.DataComponents.LORE,
-                new ItemLore(List.of(balanceLore(balance))));
+        ItemStackCompat.setLore(head, List.of(balanceLore(balance)));
         return head;
     }
 
@@ -183,21 +178,21 @@ public final class ShopUi {
                 }
 
                 long tax = Math.round(l.price * EconomyConfig.get().taxRate);
-                display.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(List.of(
+                ItemStackCompat.setLore(display, List.of(
                         createPriceLore(l.price, tax),
-                        labeledValue("Seller", sellerName, LABEL_SECONDARY_COLOR))));
+                        labeledValue("Seller", sellerName, LABEL_SECONDARY_COLOR)));
                 container.setItem(i, display);
             }
 
             if (page > 0) {
                 ItemStack prev = new ItemStack(Items.ARROW);
-                prev.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Previous page").withStyle(s -> s.withItalic(false)));
+                ItemStackCompat.setCustomName(prev, Component.literal("Previous page").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 3, prev);
             }
 
             if (start + 45 < listings.size()) {
                 ItemStack next = new ItemStack(Items.ARROW);
-                next.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Next page").withStyle(s -> s.withItalic(false)));
+                ItemStackCompat.setCustomName(next, Component.literal("Next page").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 5, next);
             }
 
@@ -205,7 +200,7 @@ public final class ShopUi {
             container.setItem(navRowStart, balance);
 
             ItemStack paper = new ItemStack(Items.PAPER);
-            paper.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
+            ItemStackCompat.setCustomName(paper, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
             container.setItem(navRowStart + 4, paper);
         }
 
@@ -256,7 +251,7 @@ public final class ShopUi {
             this.viewer = viewer;
 
             ItemStack confirm = new ItemStack(Items.LIME_STAINED_GLASS_PANE);
-            confirm.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+            ItemStackCompat.setCustomName(confirm,
                     Component.literal("Confirm").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.GREEN)));
             container.setItem(2, confirm);
 
@@ -270,13 +265,13 @@ public final class ShopUi {
 
             ItemStack item = listing.item.copy();
             long tax = Math.round(listing.price * EconomyConfig.get().taxRate);
-            item.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(List.of(
+            ItemStackCompat.setLore(item, List.of(
                     createPriceLore(listing.price, tax),
-                    labeledValue("Seller", sellerName, LABEL_SECONDARY_COLOR))));
+                    labeledValue("Seller", sellerName, LABEL_SECONDARY_COLOR)));
             container.setItem(4, item);
 
             ItemStack cancel = new ItemStack(Items.RED_STAINED_GLASS_PANE);
-            cancel.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+            ItemStackCompat.setCustomName(cancel,
                     Component.literal("Cancel").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.DARK_RED)));
             container.setItem(6, cancel);
 
@@ -394,20 +389,20 @@ public final class ShopUi {
             this.viewer = viewer;
 
             ItemStack confirm = new ItemStack(Items.LIME_STAINED_GLASS_PANE);
-            confirm.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+            ItemStackCompat.setCustomName(confirm,
                     Component.literal("Confirm").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.GREEN)));
             container.setItem(2, confirm);
 
             ItemStack item = listing.item.copy();
             long tax = Math.round(listing.price * EconomyConfig.get().taxRate);
-            item.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
+            ItemStackCompat.setLore(item, java.util.List.of(
                     createPriceLore(listing.price, tax),
                     labeledValue("Seller", "you", LABEL_SECONDARY_COLOR),
-                    Component.literal("This will remove the listing").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.RED)))));
+                    Component.literal("This will remove the listing").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.RED))));
             container.setItem(4, item);
 
             ItemStack cancel = new ItemStack(Items.RED_STAINED_GLASS_PANE);
-            cancel.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+            ItemStackCompat.setCustomName(cancel,
                     Component.literal("Cancel").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.DARK_RED)));
             container.setItem(6, cancel);
 

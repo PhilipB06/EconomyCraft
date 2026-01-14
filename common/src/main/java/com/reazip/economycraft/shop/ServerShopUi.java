@@ -5,14 +5,11 @@ import com.reazip.economycraft.EconomyManager;
 import com.reazip.economycraft.PriceRegistry;
 import com.reazip.economycraft.util.ChatCompat;
 import com.reazip.economycraft.util.IdentityCompat;
-import com.reazip.economycraft.util.ProfileComponentCompat;
+import com.reazip.economycraft.util.ItemStackCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Holder;
-import net.minecraft.core.HolderLookup;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceKey;
 import com.reazip.economycraft.util.IdentifierCompat;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.MenuProvider;
@@ -27,12 +24,8 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.alchemy.Potion;
-import net.minecraft.world.item.alchemy.PotionContents;
-import net.minecraft.world.item.component.ItemLore;
 import net.minecraft.world.item.enchantment.Enchantment;
-import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -227,8 +220,8 @@ public final class ServerShopUi {
                 ItemStack icon = createCategoryIcon(cat, cat, prices, viewer);
                 if (icon.isEmpty()) continue;
 
-                icon.set(DataComponents.CUSTOM_NAME, Component.literal(formatCategoryTitle(cat)).withStyle(s -> s.withItalic(false).withColor(getCategoryColor(cat)).withBold(true)));
-                icon.set(DataComponents.LORE, new ItemLore(List.of(Component.literal("Click to view items").withStyle(s -> s.withItalic(false)))));
+                ItemStackCompat.setCustomName(icon, Component.literal(formatCategoryTitle(cat)).withStyle(s -> s.withItalic(false).withColor(getCategoryColor(cat)).withBold(true)));
+                ItemStackCompat.setLore(icon, List.of(Component.literal("Click to view items").withStyle(s -> s.withItalic(false))));
                 int slot = STAR_SLOT_ORDER.get(i);
                 container.setItem(slot, icon);
                 slotToIndex[slot] = idx;
@@ -238,13 +231,13 @@ public final class ServerShopUi {
 
             if (page > 0) {
                 ItemStack prev = new ItemStack(Items.ARROW);
-                prev.set(DataComponents.CUSTOM_NAME, Component.literal("Previous page").withStyle(s -> s.withItalic(false)));
+                ItemStackCompat.setCustomName(prev, Component.literal("Previous page").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 3, prev);
             }
 
             if (start + itemsPerPage < categories.size()) {
                 ItemStack next = new ItemStack(Items.ARROW);
-                next.set(DataComponents.CUSTOM_NAME, Component.literal("Next page").withStyle(s -> s.withItalic(false)));
+                ItemStackCompat.setCustomName(next, Component.literal("Next page").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 5, next);
             }
 
@@ -252,7 +245,7 @@ public final class ServerShopUi {
             container.setItem(navRowStart, balance);
 
             ItemStack paper = new ItemStack(Items.PAPER);
-            paper.set(DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
+            ItemStackCompat.setCustomName(paper, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
             container.setItem(navRowStart + 4, paper);
         }
 
@@ -352,32 +345,32 @@ public final class ServerShopUi {
                 ItemStack icon = createCategoryIcon(sub, full, prices, viewer);
                 if (icon.isEmpty()) continue;
 
-                icon.set(DataComponents.CUSTOM_NAME, Component.literal(formatCategoryTitle(sub)).withStyle(s -> s.withItalic(false).withColor(ChatFormatting.WHITE).withBold(true)));
-                icon.set(DataComponents.LORE, new ItemLore(List.of(Component.literal("Click to view items").withStyle(s -> s.withItalic(false)))));
+                ItemStackCompat.setCustomName(icon, Component.literal(formatCategoryTitle(sub)).withStyle(s -> s.withItalic(false).withColor(ChatFormatting.WHITE).withBold(true)));
+                ItemStackCompat.setLore(icon, List.of(Component.literal("Click to view items").withStyle(s -> s.withItalic(false))));
                 container.setItem(i, icon);
             }
 
             if (page > 0) {
                 ItemStack prev = new ItemStack(Items.ARROW);
-                prev.set(DataComponents.CUSTOM_NAME, Component.literal("Previous page").withStyle(s -> s.withItalic(false)));
+                ItemStackCompat.setCustomName(prev, Component.literal("Previous page").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 3, prev);
             }
 
             if (start + itemsPerPage < subcategories.size()) {
                 ItemStack next = new ItemStack(Items.ARROW);
-                next.set(DataComponents.CUSTOM_NAME, Component.literal("Next page").withStyle(s -> s.withItalic(false)));
+                ItemStackCompat.setCustomName(next, Component.literal("Next page").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 5, next);
             }
 
             ItemStack back = new ItemStack(Items.BARRIER);
-            back.set(DataComponents.CUSTOM_NAME, Component.literal("Back").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.DARK_RED).withBold(true)));
+            ItemStackCompat.setCustomName(back, Component.literal("Back").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.DARK_RED).withBold(true)));
             container.setItem(navRowStart + 8, back);
 
             ItemStack balance = createBalanceItem(viewer);
             container.setItem(navRowStart, balance);
 
             ItemStack paper = new ItemStack(Items.PAPER);
-            paper.set(DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
+            ItemStackCompat.setCustomName(paper, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
             container.setItem(navRowStart + 4, paper);
         }
 
@@ -482,32 +475,32 @@ public final class ServerShopUi {
                     lore.add(labeledValue("Shift-click", "Buy " + stackSize, LABEL_SECONDARY_COLOR));
                 }
 
-                display.set(DataComponents.LORE, new ItemLore(lore));
+                ItemStackCompat.setLore(display, lore);
                 display.setCount(1);
                 container.setItem(i, display);
             }
 
             if (page > 0) {
                 ItemStack prev = new ItemStack(Items.ARROW);
-                prev.set(DataComponents.CUSTOM_NAME, Component.literal("Previous page").withStyle(s -> s.withItalic(false)));
+                ItemStackCompat.setCustomName(prev, Component.literal("Previous page").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 3, prev);
             }
 
             if (start + itemsPerPage < entries.size()) {
                 ItemStack next = new ItemStack(Items.ARROW);
-                next.set(DataComponents.CUSTOM_NAME, Component.literal("Next page").withStyle(s -> s.withItalic(false)));
+                ItemStackCompat.setCustomName(next, Component.literal("Next page").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 5, next);
             }
 
             ItemStack back = new ItemStack(Items.BARRIER);
-            back.set(DataComponents.CUSTOM_NAME, Component.literal("Back").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.DARK_RED).withBold(true)));
+            ItemStackCompat.setCustomName(back, Component.literal("Back").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.DARK_RED).withBold(true)));
             container.setItem(navRowStart + 8, back);
 
             ItemStack balance = createBalanceItem(viewer);
             container.setItem(navRowStart, balance);
 
             ItemStack paper = new ItemStack(Items.PAPER);
-            paper.set(DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
+            ItemStackCompat.setCustomName(paper, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
             container.setItem(navRowStart + 4, paper);
         }
 
@@ -593,7 +586,7 @@ public final class ServerShopUi {
             boolean stored = false;
             while (remaining > 0) {
                 int give = Math.min(base.getMaxStackSize(), remaining);
-                ItemStack stack = base.copyWithCount(give);
+                ItemStack stack = ItemStackCompat.copyWithCount(base, give);
                 if (!viewer.getInventory().add(stack)) {
                     eco.getShop().addDelivery(viewer.getUUID(), stack);
                     stored = true;
@@ -770,7 +763,7 @@ public final class ServerShopUi {
 
     private static void fillEmptyWithPanes(SimpleContainer container, int limit) {
         ItemStack filler = new ItemStack(Items.GRAY_STAINED_GLASS_PANE);
-        filler.set(DataComponents.CUSTOM_NAME, Component.literal(" "));
+        ItemStackCompat.setCustomName(filler, Component.literal(" "));
         for (int i = 0; i < limit && i < container.getContainerSize(); i++) {
             if (container.getItem(i).isEmpty()) {
                 container.setItem(i, filler.copy());
@@ -810,12 +803,11 @@ public final class ServerShopUi {
 
     private static ItemStack createBalanceItem(ServerPlayer player) {
         ItemStack head = new ItemStack(Items.PLAYER_HEAD);
-        ProfileComponentCompat.tryResolvedOrUnresolved(player.getGameProfile()).ifPresent(resolvable ->
-                head.set(DataComponents.PROFILE, resolvable));
         long balance = EconomyCraft.getManager(player.level().getServer()).getBalance(player.getUUID(), true);
         String name = IdentityCompat.of(player).name();
-        head.set(DataComponents.CUSTOM_NAME, Component.literal(name).withStyle(s -> s.withItalic(false).withColor(BALANCE_NAME_COLOR)));
-        head.set(DataComponents.LORE, new ItemLore(List.of(balanceLore(balance))));
+        ItemStackCompat.setSkullOwner(head, player.getGameProfile(), name);
+        ItemStackCompat.setCustomName(head, Component.literal(name).withStyle(s -> s.withItalic(false).withColor(BALANCE_NAME_COLOR)));
+        ItemStackCompat.setLore(head, List.of(balanceLore(balance)));
         return head;
     }
 
@@ -887,18 +879,18 @@ public final class ServerShopUi {
         if (enchantId == null) {
             return ItemStack.EMPTY;
         }
-        HolderLookup.RegistryLookup<Enchantment> lookup = viewer.registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
-        ResourceKey<Enchantment> resourceKey = IdentifierCompat.createResourceKey(Registries.ENCHANTMENT, enchantId);
-        if (resourceKey == null) {
+        Optional<?> enchantment = IdentifierCompat.registryGetOptional(BuiltInRegistries.ENCHANTMENT, enchantId);
+        if (enchantment.isEmpty()) return ItemStack.EMPTY;
+        Enchantment resolvedEnchantment = resolveEnchantmentValue(enchantment.get(), enchantId);
+        if (resolvedEnchantment == null) {
             return ItemStack.EMPTY;
         }
-        Optional<Holder.Reference<Enchantment>> holder = lookup.get(resourceKey);
-        if (holder.isEmpty()) return ItemStack.EMPTY;
 
         ItemStack stack = new ItemStack(Items.ENCHANTED_BOOK);
-        ItemEnchantments.Mutable mutable = new ItemEnchantments.Mutable(ItemEnchantments.EMPTY);
-        mutable.set(holder.get(), level);
-        stack.set(DataComponents.STORED_ENCHANTMENTS, mutable.toImmutable());
+        net.minecraft.world.item.EnchantedBookItem.addEnchantment(
+                stack,
+                new net.minecraft.world.item.enchantment.EnchantmentInstance(resolvedEnchantment, level)
+        );
         return stack;
     }
 
@@ -961,11 +953,13 @@ public final class ServerShopUi {
         Optional<?> potion = IdentifierCompat.registryGetOptional(BuiltInRegistries.POTION, potionId);
         if (potion.isEmpty()) return ItemStack.EMPTY;
 
-        Holder<Potion> holder = resolvePotionHolder(potion.get(), potionId);
-        if (holder == null) {
+        Potion resolvedPotion = resolvePotionValue(potion.get(), potionId);
+        if (resolvedPotion == null) {
             return ItemStack.EMPTY;
         }
-        return PotionContents.createItemStack(baseItem, holder);
+        ItemStack stack = new ItemStack(baseItem);
+        net.minecraft.world.item.alchemy.PotionUtils.setPotion(stack, resolvedPotion);
+        return stack;
     }
 
     private static Item resolveItemValue(Object value, IdentifierCompat.Id id, String context) {
@@ -982,15 +976,28 @@ public final class ServerShopUi {
         return null;
     }
 
-    @SuppressWarnings("unchecked")
-    private static Holder<Potion> resolvePotionHolder(Object value, IdentifierCompat.Id id) {
-        if (value instanceof Potion potion) {
-            return BuiltInRegistries.POTION.wrapAsHolder(potion);
+    private static Enchantment resolveEnchantmentValue(Object value, IdentifierCompat.Id id) {
+        if (value instanceof Enchantment enchantment) {
+            return enchantment;
         }
         if (value instanceof Holder<?> holder) {
             Object inner = holder.value();
-            if (inner instanceof Potion) {
-                return (Holder<Potion>) holder;
+            if (inner instanceof Enchantment enchantment) {
+                return enchantment;
+            }
+            return null;
+        }
+        return null;
+    }
+
+    private static Potion resolvePotionValue(Object value, IdentifierCompat.Id id) {
+        if (value instanceof Potion potion) {
+            return potion;
+        }
+        if (value instanceof Holder<?> holder) {
+            Object inner = holder.value();
+            if (inner instanceof Potion potion) {
+                return potion;
             }
             return null;
         }

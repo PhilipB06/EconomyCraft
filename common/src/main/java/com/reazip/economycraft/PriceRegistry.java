@@ -9,17 +9,11 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import com.reazip.economycraft.util.IdentifierCompat;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.core.Holder;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.component.BundleContents;
-import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.item.alchemy.Potion;
-import net.minecraft.world.item.alchemy.PotionContents;
-import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import net.minecraft.world.item.enchantment.Enchantment;
-import net.minecraft.world.item.enchantment.ItemEnchantments;
+import com.reazip.economycraft.util.ItemStackCompat;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -42,7 +36,7 @@ public final class PriceRegistry {
     public record ResolvedPrice(IdentifierCompat.Id key, PriceEntry entry) {}
 
     public PriceRegistry(MinecraftServer server) {
-        Path dir = server.getFile("config/economycraft");
+        Path dir = server.getFile("config/economycraft").toPath();
         try {
             Files.createDirectories(dir);
         } catch (IOException e) {
@@ -169,10 +163,7 @@ public final class PriceRegistry {
 
     public boolean isSellBlockedByContents(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return false;
-        ItemContainerContents container = stack.get(DataComponents.CONTAINER);
-        if (container != null && container.nonEmptyItems().iterator().hasNext()) return true;
-        BundleContents bundle = stack.get(DataComponents.BUNDLE_CONTENTS);
-        return bundle != null && !bundle.isEmpty();
+        return ItemStackCompat.hasContainerContents(stack);
     }
 
     public Collection<PriceEntry> all() {
@@ -394,12 +385,12 @@ public final class PriceRegistry {
         }
 
         if (stack.is(Items.ENCHANTED_BOOK)) {
-            ItemEnchantments stored = stack.getOrDefault(DataComponents.STORED_ENCHANTMENTS, ItemEnchantments.EMPTY);
-            for (Object2IntMap.Entry<Holder<Enchantment>> e : stored.entrySet()) {
-                Holder<Enchantment> holder = e.getKey();
-                int level = e.getIntValue();
+            Map<Enchantment, Integer> stored = ItemStackCompat.getEnchantments(stack);
+            for (Map.Entry<Enchantment, Integer> entry : stored.entrySet()) {
+                Enchantment enchantment = entry.getKey();
+                int level = entry.getValue() == null ? 0 : entry.getValue();
                 if (level <= 0) continue;
-                IdentifierCompat.Id enchId = holder.unwrapKey().map(IdentifierCompat::fromResourceKey).orElse(null);
+                IdentifierCompat.Id enchId = IdentifierCompat.wrap(BuiltInRegistries.ENCHANTMENT.getKey(enchantment));
                 if (enchId == null) continue;
                 String base = "enchanted_book_" + enchId.path() + "_" + level;
                 IdentifierCompat.Id key = IdentifierCompat.fromNamespaceAndPath(enchId.namespace(), base);
@@ -418,13 +409,8 @@ public final class PriceRegistry {
     }
 
     private static IdentifierCompat.Id readPotionId(ItemStack stack) {
-        PotionContents contents = stack.get(DataComponents.POTION_CONTENTS);
-        if (contents == null) return null;
-
-        Optional<Holder<Potion>> opt = contents.potion();
-        if (opt.isEmpty()) return null;
-
-        Potion potion = opt.get().value();
+        Potion potion = ItemStackCompat.getPotion(stack);
+        if (potion == null) return null;
         return IdentifierCompat.wrap(BuiltInRegistries.POTION.getKey(potion));
     }
 

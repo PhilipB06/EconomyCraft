@@ -42,10 +42,10 @@ subprojects {
     }
 
     java {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
-    tasks.withType(JavaCompile).configureEach { options.release = 21 }
+    tasks.withType(JavaCompile).configureEach { options.release = 17 }
 
     publishing {
         publications {
@@ -114,6 +114,7 @@ ext.mcTaskVer = { String v ->
 
 // ---- BUILD TARGETS
 ext.mcTargets = [
+        [ mc: "1.20.1", fabricApi: "0.92.5+1.20.1", architecturyVer: "9.2.14", neoforge: "20.1.0", neoforgeLineLo: "20.1", neoforgeLineHi: "20.2", yarnBuild: "build.1" ],
         [ mc: "1.21",   fabricApi: "0.102.0+1.21",   architecturyVer: "13.0.8", neoforge: "21.0.167",    neoforgeLineLo: "21.0", neoforgeLineHi: "21.1", yarnBuild: "build.1" ],
         [ mc: "1.21.1", fabricApi: "0.116.5+1.21.1", architecturyVer: "13.0.8", neoforge: "21.1.217",    neoforgeLineLo: "21.1", neoforgeLineHi: "21.2", yarnBuild: "build.1" ],
         [ mc: "1.21.2", fabricApi: "0.106.1+1.21.2", architecturyVer: "14.0.4", neoforge: "21.2.1-beta", neoforgeLineLo: "21.2", neoforgeLineHi: "21.3", yarnBuild: "build.1" ],

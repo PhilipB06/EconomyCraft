@@ -108,16 +108,12 @@ public final class IdentityCompat {
             Class<?> rt = m.getReturnType();
             try {
                 Object val = m.invoke(any);
-                switch (val) {
-                    case GameProfile gp when GameProfile.class.isAssignableFrom(rt) -> {
-                        return gp;
-                    }
-                    case Optional<?> opt -> {
-                        Object inner = opt.orElse(null);
-                        if (inner instanceof GameProfile gp2) return gp2;
-                    }
-                    case null, default -> {
-                    }
+                if (val instanceof GameProfile gp && GameProfile.class.isAssignableFrom(rt)) {
+                    return gp;
+                }
+                if (val instanceof Optional<?> opt) {
+                    Object inner = opt.orElse(null);
+                    if (inner instanceof GameProfile gp2) return gp2;
                 }
 
             } catch (Exception ignored) {}
@@ -204,41 +200,33 @@ public final class IdentityCompat {
 
     @Nullable
     private static UUID readUuidLike(Object val) {
-        switch (val) {
-            case null -> {
-                return null;
-            }
-            case UUID u -> {
-                return u;
-            }
-            case Optional<?> opt -> {
-                Object inner = opt.orElse(null);
-                return readUuidLike(inner);
-            }
-            case GameProfile gp -> {
-                return getGameProfileId(gp);
-            }
-            default -> {
-            }
+        if (val == null) {
+            return null;
+        }
+        if (val instanceof UUID u) {
+            return u;
+        }
+        if (val instanceof Optional<?> opt) {
+            Object inner = opt.orElse(null);
+            return readUuidLike(inner);
+        }
+        if (val instanceof GameProfile gp) {
+            return getGameProfileId(gp);
         }
         return null;
     }
 
     @Nullable
     private static String readStringLike(Object val) {
-        switch (val) {
-            case null -> {
-                return null;
-            }
-            case String s -> {
-                return s;
-            }
-            case Optional<?> opt -> {
-                Object inner = opt.orElse(null);
-                return readStringLike(inner);
-            }
-            default -> {
-            }
+        if (val == null) {
+            return null;
+        }
+        if (val instanceof String s) {
+            return s;
+        }
+        if (val instanceof Optional<?> opt) {
+            Object inner = opt.orElse(null);
+            return readStringLike(inner);
         }
         return String.valueOf(val);
     }
