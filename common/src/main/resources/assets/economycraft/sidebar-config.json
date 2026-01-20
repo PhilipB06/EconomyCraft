@@ -12,6 +12,44 @@
         "metric": "balance",
         "limit": 5
       }
+    },
+    {
+      "id": "player_stats",
+      "type": "player_stats",
+      "enabled": true,
+      "title": "STATS",
+      "target": "viewer",
+      "refresh_seconds": 30,
+      "lines": [
+        {
+          "key": "balance",
+          "enabled": true,
+          "label": "Balance",
+          "source": { "type": "economy_balance" },
+          "format": { "type": "currency", "decimals": 0 }
+        },
+        {
+          "key": "deaths",
+          "enabled": true,
+          "label": "Deaths",
+          "source": { "type": "minecraft_stat", "stat": "minecraft:deaths" },
+          "format": { "type": "int" }
+        },
+        {
+          "key": "playtime",
+          "enabled": true,
+          "label": "Time Played",
+          "source": { "type": "minecraft_stat", "stat": "minecraft:play_time" },
+          "format": { "type": "time", "unit": "ticks", "style": "compact" }
+        },
+        {
+          "key": "team",
+          "enabled": true,
+          "label": "Team",
+          "source": { "type": "scoreboard_team" },
+          "format": { "type": "text", "fallback": "None" }
+        }
+      ]
     }
   ]
 }
