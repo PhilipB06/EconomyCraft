@@ -6,5 +6,13 @@
   "pvp_balance_loss_percentage": 0.0,
   "standalone_commands": true,
   "standalone_admin_commands": false,
-  "scoreboard_enabled": true
+  "scoreboard_enabled": true,
+  "scoreboard_mode": "leaderboard",
+  "scoreboard_stats": {
+    "balance": true,
+    "deaths": true,
+    "playtime": true,
+    "team": true
+  },
+  "server_shop_enabled": true
 }

@@ -665,6 +665,10 @@ public final class EconomyCommands {
     }
 
     private static int openServerShop(ServerPlayer player, CommandSourceStack source, @Nullable String category) {
+        if (!EconomyConfig.get().serverShopEnabled) {
+            source.sendFailure(Component.literal("Server shop is disabled.").withStyle(ChatFormatting.RED));
+            return 0;
+        }
         EconomyManager manager = EconomyCraft.getManager(source.getServer());
         try {
             ServerShopUi.open(player, manager, category);

@@ -6,10 +6,12 @@ import com.reazip.economycraft.util.IdentityCompat;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.stats.Stats;
 import net.minecraft.world.scores.DisplaySlot;
 import net.minecraft.world.scores.Objective;
 import net.minecraft.world.scores.Scoreboard;
 import net.minecraft.world.scores.criteria.ObjectiveCriteria;
+import net.minecraft.world.scores.Team;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -39,6 +41,9 @@ public class EconomyManager {
     private final com.reazip.economycraft.shop.ShopManager shop;
     private final com.reazip.economycraft.orders.OrderManager orders;
     private final Set<UUID> displayed = new HashSet<>();
+
+    private static final int PLAYTIME_TICKS_PER_HOUR = 20 * 60 * 60;
+    private static final int LEADERBOARD_LIMIT = 5;
 
     public static final long MAX = 999_999_999L;
 
@@ -277,6 +282,11 @@ public class EconomyManager {
             return;
         }
 
+        if ("stats".equalsIgnoreCase(EconomyConfig.get().scoreboardMode)) {
+            updateStatsScoreboard();
+            return;
+        }
+
         Scoreboard board = server.getScoreboard();
         if (objective != null) board.removeObjective(objective);
 
@@ -304,7 +314,7 @@ public class EconomyManager {
             return a.getKey().compareTo(b.getKey());
         });
 
-        for (var e : sorted.stream().limit(5).toList()) {
+        for (var e : sorted.stream().limit(LEADERBOARD_LIMIT).toList()) {
             UUID id = e.getKey();
             String name = resolveName(server, id);
             board.getOrCreatePlayerScore(
@@ -313,6 +323,71 @@ public class EconomyManager {
             ).set(e.getValue().intValue());
             displayed.add(id);
         }
+    }
+
+    private void updateStatsScoreboard() {
+        Scoreboard board = server.getScoreboard();
+        if (objective != null) board.removeObjective(objective);
+        objective = board.addObjective(
+                "eco_stats",
+                ObjectiveCriteria.DUMMY,
+                Component.literal("STATS"),
+                ObjectiveCriteria.RenderType.INTEGER,
+                true,
+                null
+        );
+        board.setDisplayObjective(DisplaySlot.SIDEBAR, objective);
+        displayed.clear();
+
+        int score = 5;
+        EconomyConfig.ScoreboardStats config = EconomyConfig.get().scoreboardStats;
+        List<UUID> targets = server.getPlayerList().getPlayers().stream()
+                .map(ServerPlayer::getUUID)
+                .toList();
+        if (targets.isEmpty()) {
+            targets = balances.entrySet().stream()
+                    .sorted(Map.Entry.<UUID, Long>comparingByValue().reversed())
+                    .map(Map.Entry::getKey)
+                    .toList();
+        }
+
+        UUID best = targets.stream().findFirst().orElse(null);
+        if (best == null) {
+            return;
+        }
+
+        ServerPlayer player = server.getPlayerList().getPlayer(best);
+        if (config.balance) {
+            setScoreLine(board, "Balance: " + EconomyCraft.formatMoney(getBalance(best, true)), score--);
+        }
+        if (config.deaths) {
+            int deaths = player != null
+                    ? player.getStats().getValue(Stats.CUSTOM.get(Stats.DEATHS))
+                    : 0;
+            setScoreLine(board, "Deaths: " + deaths, score--);
+        }
+        if (config.playtime) {
+            int ticks = player != null
+                    ? player.getStats().getValue(Stats.CUSTOM.get(Stats.PLAY_TIME))
+                    : 0;
+            long hours = ticks / PLAYTIME_TICKS_PER_HOUR;
+            setScoreLine(board, "Playtime: " + hours + "h", score--);
+        }
+        if (config.team) {
+            String teamName = "None";
+            if (player != null) {
+                Team team = player.getTeam();
+                teamName = team != null ? team.getName() : "None";
+            }
+            setScoreLine(board, "Team: " + teamName, score--);
+        }
+    }
+
+    private void setScoreLine(Scoreboard board, String line, int score) {
+        board.getOrCreatePlayerScore(
+                net.minecraft.world.scores.ScoreHolder.forNameOnly(line),
+                objective
+        ).set(score);
     }
 
     public boolean toggleScoreboard() {

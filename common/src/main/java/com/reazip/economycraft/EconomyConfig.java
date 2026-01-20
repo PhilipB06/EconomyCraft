@@ -31,6 +31,19 @@ public class EconomyConfig {
     public boolean standaloneAdminCommands;
     @SerializedName("scoreboard_enabled")
     public boolean scoreboardEnabled;
+    @SerializedName("scoreboard_mode")
+    public String scoreboardMode = "leaderboard";
+    @SerializedName("scoreboard_stats")
+    public ScoreboardStats scoreboardStats = new ScoreboardStats();
+    @SerializedName("server_shop_enabled")
+    public boolean serverShopEnabled = true;
+
+    public static class ScoreboardStats {
+        public boolean balance = true;
+        public boolean deaths = true;
+        public boolean playtime = true;
+        public boolean team = true;
+    }
 
     private static EconomyConfig INSTANCE = new EconomyConfig();
     private static Path file;
@@ -55,6 +68,12 @@ public class EconomyConfig {
             EconomyConfig parsed = GSON.fromJson(json, EconomyConfig.class);
             if (parsed == null) {
                 throw new IllegalStateException("config.json parsed to null");
+            }
+            if (parsed.scoreboardMode == null || parsed.scoreboardMode.isBlank()) {
+                parsed.scoreboardMode = "leaderboard";
+            }
+            if (parsed.scoreboardStats == null) {
+                parsed.scoreboardStats = new ScoreboardStats();
             }
             INSTANCE = parsed;
         } catch (Exception e) {
