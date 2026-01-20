@@ -4,12 +4,14 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.MinecraftServer;
 import org.slf4j.Logger;
 
+import java.io.InputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -22,6 +24,7 @@ import java.util.Set;
 
 public final class SidebarConfig {
     public static final int CURRENT_VERSION = 1;
+    private static final String DEFAULT_RESOURCE_PATH = "/assets/economycraft/sidebar-config.json";
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Gson GSON = new GsonBuilder()
             .setPrettyPrinting()
@@ -45,11 +48,11 @@ public final class SidebarConfig {
         file = dir.resolve("sidebar-config.json");
 
         if (Files.notExists(file)) {
-            INSTANCE = defaultConfig();
-            save();
-            LOGGER.info("[EconomyCraft] Created {}", file);
+            copyDefaultFromJarOrThrow();
+            LOGGER.info("[EconomyCraft] Created {} from bundled default {}", file, DEFAULT_RESOURCE_PATH);
             warnDeprecatedScoreboardConfig();
-            return;
+        } else {
+            mergeNewDefaultsFromBundledDefault();
         }
 
         try {
@@ -59,7 +62,6 @@ public final class SidebarConfig {
         } catch (Exception ex) {
             LOGGER.warn("[EconomyCraft] Failed to read sidebar-config.json; using defaults.", ex);
             INSTANCE = defaultConfig();
-            save();
         }
         warnDeprecatedScoreboardConfig();
     }
@@ -84,6 +86,20 @@ public final class SidebarConfig {
 
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
+    }
+
+    private static void copyDefaultFromJarOrThrow() {
+        try (InputStream in = SidebarConfig.class.getResourceAsStream(DEFAULT_RESOURCE_PATH)) {
+            if (in == null) {
+                throw new IllegalStateException(
+                        "[EconomyCraft] Missing bundled default " + DEFAULT_RESOURCE_PATH +
+                                " (did you forget to include it in resources?)"
+                );
+            }
+            Files.copy(in, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new IllegalStateException("[EconomyCraft] Failed to create sidebar-config.json at " + file, e);
+        }
     }
 
     private static void warnDeprecatedScoreboardConfig() {
@@ -251,6 +267,73 @@ public final class SidebarConfig {
 
     private static int clampRefresh(int refreshSeconds) {
         return Math.max(MIN_REFRESH_SECONDS, refreshSeconds);
+    }
+
+    private static void mergeNewDefaultsFromBundledDefault() {
+        JsonObject defaults = readBundledDefaultJson();
+        if (defaults == null) {
+            LOGGER.warn("[EconomyCraft] No bundled sidebar defaults found; skipping config merge.");
+            return;
+        }
+
+        JsonObject userRoot;
+        try {
+            String json = Files.readString(file, StandardCharsets.UTF_8);
+            JsonElement parsed = JsonParser.parseString(json);
+            if (!parsed.isJsonObject()) {
+                LOGGER.warn("[EconomyCraft] sidebar-config.json root is not an object, skipping merge.");
+                return;
+            }
+            userRoot = parsed.getAsJsonObject();
+        } catch (Exception ex) {
+            LOGGER.warn("[EconomyCraft] Failed to read/parse sidebar-config.json for merge at {}", file, ex);
+            return;
+        }
+
+        int[] added = new int[]{0};
+        addMissingRecursive(userRoot, defaults, added);
+
+        if (added[0] > 0) {
+            try {
+                Files.writeString(file, GSON.toJson(userRoot), StandardCharsets.UTF_8);
+            } catch (IOException ex) {
+                LOGGER.warn("[EconomyCraft] Failed to write merged sidebar-config.json at {}", file, ex);
+            }
+        }
+    }
+
+    private static JsonObject readBundledDefaultJson() {
+        try (InputStream in = SidebarConfig.class.getResourceAsStream(DEFAULT_RESOURCE_PATH)) {
+            if (in == null) return null;
+
+            String json = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            JsonElement parsed = JsonParser.parseString(json);
+            if (!parsed.isJsonObject()) return null;
+
+            return parsed.getAsJsonObject();
+        } catch (Exception ex) {
+            LOGGER.warn("[EconomyCraft] Failed to read bundled sidebar-config.json from {}", DEFAULT_RESOURCE_PATH, ex);
+            return null;
+        }
+    }
+
+    private static void addMissingRecursive(JsonObject target, JsonObject defaults, int[] added) {
+        for (var entry : defaults.entrySet()) {
+            String key = entry.getKey();
+            JsonElement defVal = entry.getValue();
+
+            if (!target.has(key)) {
+                target.add(key, defVal == null ? JsonNull.INSTANCE : defVal.deepCopy());
+                added[0]++;
+                continue;
+            }
+
+            JsonElement curVal = target.get(key);
+            if (curVal != null && curVal.isJsonObject()
+                    && defVal != null && defVal.isJsonObject()) {
+                addMissingRecursive(curVal.getAsJsonObject(), defVal.getAsJsonObject(), added);
+            }
+        }
     }
 
     private static JsonElement toJson(SidebarConfig config) {

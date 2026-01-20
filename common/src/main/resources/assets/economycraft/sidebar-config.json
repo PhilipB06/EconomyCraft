@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "enabled": true,
+  "widgets": [
+    {
+      "id": "top_balance",
+      "type": "leaderboard",
+      "enabled": true,
+      "title": "TOP BALANCE",
+      "refresh_seconds": 60,
+      "leaderboard": {
+        "metric": "balance",
+        "limit": 5
+      }
+    }
+  ]
+}
