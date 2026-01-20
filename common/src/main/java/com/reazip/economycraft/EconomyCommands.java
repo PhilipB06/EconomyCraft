@@ -43,7 +43,9 @@ public final class EconomyCommands {
         dispatcher.register(buildPay().requires(s -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(SellCommand.register().requires(s -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(buildShop().requires(s -> EconomyConfig.get().standaloneCommands));
-        dispatcher.register(buildServerShop().requires(s -> EconomyConfig.get().standaloneCommands));
+        if (EconomyConfig.get().serverShopEnabled) {
+            dispatcher.register(buildServerShop().requires(s -> EconomyConfig.get().standaloneCommands));
+        }
         dispatcher.register(buildOrders().requires(s -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(buildDaily().requires(s -> EconomyConfig.get().standaloneCommands));
 
@@ -78,7 +80,9 @@ public final class EconomyCommands {
         root.then(buildRemoveMoney());
         root.then(buildRemovePlayer());
         root.then(buildShop());
-        root.then(buildServerShop());
+        if (EconomyConfig.get().serverShopEnabled) {
+            root.then(buildServerShop());
+        }
         root.then(buildOrders());
         root.then(buildDaily());
         root.then(buildToggleScoreboard());

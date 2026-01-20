@@ -3,6 +3,7 @@ package com.reazip.economycraft;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.reazip.economycraft.util.IdentityCompat;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -38,12 +39,15 @@ public class EconomyManager {
     private final PriceRegistry prices;
 
     private Objective objective;
+    private SidebarConfig sidebarConfig;
+    private final Map<String, WidgetCache> widgetCache = new HashMap<>();
+    private final Map<String, Map<UUID, WidgetCache>> playerWidgetCache = new HashMap<>();
     private final com.reazip.economycraft.shop.ShopManager shop;
     private final com.reazip.economycraft.orders.OrderManager orders;
-    private final Set<UUID> displayed = new HashSet<>();
 
-    private static final int PLAYTIME_TICKS_PER_HOUR = 20 * 60 * 60;
-    private static final int LEADERBOARD_LIMIT = 5;
+    private static final String SIDEBAR_OBJECTIVE = "eco_sidebar";
+    private static final int MAX_SCOREBOARD_LINES = 15;
+    private static final long MIN_REFRESH_MILLIS = 5_000L;
 
     public static final long MAX = 999_999_999L;
 
@@ -64,6 +68,8 @@ public class EconomyManager {
         this.shop = new com.reazip.economycraft.shop.ShopManager(server);
         this.orders = new com.reazip.economycraft.orders.OrderManager(server);
 
+        SidebarConfig.load(server);
+        this.sidebarConfig = SidebarConfig.get();
         applyScoreboardSettingOnStartup();
         this.prices = new PriceRegistry(server);
     }
@@ -137,7 +143,7 @@ public class EconomyManager {
             if (newBalanceIfNonExistent) {
                 long balance = clamp(EconomyConfig.get().startingBalance);
                 balances.put(player, balance);
-                updateLeaderboard();
+                updateSidebar();
                 return balance;
             } else {
                 return null;
@@ -148,13 +154,13 @@ public class EconomyManager {
 
     public void addMoney(UUID player, long amount) {
         balances.put(player, clamp(getBalance(player, true) + amount));
-        updateLeaderboard();
+        updateSidebar();
         save();
     }
 
     public void setMoney(UUID player, long amount) {
         balances.put(player, clamp(amount));
-        updateLeaderboard();
+        updateSidebar();
         save();
     }
 
@@ -162,7 +168,7 @@ public class EconomyManager {
         long balance = getBalance(player, true);
         if (balance < amount) return false;
         balances.put(player, clamp(balance - amount));
-        updateLeaderboard();
+        updateSidebar();
         save();
         return true;
     }
@@ -236,176 +242,68 @@ public class EconomyManager {
     // =====================================================================
 
     private void applyScoreboardSettingOnStartup() {
-        Scoreboard board = server.getScoreboard();
-
-        if (EconomyConfig.get().scoreboardEnabled) {
-            setupObjective();
-            return;
+        if (sidebarConfig.enabled) {
+            updateSidebar();
+        } else {
+            clearSidebar();
         }
+    }
 
+    private void clearSidebar() {
+        Scoreboard board = server.getScoreboard();
         board.setDisplayObjective(DisplaySlot.SIDEBAR, null);
-
-        Objective existing = board.getObjective("eco_balance");
+        Objective existing = board.getObjective(SIDEBAR_OBJECTIVE);
         if (existing != null) {
             board.removeObjective(existing);
         }
-
         objective = null;
-        displayed.clear();
     }
 
-    private void setupObjective() {
-        Scoreboard board = server.getScoreboard();
-        objective = board.getObjective("eco_balance");
-
-        if (objective == null) {
-            objective = board.addObjective(
-                    "eco_balance",
-                    ObjectiveCriteria.DUMMY,
-                    Component.literal("Balance"),
-                    ObjectiveCriteria.RenderType.INTEGER,
-                    true,
-                    null
-            );
-        }
-        board.setDisplayObjective(DisplaySlot.SIDEBAR, objective);
-        updateLeaderboard();
-    }
-
-    private void updateLeaderboard() {
-        if (!EconomyConfig.get().scoreboardEnabled) {
-            Scoreboard board = server.getScoreboard();
-            board.setDisplayObjective(DisplaySlot.SIDEBAR, null);
-            if (objective != null) board.removeObjective(objective);
-            objective = null;
-            displayed.clear();
-            return;
-        }
-
-        if ("stats".equalsIgnoreCase(EconomyConfig.get().scoreboardMode)) {
-            updateStatsScoreboard();
+    private void updateSidebar() {
+        if (!sidebarConfig.enabled) {
+            clearSidebar();
             return;
         }
 
         Scoreboard board = server.getScoreboard();
-        if (objective != null) board.removeObjective(objective);
-
+        if (objective != null) {
+            board.removeObjective(objective);
+        }
         objective = board.addObjective(
-                "eco_balance",
+                SIDEBAR_OBJECTIVE,
                 ObjectiveCriteria.DUMMY,
-                Component.literal("Balance"),
+                Component.literal("EconomyCraft"),
                 ObjectiveCriteria.RenderType.INTEGER,
                 true,
                 null
         );
         board.setDisplayObjective(DisplaySlot.SIDEBAR, objective);
-        displayed.clear();
 
-        List<Map.Entry<UUID, Long>> sorted = new ArrayList<>(balances.entrySet());
-        sorted.sort((a, b) -> {
-            int c = Long.compare(b.getValue(), a.getValue());
-            if (c != 0) return c;
-
-            String an = resolveName(server, a.getKey());
-            String bn = resolveName(server, b.getKey());
-            c = String.CASE_INSENSITIVE_ORDER.compare(an, bn);
-            if (c != 0) return c;
-
-            return a.getKey().compareTo(b.getKey());
-        });
-
-        for (var e : sorted.stream().limit(LEADERBOARD_LIMIT).toList()) {
-            UUID id = e.getKey();
-            String name = resolveName(server, id);
+        List<String> lines = buildSidebarLines();
+        if (lines.isEmpty()) {
+            return;
+        }
+        int maxLines = Math.min(MAX_SCOREBOARD_LINES, lines.size());
+        int score = maxLines;
+        for (int i = 0; i < maxLines; i++) {
+            String line = lines.get(i);
+            String unique = makeUniqueLine(line, i);
             board.getOrCreatePlayerScore(
-                    net.minecraft.world.scores.ScoreHolder.forNameOnly(name),
+                    net.minecraft.world.scores.ScoreHolder.forNameOnly(unique),
                     objective
-            ).set(e.getValue().intValue());
-            displayed.add(id);
+            ).set(score--);
         }
-    }
-
-    private void updateStatsScoreboard() {
-        Scoreboard board = server.getScoreboard();
-        if (objective != null) board.removeObjective(objective);
-        objective = board.addObjective(
-                "eco_stats",
-                ObjectiveCriteria.DUMMY,
-                Component.literal("STATS"),
-                ObjectiveCriteria.RenderType.INTEGER,
-                true,
-                null
-        );
-        board.setDisplayObjective(DisplaySlot.SIDEBAR, objective);
-        displayed.clear();
-
-        int score = 5;
-        EconomyConfig.ScoreboardStats config = EconomyConfig.get().scoreboardStats;
-        List<UUID> targets = server.getPlayerList().getPlayers().stream()
-                .map(ServerPlayer::getUUID)
-                .toList();
-        if (targets.isEmpty()) {
-            targets = balances.entrySet().stream()
-                    .sorted(Map.Entry.<UUID, Long>comparingByValue().reversed())
-                    .map(Map.Entry::getKey)
-                    .toList();
-        }
-
-        UUID best = targets.stream().findFirst().orElse(null);
-        if (best == null) {
-            return;
-        }
-
-        ServerPlayer player = server.getPlayerList().getPlayer(best);
-        if (config.balance) {
-            setScoreLine(board, "Balance: " + EconomyCraft.formatMoney(getBalance(best, true)), score--);
-        }
-        if (config.deaths) {
-            int deaths = player != null
-                    ? player.getStats().getValue(Stats.CUSTOM.get(Stats.DEATHS))
-                    : 0;
-            setScoreLine(board, "Deaths: " + deaths, score--);
-        }
-        if (config.playtime) {
-            int ticks = player != null
-                    ? player.getStats().getValue(Stats.CUSTOM.get(Stats.PLAY_TIME))
-                    : 0;
-            long hours = ticks / PLAYTIME_TICKS_PER_HOUR;
-            setScoreLine(board, "Playtime: " + hours + "h", score--);
-        }
-        if (config.team) {
-            String teamName = "None";
-            if (player != null) {
-                Team team = player.getTeam();
-                teamName = team != null ? team.getName() : "None";
-            }
-            setScoreLine(board, "Team: " + teamName, score--);
-        }
-    }
-
-    private void setScoreLine(Scoreboard board, String line, int score) {
-        board.getOrCreatePlayerScore(
-                net.minecraft.world.scores.ScoreHolder.forNameOnly(line),
-                objective
-        ).set(score);
     }
 
     public boolean toggleScoreboard() {
-        Scoreboard board = server.getScoreboard();
-        EconomyConfig.get().scoreboardEnabled = !EconomyConfig.get().scoreboardEnabled;
-        EconomyConfig.save();
-
-        if (EconomyConfig.get().scoreboardEnabled) {
-            setupObjective();
+        sidebarConfig.setEnabled(!sidebarConfig.enabled);
+        SidebarConfig.save();
+        if (sidebarConfig.enabled) {
+            updateSidebar();
         } else {
-            board.setDisplayObjective(DisplaySlot.SIDEBAR, null);
-            if (objective != null) {
-                board.removeObjective(objective);
-                objective = null;
-            }
+            clearSidebar();
         }
-
-        return EconomyConfig.get().scoreboardEnabled;
+        return sidebarConfig.enabled;
     }
 
     // =====================================================================
@@ -430,9 +328,203 @@ public class EconomyManager {
 
     public void removePlayer(UUID id) {
         balances.remove(id);
-        updateLeaderboard();
+        updateSidebar();
         save();
     }
+
+    private List<String> buildSidebarLines() {
+        List<String> lines = new ArrayList<>();
+        for (SidebarConfig.WidgetConfig widget : sidebarConfig.widgets) {
+            if (!widget.enabled) continue;
+            lines.add(widget.title);
+            lines.addAll(getWidgetLines(widget));
+        }
+        return lines;
+    }
+
+    private List<String> getWidgetLines(SidebarConfig.WidgetConfig widget) {
+        if (widget instanceof SidebarConfig.LeaderboardWidgetConfig leaderboardWidget) {
+            return getCachedLines(widget.id, widget.refreshSeconds, () -> buildLeaderboardLines(leaderboardWidget));
+        }
+        if (widget instanceof SidebarConfig.PlayerStatsWidgetConfig statsWidget) {
+            ServerPlayer viewer = server.getPlayerList().getPlayers().stream().findFirst().orElse(null);
+            UUID playerId = viewer != null ? viewer.getUUID() : new UUID(0L, 0L);
+            return getCachedPlayerLines(
+                    widget.id,
+                    playerId,
+                    widget.refreshSeconds,
+                    () -> buildPlayerStatsLines(statsWidget, viewer)
+            );
+        }
+        return List.of();
+    }
+
+    private List<String> buildLeaderboardLines(SidebarConfig.LeaderboardWidgetConfig widget) {
+        List<Map.Entry<UUID, Long>> sorted = new ArrayList<>(balances.entrySet());
+        sorted.sort((a, b) -> {
+            int c = Long.compare(b.getValue(), a.getValue());
+            if (c != 0) return c;
+
+            String an = resolveName(server, a.getKey());
+            String bn = resolveName(server, b.getKey());
+            c = String.CASE_INSENSITIVE_ORDER.compare(an, bn);
+            if (c != 0) return c;
+
+            return a.getKey().compareTo(b.getKey());
+        });
+
+        List<String> lines = new ArrayList<>();
+        int limit = Math.max(1, widget.leaderboard.limit);
+        for (var e : sorted.stream().limit(limit).toList()) {
+            String name = resolveName(server, e.getKey());
+            lines.add(name + ": " + EconomyCraft.formatMoney(e.getValue()));
+        }
+        return lines;
+    }
+
+    private List<String> buildPlayerStatsLines(SidebarConfig.PlayerStatsWidgetConfig widget, ServerPlayer player) {
+        List<String> lines = new ArrayList<>();
+        for (SidebarConfig.PlayerStatsWidgetConfig.LineConfig line : widget.lines) {
+            if (!line.enabled) continue;
+            String value = resolvePlayerStatValue(line, player);
+            lines.add(line.label + ": " + value);
+        }
+        return lines;
+    }
+
+    private String resolvePlayerStatValue(SidebarConfig.PlayerStatsWidgetConfig.LineConfig line, ServerPlayer player) {
+        Object raw = readLineSource(line.source, player);
+        return formatLineValue(raw, line.format);
+    }
+
+    private Object readLineSource(SidebarConfig.PlayerStatsWidgetConfig.SourceConfig source, ServerPlayer player) {
+        if ("economy_balance".equalsIgnoreCase(source.type)) {
+            if (player == null) return null;
+            return getBalance(player.getUUID(), true);
+        }
+        if ("minecraft_stat".equalsIgnoreCase(source.type)) {
+            if (player == null || source.stat == null) return null;
+            Integer value = readMinecraftStat(player, source.stat);
+            return value != null ? value : null;
+        }
+        if ("scoreboard_team".equalsIgnoreCase(source.type)) {
+            if (player == null) return null;
+            Team team = player.getTeam();
+            if (team == null) return null;
+            String displayName = team.getDisplayName() != null ? team.getDisplayName().getString() : null;
+            if (displayName != null && !displayName.isBlank()) return displayName;
+            return team.getName();
+        }
+        return null;
+    }
+
+    private Integer readMinecraftStat(ServerPlayer player, String statId) {
+        return switch (statId) {
+            case "minecraft:deaths" -> player.getStats().getValue(Stats.CUSTOM.get(Stats.DEATHS));
+            case "minecraft:play_time" -> player.getStats().getValue(Stats.CUSTOM.get(Stats.PLAY_TIME));
+            default -> null;
+        };
+    }
+
+    private String formatLineValue(Object raw, SidebarConfig.PlayerStatsWidgetConfig.FormatConfig format) {
+        String fallback = format.fallback != null ? format.fallback : "N/A";
+        if (raw == null) return fallback;
+        return switch (format.type) {
+            case "int" -> {
+                if (raw instanceof Number number) {
+                    yield String.valueOf(number.longValue());
+                }
+                yield fallback;
+            }
+            case "currency" -> {
+                if (raw instanceof Number number) {
+                    yield formatCurrency(number.longValue(), format.decimals != null ? format.decimals : 0);
+                }
+                yield fallback;
+            }
+            case "time" -> {
+                if (raw instanceof Number number) {
+                    yield formatTime(number.longValue(), format.unit, format.style);
+                }
+                yield fallback;
+            }
+            case "text" -> {
+                String value = raw.toString();
+                if (value.isBlank()) yield fallback;
+                yield value;
+            }
+            default -> fallback;
+        };
+    }
+
+    private String formatCurrency(long value, int decimals) {
+        if (decimals <= 0) {
+            return EconomyCraft.formatMoney(value);
+        }
+        double scaled = value / Math.pow(10, decimals);
+        return "$" + String.format(java.util.Locale.GERMANY, "%,." + decimals + "f", scaled);
+    }
+
+    private String formatTime(long value, String unit, String style) {
+        if (unit == null || !"ticks".equalsIgnoreCase(unit)) {
+            return "N/A";
+        }
+        if (style == null || !"compact".equalsIgnoreCase(style)) {
+            return "N/A";
+        }
+        long totalSeconds = value / 20;
+        long days = totalSeconds / 86400;
+        long hours = (totalSeconds % 86400) / 3600;
+        long minutes = (totalSeconds % 3600) / 60;
+        long seconds = totalSeconds % 60;
+        List<String> parts = new ArrayList<>();
+        if (days > 0) parts.add(days + "d");
+        if (hours > 0) parts.add(hours + "h");
+        if (minutes > 0) parts.add(minutes + "m");
+        if (seconds > 0 || parts.isEmpty()) parts.add(seconds + "s");
+        if (parts.size() > 2) {
+            return String.join(" ", parts.subList(0, 2));
+        }
+        return String.join(" ", parts);
+    }
+
+    private List<String> getCachedLines(String widgetId, int refreshSeconds, java.util.function.Supplier<List<String>> supplier) {
+        long now = System.currentTimeMillis();
+        WidgetCache cache = widgetCache.get(widgetId);
+        long ttl = Math.max(MIN_REFRESH_MILLIS, refreshSeconds * 1000L);
+        if (cache != null && now < cache.expiresAt) {
+            return cache.lines;
+        }
+        List<String> lines = supplier.get();
+        widgetCache.put(widgetId, new WidgetCache(lines, now + ttl));
+        return lines;
+    }
+
+    private List<String> getCachedPlayerLines(
+            String widgetId,
+            UUID playerId,
+            int refreshSeconds,
+            java.util.function.Supplier<List<String>> supplier
+    ) {
+        long now = System.currentTimeMillis();
+        long ttl = Math.max(MIN_REFRESH_MILLIS, refreshSeconds * 1000L);
+        Map<UUID, WidgetCache> playerCache = playerWidgetCache.computeIfAbsent(widgetId, key -> new HashMap<>());
+        WidgetCache cache = playerCache.get(playerId);
+        if (cache != null && now < cache.expiresAt) {
+            return cache.lines;
+        }
+        List<String> lines = supplier.get();
+        playerCache.put(playerId, new WidgetCache(lines, now + ttl));
+        return lines;
+    }
+
+    private String makeUniqueLine(String line, int index) {
+        ChatFormatting[] formats = ChatFormatting.values();
+        ChatFormatting format = formats[index % formats.length];
+        return line + format;
+    }
+
+    private record WidgetCache(List<String> lines, long expiresAt) {}
 
     public boolean claimDaily(UUID player) {
         long today = LocalDate.now().toEpochDay();
