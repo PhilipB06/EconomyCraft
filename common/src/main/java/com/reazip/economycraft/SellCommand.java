@@ -312,7 +312,7 @@ public final class SellCommand {
                     .withStyle(ChatFormatting.RED));
         } else {
             source.sendFailure(Component.literal("This sale exceeds the daily sell limit of " +
-                            EconomyCraft.formatMoney(limit) + "). You can sell items worth " +
+                            EconomyCraft.formatMoney(limit) + ". You can sell items worth " +
                             EconomyCraft.formatMoney(remaining) + " more today.")
                     .withStyle(ChatFormatting.RED));
         }

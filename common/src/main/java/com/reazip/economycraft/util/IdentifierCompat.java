@@ -246,56 +246,25 @@ public final class IdentifierCompat {
     }
 
     private static Object unwrapRegistryValue(Object value) {
-        if (value == null) {
-            return null;
-        }
-        Object holderValue = unwrapHolderLike(value);
-        if (holderValue != value) {
-            return unwrapRegistryValue(holderValue);
-        }
-        if (EITHER_LEFT != null && EITHER_RIGHT != null && isEither(value)) {
-            Optional<?> left = invokeEitherOptional(EITHER_LEFT, value);
-            if (left != null && left.isPresent()) {
-                return unwrapRegistryValue(left.get());
-            }
-            Optional<?> right = invokeEitherOptional(EITHER_RIGHT, value);
-            if (right != null && right.isPresent()) {
-                return unwrapRegistryValue(right.get());
-            }
-            return null;
-        }
-        return value;
-    }
+        if (value == null) return null;
+        Object v = value;
 
-    private static Object unwrapHolderLike(Object value) {
-        if (value == null) {
+        while (v instanceof Holder<?> h) {
+            v = h.value();
+            if (v == null) return null;
+        }
+
+        if (EITHER_LEFT != null && EITHER_RIGHT != null && isEither(v)) {
+            Optional<?> left = invokeEitherOptional(EITHER_LEFT, v);
+            if (left != null && left.isPresent()) return unwrapRegistryValue(left.get());
+
+            Optional<?> right = invokeEitherOptional(EITHER_RIGHT, v);
+            if (right != null && right.isPresent()) return unwrapRegistryValue(right.get());
+
             return null;
         }
-        if (value instanceof Holder<?>) {
-            Method method = HOLDER_VALUE != null
-                    ? HOLDER_VALUE
-                    : findNoArgMethod(value.getClass(), "value", "get");
-            if (method != null) {
-                try {
-                    return invoke(method, value);
-                } catch (IllegalStateException e) {
-                    LOGGER.error("[EconomyCraft] Failed to unwrap holder value for {} (class {})",
-                            value, value.getClass().getName(), e);
-                    return value;
-                }
-            }
-        }
-        Method method = findNoArgMethod(value.getClass(), "value", "get");
-        if (method != null) {
-            try {
-                return invoke(method, value);
-            } catch (IllegalStateException e) {
-                LOGGER.error("[EconomyCraft] Failed to unwrap holder-like value for {} (class {})",
-                        value, value.getClass().getName(), e);
-                return value;
-            }
-        }
-        return value;
+
+        return v;
     }
 
     private static boolean isEither(Object value) {

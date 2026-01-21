@@ -1,5 +1,6 @@
 package com.reazip.economycraft.shop;
 
+import com.mojang.logging.LogUtils;
 import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyManager;
 import com.reazip.economycraft.PriceRegistry;
@@ -846,22 +847,28 @@ public final class ServerShopUi {
     }
 
     private static ItemStack createDisplayStack(PriceRegistry.PriceEntry entry, ServerPlayer viewer) {
-        IdentifierCompat.Id id = entry.id();
-        Optional<?> item = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, id);
-        if (item.isPresent()) {
-            Item resolved = resolveItemValue(item.get(), id, "display stack");
-            if (resolved != null && resolved != Items.AIR) {
-                return new ItemStack(resolved);
+        try {
+            IdentifierCompat.Id id = entry.id();
+
+            Optional<?> item = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, id);
+            if (item.isPresent()) {
+                Item resolved = resolveItemValue(item.get(), id, "display stack");
+                if (resolved != null && resolved != Items.AIR) {
+                    return new ItemStack(resolved);
+                }
+                return ItemStack.EMPTY;
             }
+
+            String path = id.path();
+            if (path.startsWith("enchanted_book_")) {
+                return createEnchantedBookStack(id, viewer);
+            }
+
+            return createPotionStack(id);
+        } catch (RuntimeException ex) {
+            LogUtils.getLogger().error("[EconomyCraft] Failed to create display stack for {}", entry.id().asString(), ex);
             return ItemStack.EMPTY;
         }
-
-        String path = id.path();
-        if (path.startsWith("enchanted_book_")) {
-            return createEnchantedBookStack(id, viewer);
-        }
-
-        return createPotionStack(id);
     }
 
     private static ItemStack createEnchantedBookStack(IdentifierCompat.Id key, ServerPlayer viewer) {
