@@ -31,6 +31,8 @@ public class EconomyConfig {
     public boolean standaloneAdminCommands;
     @SerializedName("scoreboard_enabled")
     public boolean scoreboardEnabled;
+    @SerializedName("server_shop_enabled")
+    public boolean serverShopEnabled = true;
 
     private static EconomyConfig INSTANCE = new EconomyConfig();
     private static Path file;

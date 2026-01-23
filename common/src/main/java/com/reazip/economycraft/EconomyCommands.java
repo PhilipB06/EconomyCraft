@@ -43,7 +43,9 @@ public final class EconomyCommands {
         dispatcher.register(buildPay().requires(s -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(SellCommand.register().requires(s -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(buildShop().requires(s -> EconomyConfig.get().standaloneCommands));
-        dispatcher.register(buildServerShop().requires(s -> EconomyConfig.get().standaloneCommands));
+        var serverShop = buildServerShop();
+        serverShop.requires(serverShop.getRequirement().and(s -> EconomyConfig.get().standaloneCommands));
+        dispatcher.register(serverShop);
         dispatcher.register(buildOrders().requires(s -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(buildDaily().requires(s -> EconomyConfig.get().standaloneCommands));
 
@@ -78,7 +80,9 @@ public final class EconomyCommands {
         root.then(buildRemoveMoney());
         root.then(buildRemovePlayer());
         root.then(buildShop());
-        root.then(buildServerShop());
+        if (EconomyConfig.get().serverShopEnabled) {
+            root.then(buildServerShop());
+        }
         root.then(buildOrders());
         root.then(buildDaily());
         root.then(buildToggleScoreboard());
@@ -656,15 +660,22 @@ public final class EconomyCommands {
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildServerShop() {
         return literal("servershop")
+                .requires(src -> EconomyConfig.get().serverShopEnabled)
                 .executes(ctx -> openServerShop(ctx.getSource().getPlayerOrException(), ctx.getSource(), null))
                 .then(argument("category", StringArgumentType.greedyString())
                         .suggests((ctx, builder) -> suggestServerShopCategories(ctx.getSource(), builder))
-                        .executes(ctx -> openServerShop(ctx.getSource().getPlayerOrException(),
+                        .executes(ctx -> openServerShop(
+                                ctx.getSource().getPlayerOrException(),
                                 ctx.getSource(),
-                                StringArgumentType.getString(ctx, "category"))));
+                                StringArgumentType.getString(ctx, "category")
+                        )));
     }
 
     private static int openServerShop(ServerPlayer player, CommandSourceStack source, @Nullable String category) {
+        if (!EconomyConfig.get().serverShopEnabled) {
+            source.sendFailure(Component.literal("Server shop is disabled.").withStyle(ChatFormatting.RED));
+            return 0;
+        }
         EconomyManager manager = EconomyCraft.getManager(source.getServer());
         try {
             ServerShopUi.open(player, manager, category);
