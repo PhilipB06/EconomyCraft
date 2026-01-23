@@ -45,7 +45,8 @@ Configuration and player data are stored in `config/economycraft/`.
   "pvp_balance_loss_percentage": 0.0,
   "standalone_commands": true,
   "standalone_admin_commands": false,
-  "scoreboard_enabled": true
+  "scoreboard_enabled": true,
+  "server_shop_enabled": true
 }
 ```
 
@@ -57,5 +58,7 @@ Configuration and player data are stored in `config/economycraft/`.
 - `standalone_commands` - enable standalone `/pay`, `/daily`, etc. Default: `true`.
 - `standalone_admin_commands` - enable standalone `/addmoney`, `/setmoney`, etc. Default: `false`.
 - `scoreboard_enabled` - show the balance sidebar by default. Can be toggled with `/eco toggleScoreboard`. Default: `true`.
+- `server_shop_enabled` - enables the server shop (`/servershop` and `/eco servershop`). Default: `true`.
+
 
 ---
