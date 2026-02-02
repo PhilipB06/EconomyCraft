@@ -1,3 +1,3 @@
-### Features
-- Server shop now supports modded items defined in `prices.json`
-- Added a config option to disable the server shop entirely
+### Fixes
+- Fixed standalone admin commands not appearing even when enabled in the config
+- Fixed admin commands appearing for non-operators

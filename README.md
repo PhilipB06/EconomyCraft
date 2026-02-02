@@ -1,3 +1,6 @@
+> ⚠️ Development is paused until **August 2026**. No updates will be released during this time.  
+> Thanks to everyone for the support and suggestions so far. I’ll review new comments and issues once development resumes.
+
 # EconomyCraft
 
 EconomyCraft provides a simple server-side cross-platform economy system for Fabric and NeoForge servers.  

@@ -26,7 +26,6 @@ import com.reazip.economycraft.orders.OrderManager;
 import com.reazip.economycraft.orders.OrderRequest;
 import com.reazip.economycraft.orders.OrdersUi;
 import net.minecraft.world.item.ItemStack;
-import com.reazip.economycraft.PriceRegistry;
 
 import static net.minecraft.commands.Commands.argument;
 import static net.minecraft.commands.Commands.literal;
@@ -37,55 +36,90 @@ import org.jetbrains.annotations.Nullable;
 public final class EconomyCommands {
     private static final org.slf4j.Logger LOGGER = com.mojang.logging.LogUtils.getLogger();
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-        dispatcher.register(buildRoot());
+        dispatcher.register(buildRoot(
+                buildAddMoney(),
+                buildSetMoney(),
+                buildRemoveMoney(),
+                buildRemovePlayer(),
+                buildToggleScoreboard()
+        ));
 
         dispatcher.register(buildBalance().requires(s -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(buildPay().requires(s -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(SellCommand.register().requires(s -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(buildShop().requires(s -> EconomyConfig.get().standaloneCommands));
-        var serverShop = buildServerShop();
-        serverShop.requires(serverShop.getRequirement().and(s -> EconomyConfig.get().standaloneCommands));
-        dispatcher.register(serverShop);
         dispatcher.register(buildOrders().requires(s -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(buildDaily().requires(s -> EconomyConfig.get().standaloneCommands));
 
-        var addMoney = buildAddMoney();
-        addMoney.requires(addMoney.getRequirement().and(s -> EconomyConfig.get().standaloneAdminCommands));
-        dispatcher.register(addMoney);
+        dispatcher.register(
+                buildAddMoney().requires(src ->
+                        PermissionCompat.gamemaster().test(src)
+                                && EconomyConfig.get().standaloneAdminCommands
+                )
+        );
 
-        var setMoney = buildSetMoney();
-        setMoney.requires(setMoney.getRequirement().and(s -> EconomyConfig.get().standaloneAdminCommands));
-        dispatcher.register(setMoney);
+        dispatcher.register(
+                buildSetMoney().requires(src ->
+                        PermissionCompat.gamemaster().test(src)
+                                && EconomyConfig.get().standaloneAdminCommands
+                )
+        );
 
-        var removeMoney = buildRemoveMoney();
-        removeMoney.requires(removeMoney.getRequirement().and(s -> EconomyConfig.get().standaloneAdminCommands));
-        dispatcher.register(removeMoney);
+        dispatcher.register(
+                buildRemoveMoney().requires(src ->
+                        PermissionCompat.gamemaster().test(src)
+                                && EconomyConfig.get().standaloneAdminCommands
+                )
+        );
 
-        var removePlayer = buildRemovePlayer();
-        removePlayer.requires(removePlayer.getRequirement().and(s -> EconomyConfig.get().standaloneAdminCommands));
-        dispatcher.register(removePlayer);
+        dispatcher.register(
+                buildRemovePlayer().requires(src ->
+                        PermissionCompat.gamemaster().test(src)
+                                && EconomyConfig.get().standaloneAdminCommands
+                )
+        );
 
-        var toggleScoreboard = buildToggleScoreboard();
-        toggleScoreboard.requires(toggleScoreboard.getRequirement().and(s -> EconomyConfig.get().standaloneAdminCommands));
-        dispatcher.register(toggleScoreboard);
+        dispatcher.register(
+                buildToggleScoreboard().requires(src ->
+                        PermissionCompat.gamemaster().test(src)
+                                && EconomyConfig.get().standaloneAdminCommands
+                )
+        );
+
+        var serverShop = buildServerShop();
+        serverShop.requires(
+                serverShop.getRequirement()
+                        .and(src -> EconomyConfig.get().standaloneCommands)
+        );
+        dispatcher.register(serverShop);
     }
 
-    private static LiteralArgumentBuilder<CommandSourceStack> buildRoot() {
+    private static LiteralArgumentBuilder<CommandSourceStack> buildRoot(
+            LiteralArgumentBuilder<CommandSourceStack> addMoney,
+            LiteralArgumentBuilder<CommandSourceStack> setMoney,
+            LiteralArgumentBuilder<CommandSourceStack> removeMoney,
+            LiteralArgumentBuilder<CommandSourceStack> removePlayer,
+            LiteralArgumentBuilder<CommandSourceStack> toggleScoreboard
+    ) {
         LiteralArgumentBuilder<CommandSourceStack> root = literal("eco");
+
         root.then(buildBalance());
         root.then(buildPay());
         root.then(SellCommand.register());
-        root.then(buildAddMoney());
-        root.then(buildSetMoney());
-        root.then(buildRemoveMoney());
-        root.then(buildRemovePlayer());
         root.then(buildShop());
+        root.then(buildOrders());
+        root.then(buildDaily());
+
+        root.then(addMoney);
+        root.then(setMoney);
+        root.then(removeMoney);
+        root.then(removePlayer);
+        root.then(toggleScoreboard);
+
         if (EconomyConfig.get().serverShopEnabled) {
             root.then(buildServerShop());
         }
-        root.then(buildOrders());
-        root.then(buildDaily());
-        root.then(buildToggleScoreboard());
+
         return root;
     }
 
