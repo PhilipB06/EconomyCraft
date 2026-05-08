@@ -22,15 +22,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 
-/** Manages shop listings and deliveries. */
+/** Управляет объявлениями в магазине и доставками. */
 public class ShopManager {
     private static final Gson GSON = new Gson();
     private final MinecraftServer server;
     private final Path file;
-    private final Map<Integer, ShopListing> listings = new HashMap<>();
-    private final Map<UUID, List<ItemStack>> deliveries = new HashMap<>();
+    private final Map<Integer, ShopListing> listings = new HashMap<>(); // Карта объявлений
+    private final Map<UUID, List<ItemStack>> deliveries = new HashMap<>(); // Карта доставок
     private int nextId = 1;
-    private final List<Runnable> listeners = new ArrayList<>();
+    private final List<Runnable> listeners = new ArrayList<>(); // Слушатели изменений
 
     public ShopManager(MinecraftServer server) {
         this.server = server;
@@ -38,24 +38,28 @@ public class ShopManager {
         Path dataDir = dir.resolve("data");
         try { Files.createDirectories(dataDir); } catch (IOException ignored) {}
         this.file = dataDir.resolve("shop.json");
-        load();
+        load(); // Загружаем данные
     }
 
+    /** Возвращает все объявления. */
     public Collection<ShopListing> getListings() {
         return listings.values();
     }
 
+    /** Возвращает объявление по ID. */
     public ShopListing getListing(int id) {
         return listings.get(id);
     }
 
+    /** Добавляет новое объявление. */
     public void addListing(ShopListing listing) {
         listing.id = nextId++;
         listings.put(listing.id, listing);
-        notifyListeners();
-        save();
+        notifyListeners(); // Уведомляем слушателей
+        save(); // Сохраняем
     }
 
+    /** Удаляет объявление по ID. */
     public ShopListing removeListing(int id) {
         ShopListing l = listings.remove(id);
         if (l != null) {
@@ -65,6 +69,7 @@ public class ShopManager {
         return l;
     }
 
+    /** Уведомляет продавца о продаже его предмета. */
     public void notifySellerSale(ShopListing listing, ServerPlayer buyer) {
         if (listing == null || buyer == null) return;
 
@@ -77,37 +82,38 @@ public class ShopManager {
         ItemStack stack = listing.item;
         int amount = (stack == null || stack.isEmpty()) ? 0 : stack.getCount();
         String itemName = (stack == null || stack.isEmpty())
-                ? "item"
+                ? "предмет"
                 : stack.getHoverName().getString();
 
         String buyerName = IdentityCompat.of(buyer).name();
         long price = listing.price;
 
         Component msg = Component.literal(
-                "Sold " + amount + "x " + itemName +
-                        " to " + buyerName +
-                        " for " + EconomyCraft.formatMoney(price)
+                "Продано " + amount + "x " + itemName +
+                        " игроку " + buyerName +
+                        " за " + EconomyCraft.formatMoney(price)
         ).withStyle(ChatFormatting.GREEN);
-
 
         seller.sendSystemMessage(msg);
     }
 
-
+    /** Возвращает сервер. */
     public MinecraftServer server() {
         return server;
     }
 
+    /** Добавляет доставку для игрока. */
     public void addDelivery(UUID player, ItemStack stack) {
         deliveries.computeIfAbsent(player, k -> new ArrayList<>()).add(stack);
         save();
     }
 
-    /** Returns deliveries for the player without removing them. */
+    /** Возвращает доставки для игрока без их удаления. */
     public List<ItemStack> getDeliveries(UUID player) {
         return deliveries.computeIfAbsent(player, k -> new ArrayList<>());
     }
 
+    /** Удаляет конкретную доставку. */
     public void removeDelivery(UUID player, ItemStack stack) {
         List<ItemStack> list = deliveries.get(player);
         if (list != null) {
@@ -117,17 +123,20 @@ public class ShopManager {
         }
     }
 
+    /** Забирает все доставки игрока. */
     public List<ItemStack> claimDeliveries(UUID player) {
         List<ItemStack> list = deliveries.remove(player);
         if (list != null) save();
         return list;
     }
 
+    /** Проверяет, есть ли у игрока доставки. */
     public boolean hasDeliveries(UUID player) {
         List<ItemStack> list = deliveries.get(player);
         return list != null && !list.isEmpty();
     }
 
+    /** Загружает данные из файла. */
     public void load() {
         if (Files.exists(file)) {
             try {
@@ -168,6 +177,7 @@ public class ShopManager {
         }
     }
 
+    /** Сохраняет данные в файл. */
     public void save() {
         JsonObject root = new JsonObject();
         root.addProperty("nextId", nextId);
@@ -203,6 +213,7 @@ public class ShopManager {
         listeners.remove(run);
     }
 
+    /** Уведомляет всех слушателей об изменениях. */
     private void notifyListeners() {
         for (Runnable r : new ArrayList<>(listeners)) {
             r.run();

@@ -68,7 +68,7 @@ public class EconomyManager {
     }
 
     // =====================================================================
-    // === Name handling ================================
+    // === Работа с именами игроков ========================================
     // =====================================================================
 
     private void ensureDiskUserCacheLoaded() {
@@ -107,24 +107,24 @@ public class EconomyManager {
     public UUID tryResolveUuidByName(String name) {
         if (name == null || name.isBlank()) return null;
 
-        // 1) Online
+        // 1) Онлайн
         ServerPlayer online = server.getPlayerList().getPlayerByName(name);
         if (online != null) return online.getUUID();
 
-        // 2) Offline from usercache.json
+        // 2) Оффлайн из usercache.json
         ensureDiskUserCacheLoaded();
         for (var e : diskUserCache.entrySet()) {
             if (name.equalsIgnoreCase(e.getValue())) return e.getKey();
         }
 
-        // 3) direct UUID string
+        // 3) Прямая UUID строка
         try { return UUID.fromString(name); } catch (IllegalArgumentException ignored) {}
 
         return null;
     }
 
     // =====================================================================
-    // === Balances ========================================================
+    // === Балансы =========================================================
     // =====================================================================
 
     public Long getBalance(UUID player, boolean newBalanceIfNonExistent) {
@@ -171,7 +171,7 @@ public class EconomyManager {
     }
 
     // =====================================================================
-    // === Load / Save =====================================================
+    // === Загрузка / Сохранение ===========================================
     // =====================================================================
 
     public void load() {
@@ -227,7 +227,7 @@ public class EconomyManager {
     }
 
     // =====================================================================
-    // === Scoreboard / Leaderboard =======================================
+    // === Таблица лидеров (Scoreboard) ====================================
     // =====================================================================
 
     private void applyScoreboardSettingOnStartup() {
@@ -257,7 +257,7 @@ public class EconomyManager {
             objective = board.addObjective(
                     "eco_balance",
                     ObjectiveCriteria.DUMMY,
-                    Component.literal("Balance"),
+                    Component.literal("Баланс"),
                     ObjectiveCriteria.RenderType.INTEGER,
                     true,
                     null
@@ -283,7 +283,7 @@ public class EconomyManager {
         objective = board.addObjective(
                 "eco_balance",
                 ObjectiveCriteria.DUMMY,
-                Component.literal("Balance"),
+                Component.literal("Баланс"),
                 ObjectiveCriteria.RenderType.INTEGER,
                 true,
                 null
@@ -334,7 +334,7 @@ public class EconomyManager {
     }
 
     // =====================================================================
-    // === Misc ============================================================
+    // === Разное ==========================================================
     // =====================================================================
 
     public com.reazip.economycraft.shop.ShopManager getShop() {
@@ -416,11 +416,11 @@ public class EconomyManager {
         addMoney(killer.getUUID(), loss);
 
         victim.sendSystemMessage(Component.literal(
-                "You lost " + EconomyCraft.formatMoney(loss) + " for being killed by " + killer.getName().getString())
+                "Вы потеряли " + EconomyCraft.formatMoney(loss) + " за то, что вас убил " + killer.getName().getString())
                 .withStyle(net.minecraft.ChatFormatting.RED));
 
         killer.sendSystemMessage(Component.literal(
-                "You received " + EconomyCraft.formatMoney(loss) + " for killing " + victim.getName().getString())
+                "Вы получили " + EconomyCraft.formatMoney(loss) + " за убийство " + victim.getName().getString())
                 .withStyle(net.minecraft.ChatFormatting.GREEN));
     }
 

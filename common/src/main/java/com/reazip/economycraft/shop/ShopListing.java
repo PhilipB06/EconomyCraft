@@ -13,13 +13,18 @@ import net.minecraft.world.item.ItemStack;
 
 import java.util.UUID;
 
-/** Listing for one item in the shop. */
+/** Объявление о продаже одного предмета в магазине. */
 public class ShopListing {
-    public int id;
-    public UUID seller;
-    public ItemStack item;
-    public long price;
+    public int id;                 // Уникальный идентификатор объявления
+    public UUID seller;           // Продавец
+    public ItemStack item;        // Предмет на продажу
+    public long price;            // Цена
 
+    /**
+     * Сохраняет объявление в JSON-объект.
+     * @param provider провайдер для доступа к реестрам
+     * @return JSON-объект с данными объявления
+     */
     public JsonObject save(HolderLookup.Provider provider) {
         JsonObject obj = new JsonObject();
         obj.addProperty("id", id);
@@ -32,17 +37,27 @@ public class ShopListing {
         return obj;
     }
 
+    /**
+     * Загружает объявление из JSON-объекта.
+     * @param obj JSON-объект с данными
+     * @param provider провайдер для доступа к реестрам
+     * @return загруженное объявление
+     */
     public static ShopListing load(JsonObject obj, HolderLookup.Provider provider) {
         ShopListing l = new ShopListing();
         l.id = obj.get("id").getAsInt();
         if (obj.has("seller")) l.seller = UUID.fromString(obj.get("seller").getAsString());
         l.price = obj.get("price").getAsLong();
+        
+        // Пытаемся загрузить ItemStack через полный кодек
         if (obj.has("stack")) {
             l.item = ItemStack.CODEC
                     .parse(RegistryOps.create(JsonOps.INSTANCE, provider), obj.get("stack"))
                     .result()
                     .orElse(ItemStack.EMPTY);
         }
+        
+        // Резервный способ загрузки (если нет stack или он не загрузился)
         if (l.item == null || l.item.isEmpty()) {
             String itemId = obj.get("item").getAsString();
             int count = obj.get("count").getAsInt();
@@ -50,7 +65,7 @@ public class ShopListing {
 
             if (rl != null) {
                 java.util.Optional<Item> opt = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, rl);
-                opt.ifPresent(item -> l.item = new ItemStack(item, count)); // directly set l.item
+                opt.ifPresent(item -> l.item = new ItemStack(item, count));
             }
         }
         return l;

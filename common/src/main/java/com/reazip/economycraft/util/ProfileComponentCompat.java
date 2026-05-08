@@ -44,12 +44,12 @@ public final class ProfileComponentCompat {
                         profile);
             }
         }
-        throw new IllegalStateException("No compatible ResolvableProfile factory found for resolved profile");
+        throw new IllegalStateException("Не найден совместимый фабричный метод ResolvableProfile для разрешённого профиля");
     }
 
     public static ResolvableProfile resolvedOrUnresolved(GameProfile profile) {
         return tryResolvedOrUnresolved(profile)
-                .orElseThrow(() -> new IllegalStateException("No compatible ResolvableProfile factory found"));
+                .orElseThrow(() -> new IllegalStateException("Не найден совместимый фабричный метод ResolvableProfile"));
     }
 
     public static Optional<ResolvableProfile> tryResolvedOrUnresolved(GameProfile profile) {
@@ -82,7 +82,7 @@ public final class ProfileComponentCompat {
             try {
                 return invokeStatic(CREATE_UNRESOLVED_UUID, UUID.fromString(value));
             } catch (IllegalArgumentException ignored) {
-                // Fall back to other strategies if the value is not a UUID
+                // откат к другим стратегиям, если значение не является UUID
             }
         }
         if (!IS_ABSTRACT && CTOR_FULL != null) {
@@ -91,7 +91,7 @@ public final class ProfileComponentCompat {
                     Optional.empty(),
                     newPropertyMap());
         }
-        throw new IllegalStateException("No compatible ResolvableProfile factory found for unresolved profile");
+        throw new IllegalStateException("Не найден совместимый фабричный метод ResolvableProfile для неразрешённого профиля");
     }
 
     private static String extractName(GameProfile profile) {
@@ -113,7 +113,7 @@ public final class ProfileComponentCompat {
                         return (String) rc.getAccessor().invoke(profile);
                     }
                 } catch (ReflectiveOperationException ignoredThree) {
-                    // fall through
+                    // пропускаем
                 }
                 return null;
             }
@@ -139,7 +139,7 @@ public final class ProfileComponentCompat {
                         return (UUID) rc.getAccessor().invoke(profile);
                     }
                 } catch (ReflectiveOperationException ignoredThree) {
-                    // fall through
+                    // пропускаем
                 }
                 return null;
             }
@@ -151,17 +151,17 @@ public final class ProfileComponentCompat {
             try {
                 return PROPERTYMAP_NOARG.newInstance();
             } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-                throw new IllegalStateException("Failed to construct PropertyMap via no-arg constructor", e);
+                throw new IllegalStateException("Не удалось создать PropertyMap через конструктор без аргументов", e);
             }
         }
         if (PROPERTYMAP_MULTIMAP != null) {
             try {
                 return PROPERTYMAP_MULTIMAP.newInstance(LinkedHashMultimap.create());
             } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-                throw new IllegalStateException("Failed to construct PropertyMap via Multimap constructor", e);
+                throw new IllegalStateException("Не удалось создать PropertyMap через конструктор с Multimap", e);
             }
         }
-        throw new IllegalStateException("No compatible PropertyMap constructor found");
+        throw new IllegalStateException("Не найден совместимый конструктор PropertyMap");
     }
 
     private static PropertyMap extractProperties(GameProfile profile) {
@@ -172,7 +172,7 @@ public final class ProfileComponentCompat {
                 return map;
             }
         } catch (ReflectiveOperationException ignored) {
-            // fall through
+            // пропускаем
         }
         return newPropertyMap();
     }
@@ -181,7 +181,7 @@ public final class ProfileComponentCompat {
         try {
             return (ResolvableProfile) method.invoke(null, args);
         } catch (IllegalAccessException | InvocationTargetException e) {
-            throw new IllegalStateException("Failed to invoke ResolvableProfile factory: " + method.getName(), e);
+            throw new IllegalStateException("Не удалось вызвать фабричный метод ResolvableProfile: " + method.getName(), e);
         }
     }
 
@@ -189,7 +189,7 @@ public final class ProfileComponentCompat {
         try {
             return ctor.newInstance(args);
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-            throw new IllegalStateException("Failed to create ResolvableProfile via constructor: " + ctor, e);
+            throw new IllegalStateException("Не удалось создать ResolvableProfile через конструктор: " + ctor, e);
         }
     }
 

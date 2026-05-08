@@ -43,12 +43,12 @@ public final class IdentifierCompat {
         Method eitherRight = null;
         Object sample = BuiltInRegistries.ITEM.getKey(Items.AIR);
         if (sample == null) {
-            throw new ExceptionInInitializerError("Identifier sample not found");
+            throw new ExceptionInInitializerError("Образец идентификатора не найден");
         }
 
         Object idSample = extractIdentifierSample(sample);
         if (idSample == null) {
-            throw new ExceptionInInitializerError("Identifier sample not found");
+            throw new ExceptionInInitializerError("Образец идентификатора не найден");
         }
 
         idClass = idSample.getClass();
@@ -75,7 +75,7 @@ public final class IdentifierCompat {
             }
         }
         if (idConstructorTwo == null && idConstructorOne == null && idFactoryOne == null && idFactoryTwo == null) {
-            throw new ExceptionInInitializerError("Identifier constructor not found");
+            throw new ExceptionInInitializerError("Конструктор идентификатора не найден");
         }
 
         registryContainsKey = findRegistryMethod(Registry.class, boolean.class, idClass);
@@ -180,7 +180,7 @@ public final class IdentifierCompat {
         try {
             direct = (T) value;
         } catch (ClassCastException e) {
-            LOGGER.error("[EconomyCraft] Registry lookup for {} returned unexpected value {} (class {}) from {}",
+            LOGGER.error("[EconomyCraft] Поиск в реестре для {} вернул неожиданное значение {} (класс {}) из {}",
                     id.asString(), value, value.getClass().getName(), registry, e);
             return Optional.empty();
         }
@@ -239,7 +239,7 @@ public final class IdentifierCompat {
             if (ID_FACTORY_ONE != null) {
                 return ID_FACTORY_ONE.invoke(null, combined);
             }
-            throw new IllegalStateException("Identifier constructor not found");
+            throw new IllegalStateException("Конструктор идентификатора не найден");
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException(e);
         }
@@ -326,7 +326,7 @@ public final class IdentifierCompat {
         if (assignableMatch != null) {
             return assignableMatch;
         }
-        throw new ExceptionInInitializerError("Registry method not found");
+        throw new ExceptionInInitializerError("Метод реестра не найден");
     }
 
     private static Method findNoArgMethod(Class<?> type, String... names) {
@@ -335,16 +335,16 @@ public final class IdentifierCompat {
             try {
                 method = type.getMethod(name);
             } catch (NoSuchMethodException ignored) {
-                // try declared method instead
+                // пытаемся найти объявленный метод
             }
             if (method == null) {
                 try {
                     method = type.getDeclaredMethod(name);
                     method.setAccessible(true);
                 } catch (NoSuchMethodException ignored) {
-                    // try next name
+                    // пробуем следующее имя
                 } catch (RuntimeException ignored) {
-                    // access failure; try next name
+                    // ошибка доступа; пробуем следующее имя
                 }
             }
             if (method == null) {
@@ -374,7 +374,7 @@ public final class IdentifierCompat {
                 }
             }
         }
-        throw new ExceptionInInitializerError("ResourceKey.create method not found");
+        throw new ExceptionInInitializerError("Метод ResourceKey.create не найден");
     }
 
     private static Method findResourceKeyIdentifier(Class<?> idClass) {
@@ -383,7 +383,7 @@ public final class IdentifierCompat {
                 return method;
             }
         }
-        throw new ExceptionInInitializerError("ResourceKey identifier method not found");
+        throw new ExceptionInInitializerError("Метод идентификатора ResourceKey не найден");
     }
 
     private static Method findHolderValue() {
@@ -414,7 +414,7 @@ public final class IdentifierCompat {
                     return id;
                 }
             } catch (ReflectiveOperationException ignored) {
-                // try next name
+                // пробуем следующее имя
             }
         }
         return sample;

@@ -30,15 +30,17 @@ import org.jetbrains.annotations.Nullable;
 
 public final class OrdersUi {
     private OrdersUi() {}
-    private static final ChatFormatting LABEL_PRIMARY_COLOR = ChatFormatting.GOLD;
-    private static final ChatFormatting LABEL_SECONDARY_COLOR = ChatFormatting.AQUA;
-    private static final ChatFormatting VALUE_COLOR = ChatFormatting.DARK_PURPLE;
-    private static final ChatFormatting BALANCE_NAME_COLOR = ChatFormatting.YELLOW;
-    private static final ChatFormatting BALANCE_LABEL_COLOR = ChatFormatting.GOLD;
-    private static final ChatFormatting BALANCE_VALUE_COLOR = ChatFormatting.DARK_PURPLE;
+    // Цвета для форматирования текста в интерфейсе
+    private static final ChatFormatting LABEL_PRIMARY_COLOR = ChatFormatting.GOLD;   // Основной цвет меток
+    private static final ChatFormatting LABEL_SECONDARY_COLOR = ChatFormatting.AQUA; // Вторичный цвет меток
+    private static final ChatFormatting VALUE_COLOR = ChatFormatting.DARK_PURPLE;    // Цвет значений
+    private static final ChatFormatting BALANCE_NAME_COLOR = ChatFormatting.YELLOW;  // Цвет имени в балансе
+    private static final ChatFormatting BALANCE_LABEL_COLOR = ChatFormatting.GOLD;   // Цвет метки баланса
+    private static final ChatFormatting BALANCE_VALUE_COLOR = ChatFormatting.DARK_PURPLE; // Цвет значения баланса
 
+    /** Открывает интерфейс заказов для игрока. */
     public static void open(ServerPlayer player, EconomyManager eco) {
-        Component title = Component.literal("Orders");
+        Component title = Component.literal("Заказы");
         player.openMenu(new MenuProvider() {
             @Override
             public Component getDisplayName() {
@@ -56,14 +58,16 @@ public final class OrdersUi {
         });
     }
 
+    /** Создаёт строку lore с наградой и налогом. */
     private static Component createRewardLore(long reward, long tax) {
         StringBuilder value = new StringBuilder(EconomyCraft.formatMoney(reward));
         if (tax > 0) {
-            value.append(" (-").append(EconomyCraft.formatMoney(tax)).append(" tax)");
+            value.append(" (-").append(EconomyCraft.formatMoney(tax)).append(" налог)");
         }
-        return labeledValue("Reward", value.toString(), LABEL_PRIMARY_COLOR);
+        return labeledValue("Награда", value.toString(), LABEL_PRIMARY_COLOR);
     }
 
+    /** Создаёт предмет-голову с информацией о балансе игрока. */
     private static ItemStack createBalanceItem(EconomyManager eco, UUID playerId, @Nullable ServerPlayer player, @Nullable String name) {
         ItemStack head = new ItemStack(Items.PLAYER_HEAD);
         var profile = player != null
@@ -77,13 +81,15 @@ public final class OrdersUi {
         return head;
     }
 
+    /** Создаёт строку lore с балансом. */
     private static Component balanceLore(long balance) {
-        return Component.literal("Balance: ")
+        return Component.literal("Баланс: ")
                 .withStyle(s -> s.withItalic(false).withColor(BALANCE_LABEL_COLOR))
                 .append(Component.literal(EconomyCraft.formatMoney(balance))
                         .withStyle(s -> s.withItalic(false).withColor(BALANCE_VALUE_COLOR)));
     }
 
+    /** Создаёт строку вида "Метка: значение" с цветом. */
     private static Component labeledValue(String label, String value, ChatFormatting labelColor) {
         return Component.literal(label + ": ")
                 .withStyle(s -> s.withItalic(false).withColor(labelColor))
@@ -91,10 +97,11 @@ public final class OrdersUi {
                         .withStyle(s -> s.withItalic(false).withColor(VALUE_COLOR)));
     }
 
+    /** Открывает интерфейс получения доставок. */
     public static void openClaims(ServerPlayer player, EconomyManager eco) {
         player.openMenu(new MenuProvider() {
             @Override
-            public Component getDisplayName() { return Component.literal("Deliveries"); }
+            public Component getDisplayName() { return Component.literal("Доставки"); }
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
@@ -103,6 +110,7 @@ public final class OrdersUi {
         });
     }
 
+    /** Меню со списком заказов. */
     private static class RequestMenu extends AbstractContainerMenu {
         private final OrderManager orders;
         private final EconomyManager eco;
@@ -118,8 +126,8 @@ public final class OrdersUi {
             this.orders = orders;
             this.eco = eco;
             this.viewer = viewer;
-            updatePage();
-            orders.addListener(listener);
+            updatePage(); // Обновляем отображение
+            orders.addListener(listener); // Подписываемся на изменения
             for (int i = 0; i < 54; i++) {
                 int r = i / 9;
                 int c = i % 9;
@@ -128,6 +136,7 @@ public final class OrdersUi {
                     @Override public boolean mayPlace(ItemStack stack) { return false; }
                 });
             }
+            // Слоты инвентаря игрока
             int y = 18 + 6 * 18 + 14;
             for (int r = 0; r < 3; r++) {
                 for (int c = 0; c < 9; c++) {
@@ -139,6 +148,7 @@ public final class OrdersUi {
             }
         }
 
+        /** Обновляет текущую страницу с заказами. */
         private void updatePage() {
             requests = new ArrayList<>(orders.getRequests());
             container.clearContent();
@@ -154,6 +164,7 @@ public final class OrdersUi {
                 OrderRequest r = requests.get(index);
                 ItemStack display = r.item.copy();
 
+                // Получаем имя заказчика
                 String reqName;
                 ServerPlayer requesterPlayer = server.getPlayerList().getPlayer(r.requester);
                 if (requesterPlayer != null) {
@@ -163,58 +174,64 @@ public final class OrdersUi {
                 }
 
                 long tax = Math.round(r.price * EconomyConfig.get().taxRate);
-                display.set(net.minecraft.core.component.DataComponents.LORE,
-                        new net.minecraft.world.item.component.ItemLore(List.of(
-                                createRewardLore(r.price, tax),
-                                labeledValue("Amount", String.valueOf(r.amount), LABEL_PRIMARY_COLOR),
-                                labeledValue("Requester", reqName, LABEL_SECONDARY_COLOR)
-                        )));
+                display.set(DataComponents.LORE, new ItemLore(List.of(
+                        createRewardLore(r.price, tax),
+                        labeledValue("Количество", String.valueOf(r.amount), LABEL_PRIMARY_COLOR),
+                        labeledValue("Заказчик", reqName, LABEL_SECONDARY_COLOR)
+                )));
                 display.setCount(1);
                 container.setItem(i, display);
             }
 
+            // Кнопка "Предыдущая страница"
             if (page > 0) {
                 ItemStack prev = new ItemStack(Items.ARROW);
-                prev.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Previous page").withStyle(s -> s.withItalic(false)));
+                prev.set(DataComponents.CUSTOM_NAME, Component.literal("Предыдущая страница").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 2, prev);
             }
 
+            // Кнопка "Следующая страница"
             if (start + 45 < requests.size()) {
                 ItemStack next = new ItemStack(Items.ARROW);
-                next.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Next page").withStyle(s -> s.withItalic(false)));
+                next.set(DataComponents.CUSTOM_NAME, Component.literal("Следующая страница").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 6, next);
             }
 
+            // Отображение баланса
             ItemStack balance = createBalanceItem(eco, viewer.getUUID(), viewer, IdentityCompat.of(viewer).name());
             container.setItem(navRowStart, balance);
 
+            // Информация о текущей странице
             ItemStack paper = new ItemStack(Items.PAPER);
-            paper.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
-                    Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
+            paper.set(DataComponents.CUSTOM_NAME,
+                    Component.literal("Страница " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
             container.setItem(navRowStart + 4, paper);
         }
 
         @Override
         public void clicked(int slot, int dragType, ClickType type, Player player) {
             if (type == ClickType.PICKUP) {
+                // Клик по заказу
                 if (slot < 45) {
                     int index = page * 45 + slot;
                     if (index < requests.size()) {
                         OrderRequest req = requests.get(index);
                         if (req.requester.equals(player.getUUID())) {
-                            openRemove((ServerPlayer) player, req);
+                            openRemove((ServerPlayer) player, req); // Свой заказ - удаление
                         } else {
-                            openConfirm((ServerPlayer) player, req);
+                            openConfirm((ServerPlayer) player, req); // Чужой заказ - подтверждение
                         }
                         return;
                     }
                 }
+                // Навигация по страницам
                 if (slot == navRowStart + 2 && page > 0) { page--; updatePage(); return; }
                 if (slot == navRowStart + 6 && (page + 1) * 45 < requests.size()) { page++; updatePage(); return; }
             }
             super.clicked(slot, dragType, type, player);
         }
 
+        /** Проверяет, есть ли у игрока нужное количество предметов. */
         private boolean hasItems(ServerPlayer player, ItemStack proto, int amount) {
             int total = 0;
             for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
@@ -224,6 +241,7 @@ public final class OrdersUi {
             return total >= amount;
         }
 
+        /** Удаляет указанное количество предметов из инвентаря игрока. */
         private void removeItems(ServerPlayer player, ItemStack proto, int amount) {
             int remaining = amount;
             for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
@@ -237,10 +255,11 @@ public final class OrdersUi {
             }
         }
 
+        /** Открывает меню подтверждения выполнения заказа. */
         private void openConfirm(ServerPlayer player, OrderRequest req) {
             player.openMenu(new MenuProvider() {
                 @Override
-                public Component getDisplayName() { return Component.literal("Confirm"); }
+                public Component getDisplayName() { return Component.literal("Подтверждение"); }
 
                 @Override
                 public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
@@ -249,10 +268,11 @@ public final class OrdersUi {
             });
         }
 
+        /** Открывает меню удаления собственного заказа. */
         private void openRemove(ServerPlayer player, OrderRequest req) {
             player.openMenu(new MenuProvider() {
                 @Override
-                public Component getDisplayName() { return Component.literal("Remove"); }
+                public Component getDisplayName() { return Component.literal("Удаление"); }
 
                 @Override
                 public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
@@ -266,12 +286,13 @@ public final class OrdersUi {
         @Override
         public void removed(Player player) {
             super.removed(player);
-            orders.removeListener(listener);
+            orders.removeListener(listener); // Отписываемся от изменений
         }
 
         @Override public ItemStack quickMoveStack(Player player, int idx) { return ItemStack.EMPTY; }
     }
 
+    /** Меню подтверждения выполнения заказа. */
     private static class ConfirmMenu extends AbstractContainerMenu {
         private final OrderRequest request;
         private final RequestMenu parent;
@@ -282,11 +303,13 @@ public final class OrdersUi {
             this.request = req;
             this.parent = parent;
 
+            // Кнопка подтверждения
             ItemStack confirm = new ItemStack(Items.LIME_STAINED_GLASS_PANE);
-            confirm.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
-                    Component.literal("Confirm").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.GREEN)));
+            confirm.set(DataComponents.CUSTOM_NAME,
+                    Component.literal("Подтвердить").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.GREEN)));
             container.setItem(2, confirm);
 
+            // Предмет заказа с информацией
             ItemStack item = req.item.copy();
             var server = parent.viewer.level().getServer();
 
@@ -299,17 +322,17 @@ public final class OrdersUi {
             }
 
             long tax = Math.round(req.price * EconomyConfig.get().taxRate);
-            item.set(net.minecraft.core.component.DataComponents.LORE,
-                    new net.minecraft.world.item.component.ItemLore(List.of(
-                            createRewardLore(req.price, tax),
-                            labeledValue("Amount", String.valueOf(req.amount), LABEL_PRIMARY_COLOR),
-                            labeledValue("Requester", requesterName, LABEL_SECONDARY_COLOR)
-                    )));
+            item.set(DataComponents.LORE, new ItemLore(List.of(
+                    createRewardLore(req.price, tax),
+                    labeledValue("Количество", String.valueOf(req.amount), LABEL_PRIMARY_COLOR),
+                    labeledValue("Заказчик", requesterName, LABEL_SECONDARY_COLOR)
+            )));
             container.setItem(4, item);
 
+            // Кнопка отмены
             ItemStack cancel = new ItemStack(Items.RED_STAINED_GLASS_PANE);
-            cancel.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
-                    Component.literal("Cancel").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.DARK_RED)));
+            cancel.set(DataComponents.CUSTOM_NAME,
+                    Component.literal("Отмена").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.DARK_RED)));
             container.setItem(6, cancel);
 
             for (int i = 0; i < 9; i++) {
@@ -318,6 +341,7 @@ public final class OrdersUi {
                 });
             }
 
+            // Слоты инвентаря игрока
             int y = 40;
             for (int r = 0; r < 3; r++) {
                 for (int c = 0; c < 9; c++) {
@@ -332,27 +356,30 @@ public final class OrdersUi {
         @Override
         public void clicked(int slot, int drag, ClickType type, Player player) {
             if (type == ClickType.PICKUP) {
+                // Подтверждение выполнения заказа
                 if (slot == 2) {
                     OrderRequest current = parent.orders.getRequest(request.id);
                     ServerPlayer serverPlayer = (ServerPlayer) player;
                     var server = serverPlayer.level().getServer();
 
                     if (current == null) {
-                        serverPlayer.sendSystemMessage(Component.literal("Request no longer available").withStyle(ChatFormatting.RED));
+                        serverPlayer.sendSystemMessage(Component.literal("Заказ больше не доступен").withStyle(ChatFormatting.RED));
                     } else if (!parent.hasItems(serverPlayer, current.item, current.amount)) {
-                        serverPlayer.sendSystemMessage(Component.literal("Not enough items").withStyle(ChatFormatting.RED));
+                        serverPlayer.sendSystemMessage(Component.literal("Недостаточно предметов").withStyle(ChatFormatting.RED));
                     } else {
                         long cost = current.price;
                         long bal = parent.eco.getBalance(current.requester, true);
                         if (bal < cost) {
-                            serverPlayer.sendSystemMessage(Component.literal("Requester can't pay").withStyle(ChatFormatting.RED));
+                            serverPlayer.sendSystemMessage(Component.literal("У заказчика недостаточно средств").withStyle(ChatFormatting.RED));
                         } else {
+                            // Выполняем транзакцию
                             parent.removeItems(serverPlayer, current.item.copy(), current.amount);
                             long tax = Math.round(cost * EconomyConfig.get().taxRate);
                             parent.eco.removeMoney(current.requester, cost);
                             parent.eco.addMoney(player.getUUID(), cost - tax);
                             parent.orders.removeRequest(current.id);
 
+                            // Отправляем предметы заказчику
                             int remaining = current.amount;
                             while (remaining > 0) {
                                 int c = Math.min(current.item.getMaxStackSize(), remaining);
@@ -360,6 +387,7 @@ public final class OrdersUi {
                                 remaining -= c;
                             }
 
+                            // Получаем имя заказчика для сообщения
                             String requesterName;
                             ServerPlayer requesterPlayer = server.getPlayerList().getPlayer(current.requester);
                             if (requesterPlayer != null) {
@@ -369,20 +397,21 @@ public final class OrdersUi {
                             }
 
                             serverPlayer.sendSystemMessage(
-                                    Component.literal("Fulfilled request for " + current.amount + "x " +
+                                    Component.literal("Вы выполнили заказ на " + current.amount + "x " +
                                                     current.item.getHoverName().getString() + " (" + requesterName + ")" +
-                                                    " and earned " + EconomyCraft.formatMoney(cost - tax))
+                                                    " и получили " + EconomyCraft.formatMoney(cost - tax))
                                             .withStyle(ChatFormatting.GREEN)
                             );
 
+                            // Уведомляем заказчика
                             if (requesterPlayer != null) {
                                 ClickEvent ev = ChatCompat.runCommandEvent("/eco orders claim");
                                 if (ev != null) {
-                                    Component msg = Component.literal("Your request for " + current.amount + "x " +
+                                    Component msg = Component.literal("Ваш заказ на " + current.amount + "x " +
                                                     current.item.getHoverName().getString() +
-                                                    " has been fulfilled: ")
+                                                    " выполнен: ")
                                             .withStyle(ChatFormatting.YELLOW)
-                                            .append(Component.literal("[Claim]")
+                                            .append(Component.literal("[Получить]")
                                                     .withStyle(s -> s.withUnderlined(true)
                                                             .withColor(ChatFormatting.GREEN)
                                                             .withClickEvent(ev)));
@@ -390,8 +419,8 @@ public final class OrdersUi {
                                 } else {
                                     ChatCompat.sendRunCommandTellraw(
                                             requesterPlayer,
-                                            "Your request for " + current.amount + "x " + current.item.getHoverName().getString() + " has been fulfilled: ",
-                                            "[Claim]",
+                                            "Ваш заказ на " + current.amount + "x " + current.item.getHoverName().getString() + " выполнен: ",
+                                            "[Получить]",
                                             "/eco orders claim"
                                     );
                                 }
@@ -406,6 +435,7 @@ public final class OrdersUi {
                     return;
                 }
 
+                // Отмена
                 if (slot == 6) {
                     player.closeContainer();
                     OrdersUi.open((ServerPlayer) player, parent.eco);
@@ -419,6 +449,7 @@ public final class OrdersUi {
         @Override public ItemStack quickMoveStack(Player player, int idx) { return ItemStack.EMPTY; }
     }
 
+    /** Меню удаления собственного заказа. */
     private static class RemoveMenu extends AbstractContainerMenu {
         private final OrderRequest request;
         private final RequestMenu parent;
@@ -429,28 +460,32 @@ public final class OrdersUi {
             this.request = req;
             this.parent = parent;
 
+            // Кнопка подтверждения удаления
             ItemStack confirm = new ItemStack(Items.LIME_STAINED_GLASS_PANE);
-            confirm.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
-                    Component.literal("Confirm").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.GREEN)));
+            confirm.set(DataComponents.CUSTOM_NAME,
+                    Component.literal("Подтвердить").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.GREEN)));
             container.setItem(2, confirm);
 
+            // Предмет заказа с информацией
             ItemStack item = req.item.copy();
             long tax = Math.round(req.price * EconomyConfig.get().taxRate);
-            item.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
+            item.set(DataComponents.LORE, new ItemLore(List.of(
                     createRewardLore(req.price, tax),
-                    labeledValue("Amount", String.valueOf(req.amount), LABEL_PRIMARY_COLOR),
-                    Component.literal("This will remove the request").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.RED)))));
+                    labeledValue("Количество", String.valueOf(req.amount), LABEL_PRIMARY_COLOR),
+                    Component.literal("Это удалит заказ").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.RED)))));
             container.setItem(4, item);
 
+            // Кнопка отмены
             ItemStack cancel = new ItemStack(Items.RED_STAINED_GLASS_PANE);
-            cancel.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
-                    Component.literal("Cancel").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.DARK_RED)));
+            cancel.set(DataComponents.CUSTOM_NAME,
+                    Component.literal("Отмена").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.DARK_RED)));
             container.setItem(6, cancel);
 
             for (int i = 0; i < 9; i++) {
                 this.addSlot(new Slot(container, i, 8 + i * 18, 20) { @Override public boolean mayPickup(Player p) { return false; }});
             }
 
+            // Слоты инвентаря игрока
             int y = 40;
             for (int r = 0; r < 3; r++) {
                 for (int c = 0; c < 9; c++) {
@@ -465,17 +500,19 @@ public final class OrdersUi {
         @Override
         public void clicked(int slot, int drag, ClickType type, Player player) {
             if (type == ClickType.PICKUP) {
+                // Подтверждение удаления
                 if (slot == 2) {
                     OrderRequest removed = parent.orders.removeRequest(request.id);
                     if (removed != null) {
-                        ((ServerPlayer) player).sendSystemMessage(Component.literal("Request removed").withStyle(ChatFormatting.GREEN));
+                        ((ServerPlayer) player).sendSystemMessage(Component.literal("Заказ удалён").withStyle(ChatFormatting.GREEN));
                     } else {
-                        ((ServerPlayer) player).sendSystemMessage(Component.literal("Request no longer available").withStyle(ChatFormatting.RED));
+                        ((ServerPlayer) player).sendSystemMessage(Component.literal("Заказ больше не доступен").withStyle(ChatFormatting.RED));
                     }
                     player.closeContainer();
                     OrdersUi.open((ServerPlayer) player, parent.eco);
                     return;
                 }
+                // Отмена
                 if (slot == 6) {
                     player.closeContainer();
                     OrdersUi.open((ServerPlayer) player, parent.eco);
@@ -489,11 +526,12 @@ public final class OrdersUi {
         @Override public ItemStack quickMoveStack(Player player, int idx) { return ItemStack.EMPTY; }
     }
 
+    /** Меню получения доставок (заказов и покупок из магазина). */
     private static class ClaimMenu extends AbstractContainerMenu {
         private final EconomyManager eco;
         private final UUID owner;
-        private final List<ItemStack> orderItems;
-        private final List<ItemStack> shopItems;
+        private final List<ItemStack> orderItems; // Доставки из заказов
+        private final List<ItemStack> shopItems;  // Доставки из магазина
         private final SimpleContainer container = new SimpleContainer(54);
         private final List<ItemStack> items = new ArrayList<>();
         private int page;
@@ -515,6 +553,7 @@ public final class OrdersUi {
                     @Override public boolean mayPickup(Player player) { return idx < 45 && super.mayPickup(player); }
                 });
             }
+            // Слоты инвентаря игрока
             int y = 18 + 6 * 18 + 14;
             for (int r = 0; r < 3; r++) {
                 for (int c = 0; c < 9; c++) {
@@ -526,6 +565,7 @@ public final class OrdersUi {
             }
         }
 
+        /** Обновляет текущую страницу с доставками. */
         private void updatePage() {
             items.clear();
             items.addAll(orderItems);
@@ -538,16 +578,19 @@ public final class OrdersUi {
                 if (index >= items.size()) break;
                 container.setItem(i, items.get(index));
             }
+            // Кнопка "Предыдущая страница"
             if (page > 0) {
                 ItemStack prev = new ItemStack(Items.ARROW);
-                prev.set(DataComponents.CUSTOM_NAME, Component.literal("Previous page").withStyle(s -> s.withItalic(false)));
+                prev.set(DataComponents.CUSTOM_NAME, Component.literal("Предыдущая страница").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 2, prev);
             }
+            // Кнопка "Следующая страница"
             if (start + 45 < items.size()) {
                 ItemStack next = new ItemStack(Items.ARROW);
-                next.set(DataComponents.CUSTOM_NAME, Component.literal("Next page").withStyle(s -> s.withItalic(false)));
+                next.set(DataComponents.CUSTOM_NAME, Component.literal("Следующая страница").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 6, next);
             }
+            // Отображение баланса
             String name = null;
             ServerPlayer viewer = getViewer();
             if (viewer != null) {
@@ -557,8 +600,9 @@ public final class OrdersUi {
             }
             ItemStack balance = createBalanceItem(eco, owner, viewer, name);
             container.setItem(navRowStart, balance);
+            // Информация о текущей странице
             ItemStack paper = new ItemStack(Items.PAPER);
-            paper.set(DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
+            paper.set(DataComponents.CUSTOM_NAME, Component.literal("Страница " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
             container.setItem(navRowStart + 4, paper);
         }
 
@@ -566,6 +610,7 @@ public final class OrdersUi {
             return eco.getServer().getPlayerList().getPlayer(owner);
         }
 
+        /** Удаляет предмет из списка доставок после получения. */
         private void removeStack(ItemStack stack) {
             eco.getOrders().removeDelivery(owner, stack);
             eco.getShop().removeDelivery(owner, stack);
@@ -576,18 +621,20 @@ public final class OrdersUi {
         @Override
         public void clicked(int slot, int dragType, ClickType type, Player player) {
             if (type == ClickType.PICKUP) {
+                // Забор предмета из доставки
                 if (slot < 45) {
                     Slot s = this.slots.get(slot);
                     if (s.hasItem()) {
                         ItemStack stack = s.getItem();
                         ItemStack copy = stack.copy();
                         if (player.getInventory().add(copy)) {
-                            removeStack(stack);
+                            removeStack(stack); // Удаляем из доставок
                             updatePage();
                         }
                     }
                     return;
                 }
+                // Навигация по страницам
                 if (slot == navRowStart + 2 && page > 0) { page--; updatePage(); return; }
                 if (slot == navRowStart + 6 && (page + 1) * 45 < items.size()) { page++; updatePage(); return; }
             }

@@ -45,7 +45,7 @@ import java.util.Map;
 import java.util.Optional;
 
 public final class ServerShopUi {
-    private static final Component STORED_MSG = Component.literal("Item stored: ")
+    private static final Component STORED_MSG = Component.literal("Предмет сохранён: ")
             .withStyle(ChatFormatting.YELLOW);
     private static final Map<String, IdentifierCompat.Id> CATEGORY_ICONS = buildCategoryIcons();
     private static final List<Integer> STAR_SLOT_ORDER = buildStarSlotOrder(5);
@@ -85,7 +85,7 @@ public final class ServerShopUi {
     }
 
     private static void openRoot(ServerPlayer player, EconomyManager eco) {
-        Component title = Component.literal("Server Shop");
+        Component title = Component.literal("Магазин сервера");
         player.openMenu(new MenuProvider() {
             @Override
             public Component getDisplayName() {
@@ -153,7 +153,7 @@ public final class ServerShopUi {
     }
 
     private static String formatCategoryTitle(String category) {
-        if (category == null || category.isBlank()) return "Server Shop";
+        if (category == null || category.isBlank()) return "Магазин сервера";
         String[] parts = category.replace('.', '_').split("_");
         StringBuilder sb = new StringBuilder();
         for (String part : parts) {
@@ -229,7 +229,7 @@ public final class ServerShopUi {
                 if (icon.isEmpty()) continue;
 
                 icon.set(DataComponents.CUSTOM_NAME, Component.literal(formatCategoryTitle(cat)).withStyle(s -> s.withItalic(false).withColor(getCategoryColor(cat)).withBold(true)));
-                icon.set(DataComponents.LORE, new ItemLore(List.of(Component.literal("Click to view items").withStyle(s -> s.withItalic(false)))));
+                icon.set(DataComponents.LORE, new ItemLore(List.of(Component.literal("Нажмите для просмотра предметов").withStyle(s -> s.withItalic(false)))));
                 int slot = STAR_SLOT_ORDER.get(i);
                 container.setItem(slot, icon);
                 slotToIndex[slot] = idx;
@@ -239,13 +239,13 @@ public final class ServerShopUi {
 
             if (page > 0) {
                 ItemStack prev = new ItemStack(Items.ARROW);
-                prev.set(DataComponents.CUSTOM_NAME, Component.literal("Previous page").withStyle(s -> s.withItalic(false)));
+                prev.set(DataComponents.CUSTOM_NAME, Component.literal("Предыдущая страница").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 3, prev);
             }
 
             if (start + itemsPerPage < categories.size()) {
                 ItemStack next = new ItemStack(Items.ARROW);
-                next.set(DataComponents.CUSTOM_NAME, Component.literal("Next page").withStyle(s -> s.withItalic(false)));
+                next.set(DataComponents.CUSTOM_NAME, Component.literal("Следующая страница").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 5, next);
             }
 
@@ -253,7 +253,7 @@ public final class ServerShopUi {
             container.setItem(navRowStart, balance);
 
             ItemStack paper = new ItemStack(Items.PAPER);
-            paper.set(DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
+            paper.set(DataComponents.CUSTOM_NAME, Component.literal("Страница " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
             container.setItem(navRowStart + 4, paper);
         }
 
@@ -354,31 +354,31 @@ public final class ServerShopUi {
                 if (icon.isEmpty()) continue;
 
                 icon.set(DataComponents.CUSTOM_NAME, Component.literal(formatCategoryTitle(sub)).withStyle(s -> s.withItalic(false).withColor(ChatFormatting.WHITE).withBold(true)));
-                icon.set(DataComponents.LORE, new ItemLore(List.of(Component.literal("Click to view items").withStyle(s -> s.withItalic(false)))));
+                icon.set(DataComponents.LORE, new ItemLore(List.of(Component.literal("Нажмите для просмотра предметов").withStyle(s -> s.withItalic(false)))));
                 container.setItem(i, icon);
             }
 
             if (page > 0) {
                 ItemStack prev = new ItemStack(Items.ARROW);
-                prev.set(DataComponents.CUSTOM_NAME, Component.literal("Previous page").withStyle(s -> s.withItalic(false)));
+                prev.set(DataComponents.CUSTOM_NAME, Component.literal("Предыдущая страница").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 3, prev);
             }
 
             if (start + itemsPerPage < subcategories.size()) {
                 ItemStack next = new ItemStack(Items.ARROW);
-                next.set(DataComponents.CUSTOM_NAME, Component.literal("Next page").withStyle(s -> s.withItalic(false)));
+                next.set(DataComponents.CUSTOM_NAME, Component.literal("Следующая страница").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 5, next);
             }
 
             ItemStack back = new ItemStack(Items.BARRIER);
-            back.set(DataComponents.CUSTOM_NAME, Component.literal("Back").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.DARK_RED).withBold(true)));
+            back.set(DataComponents.CUSTOM_NAME, Component.literal("Назад").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.DARK_RED).withBold(true)));
             container.setItem(navRowStart + 8, back);
 
             ItemStack balance = createBalanceItem(viewer);
             container.setItem(navRowStart, balance);
 
             ItemStack paper = new ItemStack(Items.PAPER);
-            paper.set(DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
+            paper.set(DataComponents.CUSTOM_NAME, Component.literal("Страница " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
             container.setItem(navRowStart + 4, paper);
         }
 
@@ -471,16 +471,16 @@ public final class ServerShopUi {
 
                 int stackSize = Math.max(1, entry.stack());
                 List<Component> lore = new ArrayList<>();
-                lore.add(labeledValue("Buy", EconomyCraft.formatMoney(entry.unitBuy()), LABEL_PRIMARY_COLOR));
+                lore.add(labeledValue("Купить", EconomyCraft.formatMoney(entry.unitBuy()), LABEL_PRIMARY_COLOR));
 
                 Long stackPrice = safeMultiply(entry.unitBuy(), stackSize);
                 if (stackSize > 1 && stackPrice != null) {
-                    lore.add(labeledValue("Stack (" + stackSize + ")", EconomyCraft.formatMoney(stackPrice), LABEL_PRIMARY_COLOR));
+                    lore.add(labeledValue("Стак (" + stackSize + ")", EconomyCraft.formatMoney(stackPrice), LABEL_PRIMARY_COLOR));
                 }
 
-                lore.add(labeledValue("Left click", "Buy 1", LABEL_SECONDARY_COLOR));
+                lore.add(labeledValue("ЛКМ", "Купить 1", LABEL_SECONDARY_COLOR));
                 if (stackSize > 1) {
-                    lore.add(labeledValue("Shift-click", "Buy " + stackSize, LABEL_SECONDARY_COLOR));
+                    lore.add(labeledValue("Shift+ЛКМ", "Купить " + stackSize, LABEL_SECONDARY_COLOR));
                 }
 
                 display.set(DataComponents.LORE, new ItemLore(lore));
@@ -490,25 +490,25 @@ public final class ServerShopUi {
 
             if (page > 0) {
                 ItemStack prev = new ItemStack(Items.ARROW);
-                prev.set(DataComponents.CUSTOM_NAME, Component.literal("Previous page").withStyle(s -> s.withItalic(false)));
+                prev.set(DataComponents.CUSTOM_NAME, Component.literal("Предыдущая страница").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 3, prev);
             }
 
             if (start + itemsPerPage < entries.size()) {
                 ItemStack next = new ItemStack(Items.ARROW);
-                next.set(DataComponents.CUSTOM_NAME, Component.literal("Next page").withStyle(s -> s.withItalic(false)));
+                next.set(DataComponents.CUSTOM_NAME, Component.literal("Следующая страница").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 5, next);
             }
 
             ItemStack back = new ItemStack(Items.BARRIER);
-            back.set(DataComponents.CUSTOM_NAME, Component.literal("Back").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.DARK_RED).withBold(true)));
+            back.set(DataComponents.CUSTOM_NAME, Component.literal("Назад").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.DARK_RED).withBold(true)));
             container.setItem(navRowStart + 8, back);
 
             ItemStack balance = createBalanceItem(viewer);
             container.setItem(navRowStart, balance);
 
             ItemStack paper = new ItemStack(Items.PAPER);
-            paper.set(DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
+            paper.set(DataComponents.CUSTOM_NAME, Component.literal("Страница " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
             container.setItem(navRowStart + 4, paper);
         }
 
@@ -539,14 +539,14 @@ public final class ServerShopUi {
 
         private void handlePurchase(PriceRegistry.PriceEntry entry, ClickType clickType) {
             if (entry.unitBuy() <= 0) {
-                viewer.sendSystemMessage(Component.literal("This item cannot be purchased.")
+                viewer.sendSystemMessage(Component.literal("Этот предмет нельзя купить.")
                         .withStyle(ChatFormatting.RED));
                 return;
             }
 
             ItemStack base = createDisplayStack(entry, viewer);
             if (base.isEmpty()) {
-                viewer.sendSystemMessage(Component.literal("Item unavailable.")
+                viewer.sendSystemMessage(Component.literal("Предмет недоступен.")
                         .withStyle(ChatFormatting.RED));
                 return;
             }
@@ -556,20 +556,20 @@ public final class ServerShopUi {
 
             Long total = safeMultiply(entry.unitBuy(), amount);
             if (total == null) {
-                viewer.sendSystemMessage(Component.literal("Price too large.")
+                viewer.sendSystemMessage(Component.literal("Цена слишком велика.")
                         .withStyle(ChatFormatting.RED));
                 return;
             }
 
             long balance = eco.getBalance(viewer.getUUID(), true);
             if (balance < total) {
-                viewer.sendSystemMessage(Component.literal("Not enough balance.")
+                viewer.sendSystemMessage(Component.literal("Недостаточно средств.")
                         .withStyle(ChatFormatting.RED));
                 return;
             }
 
             if (!eco.removeMoney(viewer.getUUID(), total)) {
-                viewer.sendSystemMessage(Component.literal("Not enough balance.")
+                viewer.sendSystemMessage(Component.literal("Недостаточно средств.")
                         .withStyle(ChatFormatting.RED));
                 return;
             }
@@ -577,8 +577,8 @@ public final class ServerShopUi {
             boolean stored = giveToPlayer(base, amount);
 
             Component success = Component.literal(
-                    "Purchased " + amount + "x " + base.getHoverName().getString() +
-                            " for " + EconomyCraft.formatMoney(total))
+                    "Куплено " + amount + "x " + base.getHoverName().getString() +
+                            " за " + EconomyCraft.formatMoney(total))
                     .withStyle(ChatFormatting.GREEN);
             viewer.sendSystemMessage(success);
 
@@ -608,12 +608,12 @@ public final class ServerShopUi {
             ClickEvent ev = ChatCompat.runCommandEvent("/eco orders claim");
             if (ev != null) {
                 player.sendSystemMessage(STORED_MSG.copy()
-                        .append(Component.literal("[Claim]")
+                        .append(Component.literal("[Забрать]")
                                 .withStyle(s -> s.withUnderlined(true)
                                         .withColor(ChatFormatting.GREEN)
                                         .withClickEvent(ev))));
             } else {
-                ChatCompat.sendRunCommandTellraw(player, "Item stored: ", "[Claim]", "/eco orders claim");
+                ChatCompat.sendRunCommandTellraw(player, "Предмет сохранён: ", "[Забрать]", "/eco orders claim");
             }
         }
 
@@ -630,7 +630,7 @@ public final class ServerShopUi {
         if (iconId != null) {
             Optional<?> item = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, iconId);
             if (item.isPresent()) {
-                Item resolved = resolveItemValue(item.get(), iconId, "category icon");
+                Item resolved = resolveItemValue(item.get(), iconId, "иконка категории");
                 if (resolved != null) {
                     return new ItemStack(resolved);
                 }
@@ -803,7 +803,7 @@ public final class ServerShopUi {
     }
 
     private static Component balanceLore(long balance) {
-        return Component.literal("Balance: ")
+        return Component.literal("Баланс: ")
                 .withStyle(s -> s.withItalic(false).withColor(BALANCE_LABEL_COLOR))
                 .append(Component.literal(EconomyCraft.formatMoney(balance))
                         .withStyle(s -> s.withItalic(false).withColor(BALANCE_VALUE_COLOR)));
@@ -852,7 +852,7 @@ public final class ServerShopUi {
 
             Optional<?> item = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, id);
             if (item.isPresent()) {
-                Item resolved = resolveItemValue(item.get(), id, "display stack");
+                Item resolved = resolveItemValue(item.get(), id, "отображаемый предмет");
                 if (resolved != null && resolved != Items.AIR) {
                     return new ItemStack(resolved);
                 }
@@ -866,7 +866,7 @@ public final class ServerShopUi {
 
             return createPotionStack(id);
         } catch (RuntimeException ex) {
-            LogUtils.getLogger().error("[EconomyCraft] Failed to create display stack for {}", entry.id().asString(), ex);
+            LogUtils.getLogger().error("[EconomyCraft] Не удалось создать отображаемый предмет для {}", entry.id().asString(), ex);
             return ItemStack.EMPTY;
         }
     }

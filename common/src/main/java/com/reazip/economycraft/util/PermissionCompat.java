@@ -6,20 +6,33 @@ import net.minecraft.server.players.NameAndId;
 
 import java.util.function.Predicate;
 
+/**
+ * Утилита для работы с разрешениями и правами доступа.
+ */
 public final class PermissionCompat {
 
     private PermissionCompat() {}
 
+    /**
+     * Возвращает предикат, проверяющий, имеет ли источник команды
+     * права гейммастера (оператора).
+     * 
+     * <p>Консоль, командные блоки и RCON всегда считаются имеющими права.
+     * Для игроков проверяется наличие OP-статуса.</p>
+     *
+     * @return предикат для проверки источника команды
+     */
     public static Predicate<CommandSourceStack> gamemaster() {
         return source -> {
-            // Console, command blocks, rcon
+            // Консоль, командные блоки, RCON
             ServerPlayer player;
             try {
                 player = source.getPlayerOrException();
             } catch (Exception e) {
-                return true;
+                return true; // Не-игроки всегда имеют права
             }
 
+            // Создаём запись с UUID и именем игрока для проверки OP
             NameAndId nameAndId = new NameAndId(
                     player.getUUID(),
                     player.getName().getString()
@@ -27,10 +40,19 @@ public final class PermissionCompat {
 
             return source.getServer()
                     .getPlayerList()
-                    .isOp(nameAndId);
+                    .isOp(nameAndId); // Проверяем, является ли игрок оператором
         };
     }
 
+    /**
+     * Возвращает источник команды с правами владельца.
+     * 
+     * <p>В текущей реализации просто возвращает переданный источник.
+     * Метод оставлен для совместимости и возможных будущих расширений.</p>
+     *
+     * @param source исходный источник команды
+     * @return источник команды с правами владельца
+     */
     public static CommandSourceStack withOwnerPermission(CommandSourceStack source) {
         return source;
     }

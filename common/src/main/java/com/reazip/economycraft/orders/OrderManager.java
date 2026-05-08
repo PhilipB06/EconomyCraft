@@ -17,15 +17,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 
-/** Manages order requests and deliveries. */
+/** Управляет запросами на заказы и доставками. */
 public class OrderManager {
     private static final Gson GSON = new Gson();
     private final MinecraftServer server;
     private final Path file;
-    private final Map<Integer, OrderRequest> requests = new HashMap<>();
-    private final Map<UUID, List<ItemStack>> deliveries = new HashMap<>();
+    private final Map<Integer, OrderRequest> requests = new HashMap<>(); // Карта запросов
+    private final Map<UUID, List<ItemStack>> deliveries = new HashMap<>(); // Карта доставок
     private int nextId = 1;
-    private final List<Runnable> listeners = new ArrayList<>();
+    private final List<Runnable> listeners = new ArrayList<>(); // Слушатели изменений
 
     public OrderManager(MinecraftServer server) {
         this.server = server;
@@ -33,7 +33,7 @@ public class OrderManager {
         Path dataDir = dir.resolve("data");
         try { Files.createDirectories(dataDir); } catch (IOException ignored) {}
         this.file = dataDir.resolve("orders.json");
-        load();
+        load(); // Загружаем данные
     }
 
     public Collection<OrderRequest> getRequests() {
@@ -47,8 +47,8 @@ public class OrderManager {
     public void addRequest(OrderRequest r) {
         r.id = nextId++;
         requests.put(r.id, r);
-        notifyListeners();
-        save();
+        notifyListeners(); // Уведомляем слушателей
+        save(); // Сохраняем
     }
 
     public OrderRequest removeRequest(int id) {
@@ -65,7 +65,7 @@ public class OrderManager {
         save();
     }
 
-    /** Returns deliveries for the player without removing them. */
+    /** Возвращает доставки для игрока без их удаления. */
     public List<ItemStack> getDeliveries(UUID player) {
         return deliveries.computeIfAbsent(player, k -> new ArrayList<>());
     }
@@ -90,6 +90,7 @@ public class OrderManager {
         return list != null && !list.isEmpty();
     }
 
+    /** Загружает данные из файла. */
     public void load() {
         if (Files.exists(file)) {
             try {
@@ -130,6 +131,7 @@ public class OrderManager {
         }
     }
 
+    /** Сохраняет данные в файл. */
     public void save() {
         JsonObject root = new JsonObject();
         root.addProperty("nextId", nextId);
@@ -165,6 +167,7 @@ public class OrderManager {
         listeners.remove(run);
     }
 
+    /** Уведомляет всех слушателей об изменениях. */
     private void notifyListeners() {
         for (Runnable r : new ArrayList<>(listeners)) {
             r.run();
