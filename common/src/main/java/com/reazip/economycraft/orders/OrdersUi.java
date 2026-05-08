@@ -174,11 +174,12 @@ public final class OrdersUi {
                 }
 
                 long tax = Math.round(r.price * EconomyConfig.get().taxRate);
-                display.set(DataComponents.LORE, new ItemLore(List.of(
-                        createRewardLore(r.price, tax),
-                        labeledValue("Количество", String.valueOf(r.amount), LABEL_PRIMARY_COLOR),
-                        labeledValue("Заказчик", reqName, LABEL_SECONDARY_COLOR)
-                )));
+                display.set(net.minecraft.core.component.DataComponents.LORE,
+                        new net.minecraft.world.item.component.ItemLore(List.of(
+                                createRewardLore(r.price, tax),
+                                labeledValue("Количество", String.valueOf(r.amount), LABEL_PRIMARY_COLOR),
+                                labeledValue("Заказчик", reqName, LABEL_SECONDARY_COLOR)
+                        )));
                 display.setCount(1);
                 container.setItem(i, display);
             }
@@ -186,14 +187,14 @@ public final class OrdersUi {
             // Кнопка "Предыдущая страница"
             if (page > 0) {
                 ItemStack prev = new ItemStack(Items.ARROW);
-                prev.set(DataComponents.CUSTOM_NAME, Component.literal("Предыдущая страница").withStyle(s -> s.withItalic(false)));
+                prev.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Предыдущая страница").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 2, prev);
             }
 
             // Кнопка "Следующая страница"
             if (start + 45 < requests.size()) {
                 ItemStack next = new ItemStack(Items.ARROW);
-                next.set(DataComponents.CUSTOM_NAME, Component.literal("Следующая страница").withStyle(s -> s.withItalic(false)));
+                next.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Следующая страница").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 6, next);
             }
 
@@ -203,7 +204,7 @@ public final class OrdersUi {
 
             // Информация о текущей странице
             ItemStack paper = new ItemStack(Items.PAPER);
-            paper.set(DataComponents.CUSTOM_NAME,
+            paper.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
                     Component.literal("Страница " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
             container.setItem(navRowStart + 4, paper);
         }
@@ -305,7 +306,7 @@ public final class OrdersUi {
 
             // Кнопка подтверждения
             ItemStack confirm = new ItemStack(Items.LIME_STAINED_GLASS_PANE);
-            confirm.set(DataComponents.CUSTOM_NAME,
+            confirm.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
                     Component.literal("Подтвердить").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.GREEN)));
             container.setItem(2, confirm);
 
@@ -322,16 +323,17 @@ public final class OrdersUi {
             }
 
             long tax = Math.round(req.price * EconomyConfig.get().taxRate);
-            item.set(DataComponents.LORE, new ItemLore(List.of(
-                    createRewardLore(req.price, tax),
-                    labeledValue("Количество", String.valueOf(req.amount), LABEL_PRIMARY_COLOR),
-                    labeledValue("Заказчик", requesterName, LABEL_SECONDARY_COLOR)
-            )));
+            item.set(net.minecraft.core.component.DataComponents.LORE,
+                    new net.minecraft.world.item.component.ItemLore(List.of(
+                            createRewardLore(req.price, tax),
+                            labeledValue("Количество", String.valueOf(req.amount), LABEL_PRIMARY_COLOR),
+                            labeledValue("Заказчик", requesterName, LABEL_SECONDARY_COLOR)
+                    )));
             container.setItem(4, item);
 
             // Кнопка отмены
             ItemStack cancel = new ItemStack(Items.RED_STAINED_GLASS_PANE);
-            cancel.set(DataComponents.CUSTOM_NAME,
+            cancel.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
                     Component.literal("Отмена").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.DARK_RED)));
             container.setItem(6, cancel);
 
