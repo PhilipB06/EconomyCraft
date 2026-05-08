@@ -1,43 +1,35 @@
-> ⚠️ Development is paused until **August 2026**. No updates will be released during this time.  
-> Thanks to everyone for the support and suggestions so far. I’ll review new comments and issues once development resumes.
-
 # EconomyCraft
 
-EconomyCraft provides a simple server-side cross-platform economy system for Fabric and NeoForge servers.  
-The mod requires Architectury API and targets **Minecraft 1.21.x**.
+EconomyCraft предоставляет простую серверную кроссплатформенную экономичную систему для серверов Fabric и NeoForge.
+Мод требует Architectury API и нацелен на **Minecraft 1.21.1**.
 
 ---
 
-## Commands
-### Player Commands
-- `/bal [<player|selector>|top]` - Check balances or view the top balances.
-- `/pay <player> <amount>` - Transfer money to another player.
-- `/daily` - Claim a daily login bonus.
-- `/shop` - Player-driven marketplace where players list items for sale.
-  - `list <price>` - List the item in your hand.
-- `/servershop` - Server-managed shop with unlimited supply. Prices can be edited in config/prices.json.
-- `/sell [<amount>|all]` - Sell the item in your hand. Use `all` to sell all matching items from your inventory.
-- `/orders` - Request-based trading system.
-  - `request <item> <amount> <price>` - Create an item request.
-  - `claim` - Claim items bought or requested while offline.
+## Команды
+### Команды для игроков
+- `/bal [<player|selector>|top]` - Проверка собственного баланса/баланса другого игрока/топ балансов.
+- `/pay <player> <amount>` - Перевести деньги другому игроку.
+- `/daily` - Получить ежедневный бонус.
+- `/shop` - Рынок игроков где они могут продавать и покупать предметы.
+  - `list <price>` - Выставить предмет в руке на продажу.
+- `/servershop` - Магазин сервера с неограниченным предложением. Цены можно указать в конфигурации.
+- `/sell [<amount>|all]` - Продать предмет серверу. Используйте `all` чтобы продать все соответствующии предметы из инветоря.
+- `/orders` - Торговая система основаная на заказах.
+  - `request <item> <amount> <price>` - Создание заказа на товар.
+  - `claim` - Получить предметы которые были проданы когды вы оффлайн.
 
-### Admin Commands
-- `/eco addmoney <player|selector> <amount>` - Add money to a player.
-- `/eco setmoney <player|selector> <amount>` - Set a player’s balance.
-- `/eco removemoney <player|selector> [amount]` - Remove money from a player.
-- `/eco removeplayer <player|selector>` - Remove a player from the economy system.
-- `/eco toggleScoreboard` - Toggle the balance sidebar for all players.
+### Команды администратора
+- `/eco addmoney <player|selector> <amount>` - Прибавление денег игроку.
+- `/eco setmoney <player|selector> <amount>` - Установка значения баланса игроку.
+- `/eco removemoney <player|selector> [amount]` - Вычитание значения из баланса игрока.
+- `/eco removeplayer <player|selector>` - Удаление данных игрока из экономической системы.
+- `/eco toggleScoreboard` - Переключение отображения баланса на боковой панели у всех игроков.
 
-**Notes:**
-- Non-admin commands such as `/pay` or `/daily` are standalone by default and also work under `/eco` (e.g., `/eco pay`).  
-  Set `standalone_commands` to `false` in `config.json` to require the `/eco` prefix.
-- Admin commands use `/eco` unless `standalone_admin_commands` is enabled.
+## Конфигурация
 
-## Configuration
+Расположения конфигурационных файлов `config/economycraft/`.
 
-Configuration and player data are stored in `config/economycraft/`.
-
-### Default `config.json`
+### Стандартный `config.json`
 
 ```json
 {
@@ -53,15 +45,15 @@ Configuration and player data are stored in `config/economycraft/`.
 }
 ```
 
-- `startingBalance` - initial money for new players. Default: `1000`.
-- `dailyAmount` - money given by `/daily`. Default: `100`.
-- `dailySellLimit` - maximum money a player can earn per day via selling. `0` disables the limit. Default: `10000`.
-- `taxRate` - percentage tax applied to trades and orders (**decimal factor**, e.g. `0.1` = 10%). Default: `0.1`.
-- `pvp_balance_loss_percentage` - percentage of a player’s balance lost on PvP death and transferred to the killer (**decimal factor**, e.g. `0.1` = 10%). `0` disables this feature. Default: `0`.
-- `standalone_commands` - enable standalone `/pay`, `/daily`, etc. Default: `true`.
-- `standalone_admin_commands` - enable standalone `/addmoney`, `/setmoney`, etc. Default: `false`.
-- `scoreboard_enabled` - show the balance sidebar by default. Can be toggled with `/eco toggleScoreboard`. Default: `true`.
-- `server_shop_enabled` - enables the server shop (`/servershop` and `/eco servershop`). Default: `true`.
+- `startingBalance` - Начальный баланс игрока. По умолчанию: `1000`.
+- `dailyAmount` - занчение которое выдаётся игроку при вводе команды `/daily`. По умолчанию: `100`.
+- `dailySellLimit` - максимально количество денег которые игрок может получить путём продажи с помощью `/sell`. Значение `0` отключает лимит. По умолчанию: `10000`.
+- `taxRate` - налог на любые сделки и заказы (`0.1` = 10%). По умолчанию: `0.1`.
+- `pvp_balance_loss_percentage` - процент баланса которы игрок теряет и передаёт убийце (`0.1` = 10%). Значение `0` отключает эту функцию. По умолчанию: `0`.
+- `standalone_commands` - Включить/выключить стандартные команды `/pay`, `/daily`, и т. д. По умолчанию: `true`.
+- `standalone_admin_commands` - Включить/выключить команды администратора`/addmoney`, `/setmoney`, и т. д. По умолчанию: `false`.
+- `scoreboard_enabled` - Отображение боковой панели. Может быть изменено командой `/eco toggleScoreboard`. По умолчанию: `true`.
+- `server_shop_enabled` - Включить/выключить магазин сервера (`/servershop` и `/eco servershop`). По умолчанию: `true`.
 
 
 ---
