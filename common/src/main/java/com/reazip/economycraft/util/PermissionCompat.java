@@ -1,8 +1,8 @@
 package com.reazip.economycraft.util;
 
+import com.mojang.authlib.GameProfile;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.players.NameAndId;
 
 import java.util.function.Predicate;
 
@@ -16,7 +16,7 @@ public final class PermissionCompat {
     /**
      * Возвращает предикат, проверяющий, имеет ли источник команды
      * права гейммастера (оператора).
-     * 
+     *
      * <p>Консоль, командные блоки и RCON всегда считаются имеющими права.
      * Для игроков проверяется наличие OP-статуса.</p>
      *
@@ -24,7 +24,6 @@ public final class PermissionCompat {
      */
     public static Predicate<CommandSourceStack> gamemaster() {
         return source -> {
-            // Консоль, командные блоки, RCON
             ServerPlayer player;
             try {
                 player = source.getPlayerOrException();
@@ -32,21 +31,21 @@ public final class PermissionCompat {
                 return true; // Не-игроки всегда имеют права
             }
 
-            // Создаём запись с UUID и именем игрока для проверки OP
-            NameAndId nameAndId = new NameAndId(
+            // Создаём GameProfile вместо NameAndId
+            GameProfile profile = new GameProfile(
                     player.getUUID(),
                     player.getName().getString()
             );
 
             return source.getServer()
                     .getPlayerList()
-                    .isOp(nameAndId); // Проверяем, является ли игрок оператором
+                    .isOp(profile);
         };
     }
 
     /**
      * Возвращает источник команды с правами владельца.
-     * 
+     *
      * <p>В текущей реализации просто возвращает переданный источник.
      * Метод оставлен для совместимости и возможных будущих расширений.</p>
      *
