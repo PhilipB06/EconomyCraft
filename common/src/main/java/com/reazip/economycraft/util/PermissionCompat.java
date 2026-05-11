@@ -37,9 +37,7 @@ public final class PermissionCompat {
                     player.getName().getString()
             );
 
-            return source.getServer()
-                    .getPlayerList()
-                    .isOp(profile);
+            return source.getServer().getPlayerList().isOp(profile);
         };
     }
 
