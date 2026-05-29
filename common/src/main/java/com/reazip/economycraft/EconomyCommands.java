@@ -650,12 +650,33 @@ public final class EconomyCommands {
                         .then(argument("price", LongArgumentType.longArg(1, EconomyManager.MAX))
                                 .executes(ctx -> listItem(ctx.getSource().getPlayerOrException(),
                                         LongArgumentType.getLong(ctx, "price"),
-                                        ctx.getSource()))));
+                                        ctx.getSource()))))
+                .then(literal("search")
+                        .then(argument("target", GameProfileArgument.gameProfile())
+                                .executes(ctx -> {
+                                    var refs = IdentityCompat.getArgAsPlayerRefs(ctx, "target");
+                                    if (refs.size() != 1) {
+                                        ctx.getSource().sendFailure(Component.literal("Укажите ровно одного игрока").withStyle(ChatFormatting.RED));
+                                        return 0;
+                                    }
+                                    return openPlayerShop(ctx.getSource().getPlayerOrException(), ctx.getSource(), refs.iterator().next());
+                                })));
     }
 
     private static int openShop(ServerPlayer player, CommandSourceStack source) {
         try {
             ShopUi.open(player, EconomyCraft.getManager(source.getServer()).getShop());
+            return 1;
+        } catch (Exception e) {
+            LOGGER.error("[EconomyCraft] Не удалось открыть /shop для {}", player.getDisplayName().getString(), e);
+            source.sendFailure(Component.literal("Не удалось открыть магазин. Проверьте логи сервера."));
+            return 0;
+        }
+    }
+
+    private static int openPlayerShop(ServerPlayer player, CommandSourceStack source, IdentityCompat.PlayerRef target) {
+        try {
+            ShopUi.openPlayer(player, EconomyCraft.getManager(source.getServer()).getShop(), target.name());
             return 1;
         } catch (Exception e) {
             LOGGER.error("[EconomyCraft] Не удалось открыть /shop для {}", player.getDisplayName().getString(), e);
