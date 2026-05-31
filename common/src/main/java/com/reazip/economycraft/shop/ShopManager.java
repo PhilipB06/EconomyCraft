@@ -31,6 +31,8 @@ public class ShopManager {
     private final Map<UUID, List<ItemStack>> deliveries = new HashMap<>(); // Карта доставок
     private int nextId = 1;
     private final List<Runnable> listeners = new ArrayList<>(); // Слушатели изменений
+    private List<ShopListing> values = new ArrayList<>();
+    private ArrayList list;
 
     public ShopManager(MinecraftServer server) {
         this.server = server;
@@ -44,6 +46,22 @@ public class ShopManager {
     /** Возвращает все объявления. */
     public Collection<ShopListing> getListings() {
         return listings.values();
+    }
+    public Collection<ShopListing> getPlayerListings(ServerPlayer viewer, String target) {
+        values = new ArrayList<>(listings.values());
+        list = new ArrayList<>();
+        for (int i = 0; i < values.size(); i++) {
+            ShopListing l = values.get(i);
+            String sellerName;
+            ServerPlayer sellerPlayer = viewer.level().getServer().getPlayerList().getPlayer(l.seller);
+            if (sellerPlayer != null) {
+                sellerName = IdentityCompat.of(sellerPlayer).name();
+            } else {
+                sellerName = EconomyCraft.getManager(viewer.level().getServer()).getBestName(l.seller);
+            }
+            if (sellerName != null && sellerName.equals(target)) {list.add(l);}
+        }
+        return list;
     }
 
     /** Возвращает объявление по ID. */

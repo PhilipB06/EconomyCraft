@@ -302,7 +302,7 @@ public final class ShopUi {
         }
 
         private void updatePage() {
-            listings = new ArrayList<>(shop.getListings());
+            listings = new ArrayList<>(shop.getPlayerListings(viewer, target));
             container.clearContent();
             int start = page * 45;
             int totalPages = (int) Math.ceil(listings.size() / 45.0);
@@ -321,15 +321,11 @@ public final class ShopUi {
                 } else {
                     sellerName = EconomyCraft.getManager(viewer.level().getServer()).getBestName(l.seller);
                 }
-                LOGGER.info(sellerName);
-                LOGGER.info(this.target);
-                if (sellerName == this.target) {
-                    long tax = Math.round(l.price * EconomyConfig.get().taxRate);
-                    display.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(List.of(
-                            createPriceLore(l.price, tax),
-                            labeledValue("Продавец", sellerName, LABEL_SECONDARY_COLOR))));
-                    container.setItem(i, display);
-                }
+                long tax = Math.round(l.price * EconomyConfig.get().taxRate);
+                display.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(List.of(
+                        createPriceLore(l.price, tax),
+                        labeledValue("Продавец", sellerName, LABEL_SECONDARY_COLOR))));
+                container.setItem(i, display);
             }
 
             if (page > 0) {
@@ -492,7 +488,7 @@ public final class ShopUi {
                                                             .withClickEvent(ev)));
                                     sp.sendSystemMessage(msg);
                                 } else {
-                                    ChatCompat.sendRunCommandTellraw(sp, "Предмет сохранён: ", "[Забрать]", "/eco orders claim");
+                                    ChatCompat.sendRunCommandTellraw(sp, "Предмет сохранён: ", "[Забрать]", "/orders claim");
                                 }
                             } else {
                                 sp.sendSystemMessage(

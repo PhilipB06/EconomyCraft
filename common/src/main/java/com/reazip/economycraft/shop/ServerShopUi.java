@@ -613,7 +613,7 @@ public final class ServerShopUi {
                                         .withColor(ChatFormatting.GREEN)
                                         .withClickEvent(ev))));
             } else {
-                ChatCompat.sendRunCommandTellraw(player, "Предмет сохранён: ", "[Забрать]", "/eco orders claim");
+                ChatCompat.sendRunCommandTellraw(player, "Предмет сохранён: ", "[Забрать]", "/orders claim");
             }
         }
 
