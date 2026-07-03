@@ -20,7 +20,7 @@ import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
@@ -228,8 +228,8 @@ public final class ServerShopUi {
         }
 
         @Override
-        public void clicked(int slot, int dragType, ClickType type, Player player) {
-            if (type == ClickType.PICKUP || type == ClickType.QUICK_MOVE) {
+        public void clicked(int slot, int dragType, ContainerInput type, Player player) {
+            if (type == ContainerInput.PICKUP || type == ContainerInput.QUICK_MOVE) {
                 if (slot < navRowStart) {
                     int index = slotToIndex[slot];
                     if (index >= 0 && index < categories.size()) {
@@ -342,8 +342,8 @@ public final class ServerShopUi {
         }
 
         @Override
-        public void clicked(int slot, int dragType, ClickType type, Player player) {
-            if (type == ClickType.PICKUP || type == ClickType.QUICK_MOVE) {
+        public void clicked(int slot, int dragType, ContainerInput type, Player player) {
+            if (type == ContainerInput.PICKUP || type == ContainerInput.QUICK_MOVE) {
                 if (slot < navRowStart) {
                     int index = page * itemsPerPage + slot;
                     if (index < subcategories.size()) {
@@ -461,8 +461,8 @@ public final class ServerShopUi {
         }
 
         @Override
-        public void clicked(int slot, int dragType, ClickType type, Player player) {
-            if (type == ClickType.PICKUP || type == ClickType.QUICK_MOVE) {
+        public void clicked(int slot, int dragType, ContainerInput type, Player player) {
+            if (type == ContainerInput.PICKUP || type == ContainerInput.QUICK_MOVE) {
                 if (slot < navRowStart) {
                     int index = page * itemsPerPage + slot;
                     if (index < entries.size()) {
@@ -485,7 +485,7 @@ public final class ServerShopUi {
             super.clicked(slot, dragType, type, player);
         }
 
-        private void handlePurchase(PriceRegistry.PriceEntry entry, ClickType clickType) {
+        private void handlePurchase(PriceRegistry.PriceEntry entry, ContainerInput clickType) {
             if (entry.unitBuy() <= 0) {
                 viewer.sendSystemMessage(Component.literal("This item cannot be purchased.")
                         .withStyle(ChatFormatting.RED));
@@ -500,7 +500,7 @@ public final class ServerShopUi {
             }
 
             int stackSize = Math.max(1, entry.stack());
-            int amount = clickType == ClickType.QUICK_MOVE ? stackSize : 1;
+            int amount = clickType == ContainerInput.QUICK_MOVE ? stackSize : 1;
 
             Long total = safeMultiply(entry.unitBuy(), amount);
             if (total == null) {

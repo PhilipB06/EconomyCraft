@@ -30,14 +30,13 @@ def tgt     = rootProject.ext.resolveMcTarget(mcCoord)
 dependencies {
     // Required for Loom
     minecraft "com.mojang:minecraft:${mcCoord}"
-    mappings loom.officialMojangMappings()
 
     // Platform loader + API
     neoForge "net.neoforged:neoforge:${rootProject.findProperty('neoforge_version') ?: tgt.neoforge}"
-    modApi "dev.architectury:architectury-neoforge:${rootProject.findProperty('architectury_version_plain') ?: tgt.architecturyVer}"
+    api "dev.architectury:architectury-neoforge:${rootProject.findProperty('architectury_version_plain') ?: tgt.architecturyVer}"
 
     // Link common module
-    common(project(path: ":common", configuration: "namedElements")) { transitive = false }
+    common(project(path: ":common")) { transitive = false }
     shadowBundle project(path: ":common", configuration: "transformProductionNeoForge")
 }
 
@@ -50,12 +49,12 @@ processResources {
     def mcLo = "${major}.${minor}"
     def mcHi = "${major}.${minor + 1}"
 
-    def nfLo = (rootProject.findProperty("neoforge_line_lo") ?: "21.0").toString()
-    def nfHi = (rootProject.findProperty("neoforge_line_hi") ?: "22.0").toString()
+    def nfLo = (rootProject.findProperty("neoforge_line_lo") ?: "26.1").toString()
+    def nfHi = (rootProject.findProperty("neoforge_line_hi") ?: "26.2").toString()
 
     def archVer = (rootProject.findProperty("architectury_version_plain")
             ?: project.findProperty("architectury_version_plain")
-            ?: "13.0.0").toString()
+            ?: "20.0.7").toString()
 
     inputs.property "version", project.version
     inputs.property "mcLo", mcLo
@@ -86,9 +85,17 @@ tasks.withType(Jar).configureEach {
     }
 }
 
+jar {
+    archiveClassifier = "raw"
+}
+
 shadowJar {
+    dependsOn jar
+    mainSpec.sourcePaths.clear()
+    from(zipTree(jar.archiveFile))
+
     configurations = [project.configurations.shadowBundle]
-    archiveClassifier = "dev-shadow"
+    archiveClassifier = null
 
     manifest {
         attributes(
@@ -96,8 +103,4 @@ shadowJar {
                 'Implementation-Version': project.version
         )
     }
-}
-
-remapJar {
-    inputFile.set(shadowJar.archiveFile)
 }

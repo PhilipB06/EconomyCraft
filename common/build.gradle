@@ -16,12 +16,9 @@ dependencies {
     // Required Minecraft jar for Loom
     minecraft "com.mojang:minecraft:${mcCoord}"
 
-    // Mappings (Mojang official for shared code)
-    mappings loom.officialMojangMappings()
-
     // Fabric loader only for @Environment annotations
-    modImplementation "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"
+    implementation "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"
 
     // Architectury API
-    modImplementation "dev.architectury:architectury:${rootProject.architectury_api_version}"
+    implementation "dev.architectury:architectury:${rootProject.architectury_api_version}"
 }

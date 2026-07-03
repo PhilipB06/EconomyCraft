@@ -24,19 +24,17 @@ repositories {
 
 def mcCoord = (rootProject.findProperty("minecraft_version") ?: rootProject.minecraft_version) as String
 def tgt     = rootProject.ext.resolveMcTarget(mcCoord)
-def yarnB   = (rootProject.findProperty("yarn_build") ?: tgt.yarnBuild) as String
 
 dependencies {
     minecraft "com.mojang:minecraft:${mcCoord}"
-    mappings loom.officialMojangMappings()
 
     // Platform loader + API
-    modImplementation "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${rootProject.findProperty('fabric_api_version') ?: tgt.fabricApi}"
-    modApi "dev.architectury:architectury-fabric:${rootProject.findProperty('architectury_version_plain') ?: tgt.architecturyVer}"
+    implementation "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${rootProject.findProperty('fabric_api_version') ?: tgt.fabricApi}"
+    api "dev.architectury:architectury-fabric:${rootProject.findProperty('architectury_version_plain') ?: tgt.architecturyVer}"
 
     // Link common module
-    common(project(path: ":common", configuration: "namedElements")) { transitive = false }
+    common(project(path: ":common")) { transitive = false }
     shadowBundle project(path: ":common", configuration: "transformProductionFabric")
 }
 
@@ -50,11 +48,15 @@ processResources {
     }
 }
 
-shadowJar {
-    configurations = [project.configurations.shadowBundle]
-    archiveClassifier = "dev-shadow"
+jar {
+    archiveClassifier = "raw"
 }
 
-remapJar {
-    inputFile.set(shadowJar.archiveFile)
+shadowJar {
+    dependsOn jar
+    mainSpec.sourcePaths.clear()
+    from(zipTree(jar.archiveFile))
+
+    configurations = [project.configurations.shadowBundle]
+    archiveClassifier = null
 }

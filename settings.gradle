@@ -8,6 +8,11 @@ pluginManagement {
     }
 }
 
+plugins {
+    // Auto-provisions a JDK 25 toolchain for compilation if none is installed locally.
+    id "org.gradle.toolchains.foojay-resolver-convention" version "1.0.0"
+}
+
 rootProject.name = "economycraft"
 
 def raw = gradle.startParameter.projectProperties.get("filter_platforms")

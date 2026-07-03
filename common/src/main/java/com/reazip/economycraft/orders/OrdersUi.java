@@ -16,7 +16,7 @@ import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
@@ -141,8 +141,8 @@ public final class OrdersUi {
         }
 
         @Override
-        public void clicked(int slot, int dragType, ClickType type, Player player) {
-            if (type == ClickType.PICKUP) {
+        public void clicked(int slot, int dragType, ContainerInput type, Player player) {
+            if (type == ContainerInput.PICKUP) {
                 if (slot < 45) {
                     int index = page * 45 + slot;
                     if (index < requests.size()) {
@@ -261,8 +261,8 @@ public final class OrdersUi {
         }
 
         @Override
-        public void clicked(int slot, int drag, ClickType type, Player player) {
-            if (type == ClickType.PICKUP) {
+        public void clicked(int slot, int drag, ContainerInput type, Player player) {
+            if (type == ContainerInput.PICKUP) {
                 if (slot == 2) {
                     OrderRequest current = parent.orders.getRequest(request.id);
                     ServerPlayer serverPlayer = (ServerPlayer) player;
@@ -382,8 +382,8 @@ public final class OrdersUi {
         }
 
         @Override
-        public void clicked(int slot, int drag, ClickType type, Player player) {
-            if (type == ClickType.PICKUP) {
+        public void clicked(int slot, int drag, ContainerInput type, Player player) {
+            if (type == ContainerInput.PICKUP) {
                 if (slot == 2) {
                     OrderRequest removed = parent.orders.removeRequest(request.id);
                     if (removed != null) {
@@ -482,8 +482,8 @@ public final class OrdersUi {
         @Override public boolean stillValid(Player player) { return true; }
 
         @Override
-        public void clicked(int slot, int dragType, ClickType type, Player player) {
-            if (type == ClickType.PICKUP) {
+        public void clicked(int slot, int dragType, ContainerInput type, Player player) {
+            if (type == ContainerInput.PICKUP) {
                 if (slot < 45) {
                     Slot s = this.slots.get(slot);
                     if (s.hasItem()) {
