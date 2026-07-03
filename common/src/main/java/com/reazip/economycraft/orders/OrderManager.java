@@ -2,15 +2,10 @@ package com.reazip.economycraft.orders;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.mojang.serialization.JsonOps;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.RegistryOps;
-import com.reazip.economycraft.util.IdentifierCompat;
+import com.reazip.economycraft.util.DeliveryLedger;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Item;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -23,9 +18,8 @@ public class OrderManager {
     private final MinecraftServer server;
     private final Path file;
     private final Map<Integer, OrderRequest> requests = new HashMap<>();
-    private final Map<UUID, List<ItemStack>> deliveries = new HashMap<>();
+    private final DeliveryLedger deliveries = new DeliveryLedger();
     private int nextId = 1;
-    private final List<Runnable> listeners = new ArrayList<>();
 
     public OrderManager(MinecraftServer server) {
         this.server = server;
@@ -47,47 +41,41 @@ public class OrderManager {
     public void addRequest(OrderRequest r) {
         r.id = nextId++;
         requests.put(r.id, r);
-        notifyListeners();
+        deliveries.notifyListeners();
         save();
     }
 
     public OrderRequest removeRequest(int id) {
         OrderRequest r = requests.remove(id);
         if (r != null) {
-            notifyListeners();
+            deliveries.notifyListeners();
             save();
         }
         return r;
     }
 
     public void addDelivery(UUID player, ItemStack stack) {
-        deliveries.computeIfAbsent(player, k -> new ArrayList<>()).add(stack);
+        deliveries.add(player, stack);
         save();
     }
 
     /** Returns deliveries for the player without removing them. */
     public List<ItemStack> getDeliveries(UUID player) {
-        return deliveries.computeIfAbsent(player, k -> new ArrayList<>());
+        return deliveries.get(player);
     }
 
     public void removeDelivery(UUID player, ItemStack stack) {
-        List<ItemStack> list = deliveries.get(player);
-        if (list != null) {
-            list.remove(stack);
-            if (list.isEmpty()) deliveries.remove(player);
-            save();
-        }
+        if (deliveries.remove(player, stack)) save();
     }
 
     public List<ItemStack> claimDeliveries(UUID player) {
-        List<ItemStack> list = deliveries.remove(player);
+        List<ItemStack> list = deliveries.claim(player);
         if (list != null) save();
         return list;
     }
 
     public boolean hasDeliveries(UUID player) {
-        List<ItemStack> list = deliveries.get(player);
-        return list != null && !list.isEmpty();
+        return deliveries.has(player);
     }
 
     public void load() {
@@ -100,32 +88,7 @@ public class OrderManager {
                     OrderRequest r = OrderRequest.load(el.getAsJsonObject(), server.registryAccess());
                     requests.put(r.id, r);
                 }
-                JsonObject dObj = root.getAsJsonObject("deliveries");
-                for (String key : dObj.keySet()) {
-                    UUID id = UUID.fromString(key);
-                    List<ItemStack> list = new ArrayList<>();
-                    for (var sEl : dObj.getAsJsonArray(key)) {
-                        JsonObject o = sEl.getAsJsonObject();
-                        ItemStack stack = ItemStack.EMPTY;
-                        if (o.has("stack")) {
-                            stack = ItemStack.CODEC.parse(RegistryOps.create(JsonOps.INSTANCE, server.registryAccess()), o.get("stack")).result().orElse(ItemStack.EMPTY);
-                        } else {
-                            String itemId = o.get("item").getAsString();
-                            int count = o.get("count").getAsInt();
-                            IdentifierCompat.Id rl = IdentifierCompat.tryParse(itemId);
-                            if (rl != null) {
-                                java.util.Optional<Item> opt = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, rl);
-
-                                if (opt.isPresent()) {
-                                    Item item = opt.get();
-                                    stack = new ItemStack(item, count);
-                                }
-                            }
-                        }
-                        if (!stack.isEmpty()) list.add(stack);
-                    }
-                    deliveries.put(id, list);
-                }
+                deliveries.load(root.getAsJsonObject("deliveries"), server.registryAccess());
             } catch (Exception ignored) {}
         }
     }
@@ -138,36 +101,17 @@ public class OrderManager {
             reqArr.add(r.save(server.registryAccess()));
         }
         root.add("requests", reqArr);
-        JsonObject dObj = new JsonObject();
-        for (Map.Entry<UUID, List<ItemStack>> e : deliveries.entrySet()) {
-            JsonArray arr = new JsonArray();
-            for (ItemStack s : e.getValue()) {
-                JsonObject o = new JsonObject();
-                o.addProperty("item", BuiltInRegistries.ITEM.getKey(s.getItem()).toString());
-                o.addProperty("count", s.getCount());
-                JsonElement stackEl = ItemStack.CODEC.encodeStart(RegistryOps.create(JsonOps.INSTANCE, server.registryAccess()), s).result().orElse(new JsonObject());
-                o.add("stack", stackEl);
-                arr.add(o);
-            }
-            dObj.add(e.getKey().toString(), arr);
-        }
-        root.add("deliveries", dObj);
+        root.add("deliveries", deliveries.save(server.registryAccess()));
         try {
             Files.writeString(file, GSON.toJson(root));
         } catch (IOException ignored) {}
     }
 
     public void addListener(Runnable run) {
-        listeners.add(run);
+        deliveries.addListener(run);
     }
 
     public void removeListener(Runnable run) {
-        listeners.remove(run);
-    }
-
-    private void notifyListeners() {
-        for (Runnable r : new ArrayList<>(listeners)) {
-            r.run();
-        }
+        deliveries.removeListener(run);
     }
 }

@@ -4,9 +4,9 @@ import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyManager;
 import com.reazip.economycraft.util.ChatCompat;
-import com.reazip.economycraft.util.IdentityCompat;
-import com.reazip.economycraft.util.ProfileComponentCompat;
+import com.reazip.economycraft.util.MenuUiSupport;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -21,20 +21,12 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.ItemLore;
-import com.mojang.authlib.GameProfile;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public final class ShopUi {
     private ShopUi() {}
-
-    private static final ChatFormatting LABEL_PRIMARY_COLOR = ChatFormatting.GOLD;
-    private static final ChatFormatting LABEL_SECONDARY_COLOR = ChatFormatting.AQUA;
-    private static final ChatFormatting VALUE_COLOR = ChatFormatting.DARK_PURPLE;
-    private static final ChatFormatting BALANCE_NAME_COLOR = ChatFormatting.YELLOW;
-    private static final ChatFormatting BALANCE_LABEL_COLOR = ChatFormatting.GOLD;
-    private static final ChatFormatting BALANCE_VALUE_COLOR = ChatFormatting.DARK_PURPLE;
 
     public static void open(ServerPlayer player, ShopManager shop) {
         Component title = Component.literal("Shop");
@@ -47,11 +39,7 @@ public final class ShopUi {
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                try {
-                    return new ShopMenu(id, inv, shop, player);
-                } catch (Exception e) {
-                    throw e;
-                }
+                return new ShopMenu(id, inv, shop, player);
             }
         });
     }
@@ -65,11 +53,7 @@ public final class ShopUi {
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                try {
-                    return new ConfirmMenu(id, inv, shop, listing, player);
-                } catch (Exception e) {
-                    throw e;
-                }
+                return new ConfirmMenu(id, inv, shop, listing, player);
             }
         });
     }
@@ -83,11 +67,7 @@ public final class ShopUi {
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                try {
-                    return new RemoveMenu(id, inv, shop, listing, player);
-                } catch (Exception e) {
-                    throw e;
-                }
+                return new RemoveMenu(id, inv, shop, listing, player);
             }
         });
     }
@@ -97,34 +77,7 @@ public final class ShopUi {
         if (tax > 0) {
             value.append(" (+").append(EconomyCraft.formatMoney(tax)).append(" tax)");
         }
-        return labeledValue("Price", value.toString(), LABEL_PRIMARY_COLOR);
-    }
-
-    private static ItemStack createBalanceItem(ServerPlayer player) {
-        ItemStack head = new ItemStack(Items.PLAYER_HEAD);
-        GameProfile profile = player.getGameProfile();
-        ProfileComponentCompat.tryResolvedOrUnresolved(profile).ifPresent(resolvable ->
-                head.set(net.minecraft.core.component.DataComponents.PROFILE, resolvable));
-        long balance = EconomyCraft.getManager(player.level().getServer()).getBalance(player.getUUID(), true);
-        head.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
-                Component.literal(IdentityCompat.of(player).name()).withStyle(s -> s.withItalic(false).withColor(BALANCE_NAME_COLOR)));
-        head.set(net.minecraft.core.component.DataComponents.LORE,
-                new ItemLore(List.of(balanceLore(balance))));
-        return head;
-    }
-
-    private static Component balanceLore(long balance) {
-        return Component.literal("Balance: ")
-                .withStyle(s -> s.withItalic(false).withColor(BALANCE_LABEL_COLOR))
-                .append(Component.literal(EconomyCraft.formatMoney(balance))
-                        .withStyle(s -> s.withItalic(false).withColor(BALANCE_VALUE_COLOR)));
-    }
-
-    private static Component labeledValue(String label, String value, ChatFormatting labelColor) {
-        return Component.literal(label + ": ")
-                .withStyle(s -> s.withItalic(false).withColor(labelColor))
-                .append(Component.literal(value)
-                        .withStyle(s -> s.withItalic(false).withColor(VALUE_COLOR)));
+        return MenuUiSupport.labeledValue("Price", value.toString(), MenuUiSupport.LABEL_PRIMARY_COLOR);
     }
 
     private static class ShopMenu extends AbstractContainerMenu {
@@ -142,22 +95,11 @@ public final class ShopUi {
             this.viewer = viewer;
             updatePage();
             shop.addListener(listener);
-            for (int i = 0; i < 54; i++) {
-                int r = i / 9;
-                int c = i % 9;
-                this.addSlot(new Slot(container, i, 8 + c * 18, 18 + r * 18) {
-                    @Override public boolean mayPickup(Player player) { return false; }
-                    @Override public boolean mayPlace(ItemStack stack) { return false; }
-                });
+            for (Slot slot : MenuUiSupport.readOnlyGridSlots(container, 54)) {
+                this.addSlot(slot);
             }
-            int y = 18 + 6 * 18 + 14;
-            for (int r = 0; r < 3; r++) {
-                for (int c = 0; c < 9; c++) {
-                    this.addSlot(new Slot(inv, c + r * 9 + 9, 8 + c * 18, y + r * 18));
-                }
-            }
-            for (int c = 0; c < 9; c++) {
-                this.addSlot(new Slot(inv, c, 8 + c * 18, y + 58));
+            for (Slot slot : MenuUiSupport.playerInventorySlots(inv, 18 + 6 * 18 + 14)) {
+                this.addSlot(slot);
             }
         }
 
@@ -174,38 +116,32 @@ public final class ShopUi {
                 ShopListing l = listings.get(idx);
                 ItemStack display = l.item.copy();
 
-                String sellerName;
-                ServerPlayer sellerPlayer = viewer.level().getServer().getPlayerList().getPlayer(l.seller);
-                if (sellerPlayer != null) {
-                    sellerName = IdentityCompat.of(sellerPlayer).name();
-                } else {
-                    sellerName = EconomyCraft.getManager(viewer.level().getServer()).getBestName(l.seller);
-                }
+                String sellerName = MenuUiSupport.resolvePlayerName(viewer.level().getServer(), l.seller);
 
                 long tax = Math.round(l.price * EconomyConfig.get().taxRate);
-                display.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(List.of(
+                display.set(DataComponents.LORE, new ItemLore(List.of(
                         createPriceLore(l.price, tax),
-                        labeledValue("Seller", sellerName, LABEL_SECONDARY_COLOR))));
+                        MenuUiSupport.labeledValue("Seller", sellerName, MenuUiSupport.LABEL_SECONDARY_COLOR))));
                 container.setItem(i, display);
             }
 
             if (page > 0) {
                 ItemStack prev = new ItemStack(Items.ARROW);
-                prev.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Previous page").withStyle(s -> s.withItalic(false)));
+                prev.set(DataComponents.CUSTOM_NAME, Component.literal("Previous page").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 3, prev);
             }
 
             if (start + 45 < listings.size()) {
                 ItemStack next = new ItemStack(Items.ARROW);
-                next.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Next page").withStyle(s -> s.withItalic(false)));
+                next.set(DataComponents.CUSTOM_NAME, Component.literal("Next page").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 5, next);
             }
 
-            ItemStack balance = createBalanceItem(viewer);
+            ItemStack balance = MenuUiSupport.createBalanceItem(viewer);
             container.setItem(navRowStart, balance);
 
             ItemStack paper = new ItemStack(Items.PAPER);
-            paper.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
+            paper.set(DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
             container.setItem(navRowStart + 4, paper);
         }
 
@@ -256,45 +192,29 @@ public final class ShopUi {
             this.viewer = viewer;
 
             ItemStack confirm = new ItemStack(Items.LIME_STAINED_GLASS_PANE);
-            confirm.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+            confirm.set(DataComponents.CUSTOM_NAME,
                     Component.literal("Confirm").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.GREEN)));
             container.setItem(2, confirm);
 
-            String sellerName;
-            ServerPlayer sellerPlayer = viewer.level().getServer().getPlayerList().getPlayer(listing.seller);
-            if (sellerPlayer != null) {
-                sellerName = IdentityCompat.of(sellerPlayer).name();
-            } else {
-                sellerName = EconomyCraft.getManager(viewer.level().getServer()).getBestName(listing.seller);
-            }
+            String sellerName = MenuUiSupport.resolvePlayerName(viewer.level().getServer(), listing.seller);
 
             ItemStack item = listing.item.copy();
             long tax = Math.round(listing.price * EconomyConfig.get().taxRate);
-            item.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(List.of(
+            item.set(DataComponents.LORE, new ItemLore(List.of(
                     createPriceLore(listing.price, tax),
-                    labeledValue("Seller", sellerName, LABEL_SECONDARY_COLOR))));
+                    MenuUiSupport.labeledValue("Seller", sellerName, MenuUiSupport.LABEL_SECONDARY_COLOR))));
             container.setItem(4, item);
 
             ItemStack cancel = new ItemStack(Items.RED_STAINED_GLASS_PANE);
-            cancel.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+            cancel.set(DataComponents.CUSTOM_NAME,
                     Component.literal("Cancel").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.DARK_RED)));
             container.setItem(6, cancel);
 
-            for (int i = 0; i < 9; i++) {
-                this.addSlot(new Slot(container, i, 8 + i * 18, 20) {
-                    @Override
-                    public boolean mayPickup(Player player) { return false; }
-                });
+            for (Slot slot : MenuUiSupport.confirmRowSlots(container)) {
+                this.addSlot(slot);
             }
-
-            int y = 40;
-            for (int r = 0; r < 3; r++) {
-                for (int c = 0; c < 9; c++) {
-                    this.addSlot(new Slot(inv, c + r * 9 + 9, 8 + c * 18, y + r * 18));
-                }
-            }
-            for (int c = 0; c < 9; c++) {
-                this.addSlot(new Slot(inv, c, 8 + c * 18, y + 58));
+            for (Slot slot : MenuUiSupport.playerInventorySlots(inv, 40)) {
+                this.addSlot(slot);
             }
         }
 
@@ -328,13 +248,7 @@ public final class ShopUi {
                             int count = stack.getCount();
                             Component name = stack.getHoverName();
 
-                            String sellerName;
-                            ServerPlayer sellerPlayer = server.getPlayerList().getPlayer(current.seller);
-                            if (sellerPlayer != null) {
-                                sellerName = IdentityCompat.of(sellerPlayer).name();
-                            } else {
-                                sellerName = eco.getBestName(current.seller);
-                            }
+                            String sellerName = MenuUiSupport.resolvePlayerName(server, current.seller);
 
                             if (!player.getInventory().add(stack)) {
                                 shop.addDelivery(player.getUUID(), stack);
@@ -394,35 +308,28 @@ public final class ShopUi {
             this.viewer = viewer;
 
             ItemStack confirm = new ItemStack(Items.LIME_STAINED_GLASS_PANE);
-            confirm.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+            confirm.set(DataComponents.CUSTOM_NAME,
                     Component.literal("Confirm").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.GREEN)));
             container.setItem(2, confirm);
 
             ItemStack item = listing.item.copy();
             long tax = Math.round(listing.price * EconomyConfig.get().taxRate);
-            item.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
+            item.set(DataComponents.LORE, new ItemLore(List.of(
                     createPriceLore(listing.price, tax),
-                    labeledValue("Seller", "you", LABEL_SECONDARY_COLOR),
+                    MenuUiSupport.labeledValue("Seller", "you", MenuUiSupport.LABEL_SECONDARY_COLOR),
                     Component.literal("This will remove the listing").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.RED)))));
             container.setItem(4, item);
 
             ItemStack cancel = new ItemStack(Items.RED_STAINED_GLASS_PANE);
-            cancel.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+            cancel.set(DataComponents.CUSTOM_NAME,
                     Component.literal("Cancel").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.DARK_RED)));
             container.setItem(6, cancel);
 
-            for (int i = 0; i < 9; i++) {
-                this.addSlot(new Slot(container, i, 8 + i * 18, 20) { @Override public boolean mayPickup(Player p) { return false; }});
+            for (Slot slot : MenuUiSupport.confirmRowSlots(container)) {
+                this.addSlot(slot);
             }
-
-            int y = 40;
-            for (int r = 0; r < 3; r++) {
-                for (int c = 0; c < 9; c++) {
-                    this.addSlot(new Slot(inv, c + r * 9 + 9, 8 + c * 18, y + r * 18));
-                }
-            }
-            for (int c = 0; c < 9; c++) {
-                this.addSlot(new Slot(inv, c, 8 + c * 18, y + 58));
+            for (Slot slot : MenuUiSupport.playerInventorySlots(inv, 40)) {
+                this.addSlot(slot);
             }
         }
 

@@ -10,7 +10,6 @@ import com.reazip.economycraft.util.IdentifierCompat;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
-
 import java.util.UUID;
 
 /** Listing for one item in the shop. */
@@ -50,7 +49,7 @@ public class ShopListing {
 
             if (rl != null) {
                 java.util.Optional<Item> opt = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, rl);
-                opt.ifPresent(item -> l.item = new ItemStack(item, count)); // directly set l.item
+                opt.ifPresent(item -> l.item = new ItemStack(item, count));
             }
         }
         return l;

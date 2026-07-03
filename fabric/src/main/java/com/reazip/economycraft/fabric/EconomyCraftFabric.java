@@ -12,11 +12,8 @@ public final class EconomyCraftFabric implements ModInitializer {
         EconomyCraft.registerEvents();
 
         ServerLivingEntityEvents.AFTER_DEATH.register((entity, damageSource) -> {
-            if (!(entity instanceof ServerPlayer victim)) return;
-
-            var src = damageSource.getEntity();
-            if (src instanceof ServerPlayer killer) {
-                EconomyCraft.getManager(victim.level().getServer()).handlePvpKill(victim, killer);
+            if (entity instanceof ServerPlayer victim) {
+                EconomyCraft.tryHandlePvpKill(victim, damageSource.getEntity());
             }
         });
     }

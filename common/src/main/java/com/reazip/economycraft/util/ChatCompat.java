@@ -1,9 +1,11 @@
 package com.reazip.economycraft.util;
 
+import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import com.reazip.economycraft.util.PermissionCompat;
+import org.slf4j.Logger;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -14,6 +16,8 @@ import java.lang.reflect.Modifier;
  * Creates RUN_COMMAND ClickEvents across mapping/API changes.
  */
 public final class ChatCompat {
+    private static final Logger LOGGER = LogUtils.getLogger();
+
     private ChatCompat() {}
 
     // ---- Caches (filled lazily on first use) --------------------------------
@@ -42,8 +46,8 @@ public final class ChatCompat {
                     return ce;
                 }
             }
-        } catch (Throwable ignored) {
-            System.out.println("[EC-CC] f1");
+        } catch (Throwable t) {
+            LOGGER.debug("[ChatCompat] Static factory ClickEvent strategy failed", t);
         }
 
         // B) Ctor with Action enum
@@ -62,8 +66,8 @@ public final class ChatCompat {
                     }
                 }
             }
-        } catch (Throwable ignored) {
-            System.out.println("[EC-CC] f2");
+        } catch (Throwable t) {
+            LOGGER.debug("[ChatCompat] Action-enum constructor ClickEvent strategy failed", t);
         }
 
         // C) Nested-class fallback
@@ -80,8 +84,8 @@ public final class ChatCompat {
                     return ce;
                 }
             }
-        } catch (Throwable ignored) {
-            System.out.println("[EC-CC] f3");
+        } catch (Throwable t) {
+            LOGGER.debug("[ChatCompat] Nested-class ClickEvent strategy failed", t);
         }
 
         return null;
@@ -109,8 +113,8 @@ public final class ChatCompat {
             srv.getCommands().performPrefixedCommand(
                     PermissionCompat.withOwnerPermission(srv.createCommandSourceStack()),
                     line);
-        } catch (Throwable ignored) {
-            System.out.println("[EC-CC] tw");
+        } catch (Throwable t) {
+            LOGGER.debug("[ChatCompat] Tellraw fallback failed", t);
         }
     }
 
@@ -173,8 +177,8 @@ public final class ChatCompat {
                         }
                     } catch (NoSuchMethodException ignored) { /* no-op */ } catch (Throwable ignored) { /* no-op */ }
                 }
-            } catch (Throwable ignored) {
-                System.out.println("[EC-CC] sc");
+            } catch (Throwable t) {
+                LOGGER.debug("[ChatCompat] Reflective scan for ClickEvent shape failed", t);
             } finally {
                 scanned = true;
             }
@@ -189,8 +193,8 @@ public final class ChatCompat {
             for (Object c : constants) {
                 if (name.equalsIgnoreCase(String.valueOf(c))) return c;
             }
-        } catch (Throwable ignored) {
-            System.out.println("[EC-CC] ec");
+        } catch (Throwable t) {
+            LOGGER.debug("[ChatCompat] Enum constant lookup failed", t);
         }
         return null;
     }
@@ -211,13 +215,13 @@ public final class ChatCompat {
                     if (s.contains("run_command")) return true;
                 }
             }
-        } catch (Throwable ignored) {
-            System.out.println("[EC-CC] rc");
+        } catch (Throwable t) {
+            LOGGER.debug("[ChatCompat] RUN_COMMAND detection via accessor methods failed", t);
         }
         try {
             return String.valueOf(ce).toLowerCase().contains("run_command");
-        } catch (Throwable ignored) {
-            System.out.println("[EC-CC] rs");
+        } catch (Throwable t) {
+            LOGGER.debug("[ChatCompat] RUN_COMMAND detection via toString() failed", t);
             return false;
         }
     }

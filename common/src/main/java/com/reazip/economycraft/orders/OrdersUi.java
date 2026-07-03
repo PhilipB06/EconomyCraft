@@ -5,7 +5,7 @@ import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyManager;
 import com.reazip.economycraft.util.ChatCompat;
 import com.reazip.economycraft.util.IdentityCompat;
-import com.reazip.economycraft.util.ProfileComponentCompat;
+import com.reazip.economycraft.util.MenuUiSupport;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
@@ -30,12 +30,6 @@ import org.jetbrains.annotations.Nullable;
 
 public final class OrdersUi {
     private OrdersUi() {}
-    private static final ChatFormatting LABEL_PRIMARY_COLOR = ChatFormatting.GOLD;
-    private static final ChatFormatting LABEL_SECONDARY_COLOR = ChatFormatting.AQUA;
-    private static final ChatFormatting VALUE_COLOR = ChatFormatting.DARK_PURPLE;
-    private static final ChatFormatting BALANCE_NAME_COLOR = ChatFormatting.YELLOW;
-    private static final ChatFormatting BALANCE_LABEL_COLOR = ChatFormatting.GOLD;
-    private static final ChatFormatting BALANCE_VALUE_COLOR = ChatFormatting.DARK_PURPLE;
 
     public static void open(ServerPlayer player, EconomyManager eco) {
         Component title = Component.literal("Orders");
@@ -47,11 +41,7 @@ public final class OrdersUi {
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                try {
-                    return new RequestMenu(id, inv, eco.getOrders(), eco, player);
-                } catch (Exception e) {
-                    throw e;
-                }
+                return new RequestMenu(id, inv, eco.getOrders(), eco, player);
             }
         });
     }
@@ -61,34 +51,7 @@ public final class OrdersUi {
         if (tax > 0) {
             value.append(" (-").append(EconomyCraft.formatMoney(tax)).append(" tax)");
         }
-        return labeledValue("Reward", value.toString(), LABEL_PRIMARY_COLOR);
-    }
-
-    private static ItemStack createBalanceItem(EconomyManager eco, UUID playerId, @Nullable ServerPlayer player, @Nullable String name) {
-        ItemStack head = new ItemStack(Items.PLAYER_HEAD);
-        var profile = player != null
-                ? ProfileComponentCompat.tryResolvedOrUnresolved(player.getGameProfile())
-                : ProfileComponentCompat.tryUnresolved(name != null && !name.isBlank() ? name : playerId.toString());
-        profile.ifPresent(resolvable -> head.set(DataComponents.PROFILE, resolvable));
-        long balance = eco.getBalance(playerId, true);
-        String displayName = name != null ? name : playerId.toString();
-        head.set(DataComponents.CUSTOM_NAME, Component.literal(displayName).withStyle(s -> s.withItalic(false).withColor(BALANCE_NAME_COLOR)));
-        head.set(DataComponents.LORE, new ItemLore(List.of(balanceLore(balance))));
-        return head;
-    }
-
-    private static Component balanceLore(long balance) {
-        return Component.literal("Balance: ")
-                .withStyle(s -> s.withItalic(false).withColor(BALANCE_LABEL_COLOR))
-                .append(Component.literal(EconomyCraft.formatMoney(balance))
-                        .withStyle(s -> s.withItalic(false).withColor(BALANCE_VALUE_COLOR)));
-    }
-
-    private static Component labeledValue(String label, String value, ChatFormatting labelColor) {
-        return Component.literal(label + ": ")
-                .withStyle(s -> s.withItalic(false).withColor(labelColor))
-                .append(Component.literal(value)
-                        .withStyle(s -> s.withItalic(false).withColor(VALUE_COLOR)));
+        return MenuUiSupport.labeledValue("Reward", value.toString(), MenuUiSupport.LABEL_PRIMARY_COLOR);
     }
 
     public static void openClaims(ServerPlayer player, EconomyManager eco) {
@@ -120,22 +83,11 @@ public final class OrdersUi {
             this.viewer = viewer;
             updatePage();
             orders.addListener(listener);
-            for (int i = 0; i < 54; i++) {
-                int r = i / 9;
-                int c = i % 9;
-                this.addSlot(new Slot(container, i, 8 + c * 18, 18 + r * 18) {
-                    @Override public boolean mayPickup(Player player) { return false; }
-                    @Override public boolean mayPlace(ItemStack stack) { return false; }
-                });
+            for (Slot slot : MenuUiSupport.readOnlyGridSlots(container, 54)) {
+                this.addSlot(slot);
             }
-            int y = 18 + 6 * 18 + 14;
-            for (int r = 0; r < 3; r++) {
-                for (int c = 0; c < 9; c++) {
-                    this.addSlot(new Slot(inv, c + r * 9 + 9, 8 + c * 18, y + r * 18));
-                }
-            }
-            for (int c = 0; c < 9; c++) {
-                this.addSlot(new Slot(inv, c, 8 + c * 18, y + 58));
+            for (Slot slot : MenuUiSupport.playerInventorySlots(inv, 18 + 6 * 18 + 14)) {
+                this.addSlot(slot);
             }
         }
 
@@ -154,20 +106,14 @@ public final class OrdersUi {
                 OrderRequest r = requests.get(index);
                 ItemStack display = r.item.copy();
 
-                String reqName;
-                ServerPlayer requesterPlayer = server.getPlayerList().getPlayer(r.requester);
-                if (requesterPlayer != null) {
-                    reqName = IdentityCompat.of(requesterPlayer).name();
-                } else {
-                    reqName = EconomyCraft.getManager(server).getBestName(r.requester);
-                }
+                String reqName = MenuUiSupport.resolvePlayerName(server, r.requester);
 
                 long tax = Math.round(r.price * EconomyConfig.get().taxRate);
-                display.set(net.minecraft.core.component.DataComponents.LORE,
-                        new net.minecraft.world.item.component.ItemLore(List.of(
+                display.set(DataComponents.LORE,
+                        new ItemLore(List.of(
                                 createRewardLore(r.price, tax),
-                                labeledValue("Amount", String.valueOf(r.amount), LABEL_PRIMARY_COLOR),
-                                labeledValue("Requester", reqName, LABEL_SECONDARY_COLOR)
+                                MenuUiSupport.labeledValue("Amount", String.valueOf(r.amount), MenuUiSupport.LABEL_PRIMARY_COLOR),
+                                MenuUiSupport.labeledValue("Requester", reqName, MenuUiSupport.LABEL_SECONDARY_COLOR)
                         )));
                 display.setCount(1);
                 container.setItem(i, display);
@@ -175,21 +121,21 @@ public final class OrdersUi {
 
             if (page > 0) {
                 ItemStack prev = new ItemStack(Items.ARROW);
-                prev.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Previous page").withStyle(s -> s.withItalic(false)));
+                prev.set(DataComponents.CUSTOM_NAME, Component.literal("Previous page").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 2, prev);
             }
 
             if (start + 45 < requests.size()) {
                 ItemStack next = new ItemStack(Items.ARROW);
-                next.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Next page").withStyle(s -> s.withItalic(false)));
+                next.set(DataComponents.CUSTOM_NAME, Component.literal("Next page").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 6, next);
             }
 
-            ItemStack balance = createBalanceItem(eco, viewer.getUUID(), viewer, IdentityCompat.of(viewer).name());
+            ItemStack balance = MenuUiSupport.createBalanceItem(eco, viewer.getUUID(), viewer, IdentityCompat.of(viewer).name());
             container.setItem(navRowStart, balance);
 
             ItemStack paper = new ItemStack(Items.PAPER);
-            paper.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+            paper.set(DataComponents.CUSTOM_NAME,
                     Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
             container.setItem(navRowStart + 4, paper);
         }
@@ -283,49 +229,34 @@ public final class OrdersUi {
             this.parent = parent;
 
             ItemStack confirm = new ItemStack(Items.LIME_STAINED_GLASS_PANE);
-            confirm.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+            confirm.set(DataComponents.CUSTOM_NAME,
                     Component.literal("Confirm").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.GREEN)));
             container.setItem(2, confirm);
 
             ItemStack item = req.item.copy();
             var server = parent.viewer.level().getServer();
 
-            String requesterName;
-            ServerPlayer requesterPlayer = server.getPlayerList().getPlayer(req.requester);
-            if (requesterPlayer != null) {
-                requesterName = IdentityCompat.of(requesterPlayer).name();
-            } else {
-                requesterName = EconomyCraft.getManager(server).getBestName(req.requester);
-            }
+            String requesterName = MenuUiSupport.resolvePlayerName(server, req.requester);
 
             long tax = Math.round(req.price * EconomyConfig.get().taxRate);
-            item.set(net.minecraft.core.component.DataComponents.LORE,
-                    new net.minecraft.world.item.component.ItemLore(List.of(
+            item.set(DataComponents.LORE,
+                    new ItemLore(List.of(
                             createRewardLore(req.price, tax),
-                            labeledValue("Amount", String.valueOf(req.amount), LABEL_PRIMARY_COLOR),
-                            labeledValue("Requester", requesterName, LABEL_SECONDARY_COLOR)
+                            MenuUiSupport.labeledValue("Amount", String.valueOf(req.amount), MenuUiSupport.LABEL_PRIMARY_COLOR),
+                            MenuUiSupport.labeledValue("Requester", requesterName, MenuUiSupport.LABEL_SECONDARY_COLOR)
                     )));
             container.setItem(4, item);
 
             ItemStack cancel = new ItemStack(Items.RED_STAINED_GLASS_PANE);
-            cancel.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+            cancel.set(DataComponents.CUSTOM_NAME,
                     Component.literal("Cancel").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.DARK_RED)));
             container.setItem(6, cancel);
 
-            for (int i = 0; i < 9; i++) {
-                this.addSlot(new Slot(container, i, 8 + i * 18, 20) {
-                    @Override public boolean mayPickup(Player p) { return false; }
-                });
+            for (Slot slot : MenuUiSupport.confirmRowSlots(container)) {
+                this.addSlot(slot);
             }
-
-            int y = 40;
-            for (int r = 0; r < 3; r++) {
-                for (int c = 0; c < 9; c++) {
-                    this.addSlot(new Slot(inv, c + r * 9 + 9, 8 + c * 18, y + r * 18));
-                }
-            }
-            for (int c = 0; c < 9; c++) {
-                this.addSlot(new Slot(inv, c, 8 + c * 18, y + 58));
+            for (Slot slot : MenuUiSupport.playerInventorySlots(inv, 40)) {
+                this.addSlot(slot);
             }
         }
 
@@ -360,13 +291,8 @@ public final class OrdersUi {
                                 remaining -= c;
                             }
 
-                            String requesterName;
                             ServerPlayer requesterPlayer = server.getPlayerList().getPlayer(current.requester);
-                            if (requesterPlayer != null) {
-                                requesterName = IdentityCompat.of(requesterPlayer).name();
-                            } else {
-                                requesterName = parent.eco.getBestName(current.requester);
-                            }
+                            String requesterName = MenuUiSupport.resolvePlayerName(server, current.requester);
 
                             serverPlayer.sendSystemMessage(
                                     Component.literal("Fulfilled request for " + current.amount + "x " +
@@ -430,35 +356,28 @@ public final class OrdersUi {
             this.parent = parent;
 
             ItemStack confirm = new ItemStack(Items.LIME_STAINED_GLASS_PANE);
-            confirm.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+            confirm.set(DataComponents.CUSTOM_NAME,
                     Component.literal("Confirm").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.GREEN)));
             container.setItem(2, confirm);
 
             ItemStack item = req.item.copy();
             long tax = Math.round(req.price * EconomyConfig.get().taxRate);
-            item.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(
+            item.set(DataComponents.LORE, new ItemLore(List.of(
                     createRewardLore(req.price, tax),
-                    labeledValue("Amount", String.valueOf(req.amount), LABEL_PRIMARY_COLOR),
+                    MenuUiSupport.labeledValue("Amount", String.valueOf(req.amount), MenuUiSupport.LABEL_PRIMARY_COLOR),
                     Component.literal("This will remove the request").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.RED)))));
             container.setItem(4, item);
 
             ItemStack cancel = new ItemStack(Items.RED_STAINED_GLASS_PANE);
-            cancel.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+            cancel.set(DataComponents.CUSTOM_NAME,
                     Component.literal("Cancel").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.DARK_RED)));
             container.setItem(6, cancel);
 
-            for (int i = 0; i < 9; i++) {
-                this.addSlot(new Slot(container, i, 8 + i * 18, 20) { @Override public boolean mayPickup(Player p) { return false; }});
+            for (Slot slot : MenuUiSupport.confirmRowSlots(container)) {
+                this.addSlot(slot);
             }
-
-            int y = 40;
-            for (int r = 0; r < 3; r++) {
-                for (int c = 0; c < 9; c++) {
-                    this.addSlot(new Slot(inv, c + r * 9 + 9, 8 + c * 18, y + r * 18));
-                }
-            }
-            for (int c = 0; c < 9; c++) {
-                this.addSlot(new Slot(inv, c, 8 + c * 18, y + 58));
+            for (Slot slot : MenuUiSupport.playerInventorySlots(inv, 40)) {
+                this.addSlot(slot);
             }
         }
 
@@ -515,14 +434,8 @@ public final class OrdersUi {
                     @Override public boolean mayPickup(Player player) { return idx < 45 && super.mayPickup(player); }
                 });
             }
-            int y = 18 + 6 * 18 + 14;
-            for (int r = 0; r < 3; r++) {
-                for (int c = 0; c < 9; c++) {
-                    this.addSlot(new Slot(inv, c + r * 9 + 9, 8 + c * 18, y + r * 18));
-                }
-            }
-            for (int c = 0; c < 9; c++) {
-                this.addSlot(new Slot(inv, c, 8 + c * 18, y + 58));
+            for (Slot slot : MenuUiSupport.playerInventorySlots(inv, 18 + 6 * 18 + 14)) {
+                this.addSlot(slot);
             }
         }
 
@@ -548,14 +461,9 @@ public final class OrdersUi {
                 next.set(DataComponents.CUSTOM_NAME, Component.literal("Next page").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 6, next);
             }
-            String name = null;
             ServerPlayer viewer = getViewer();
-            if (viewer != null) {
-                name = IdentityCompat.of(viewer).name();
-            } else {
-                name = eco.getBestName(owner);
-            }
-            ItemStack balance = createBalanceItem(eco, owner, viewer, name);
+            String name = MenuUiSupport.resolvePlayerName(eco.getServer(), owner);
+            ItemStack balance = MenuUiSupport.createBalanceItem(eco, owner, viewer, name);
             container.setItem(navRowStart, balance);
             ItemStack paper = new ItemStack(Items.PAPER);
             paper.set(DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));

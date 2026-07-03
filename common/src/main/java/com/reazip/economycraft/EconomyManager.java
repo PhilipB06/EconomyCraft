@@ -2,13 +2,17 @@ package com.reazip.economycraft;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import com.reazip.economycraft.orders.OrderManager;
+import com.reazip.economycraft.shop.ShopManager;
 import com.reazip.economycraft.util.IdentityCompat;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.scores.DisplaySlot;
 import net.minecraft.world.scores.Objective;
 import net.minecraft.world.scores.Scoreboard;
+import net.minecraft.world.scores.ScoreHolder;
 import net.minecraft.world.scores.criteria.ObjectiveCriteria;
 import org.jetbrains.annotations.Nullable;
 
@@ -23,6 +27,8 @@ public class EconomyManager {
     private static final Gson GSON = new Gson();
     private static final Type TYPE = new TypeToken<Map<UUID, Long>>(){}.getType();
     private static final Type DAILY_SELL_TYPE = new TypeToken<Map<UUID, DailySellData>>(){}.getType();
+    private static final String ECO_BALANCE_OBJECTIVE = "eco_balance";
+    private static final int LEADERBOARD_SIZE = 5;
 
     private final MinecraftServer server;
     private final Path file;
@@ -36,8 +42,8 @@ public class EconomyManager {
     private final PriceRegistry prices;
 
     private Objective objective;
-    private final com.reazip.economycraft.shop.ShopManager shop;
-    private final com.reazip.economycraft.orders.OrderManager orders;
+    private final ShopManager shop;
+    private final OrderManager orders;
     private final Set<UUID> displayed = new HashSet<>();
 
     public static final long MAX = 999_999_999L;
@@ -56,8 +62,8 @@ public class EconomyManager {
         loadDaily();
         loadDailySells();
 
-        this.shop = new com.reazip.economycraft.shop.ShopManager(server);
-        this.orders = new com.reazip.economycraft.orders.OrderManager(server);
+        this.shop = new ShopManager(server);
+        this.orders = new OrderManager(server);
 
         applyScoreboardSettingOnStartup();
         this.prices = new PriceRegistry(server);
@@ -240,7 +246,7 @@ public class EconomyManager {
 
         board.setDisplayObjective(DisplaySlot.SIDEBAR, null);
 
-        Objective existing = board.getObjective("eco_balance");
+        Objective existing = board.getObjective(ECO_BALANCE_OBJECTIVE);
         if (existing != null) {
             board.removeObjective(existing);
         }
@@ -249,19 +255,23 @@ public class EconomyManager {
         displayed.clear();
     }
 
+    private Objective createBalanceObjective(Scoreboard board) {
+        return board.addObjective(
+                ECO_BALANCE_OBJECTIVE,
+                ObjectiveCriteria.DUMMY,
+                Component.literal("Balance"),
+                ObjectiveCriteria.RenderType.INTEGER,
+                true,
+                null
+        );
+    }
+
     private void setupObjective() {
         Scoreboard board = server.getScoreboard();
-        objective = board.getObjective("eco_balance");
+        objective = board.getObjective(ECO_BALANCE_OBJECTIVE);
 
         if (objective == null) {
-            objective = board.addObjective(
-                    "eco_balance",
-                    ObjectiveCriteria.DUMMY,
-                    Component.literal("Balance"),
-                    ObjectiveCriteria.RenderType.INTEGER,
-                    true,
-                    null
-            );
+            objective = createBalanceObjective(board);
         }
         board.setDisplayObjective(DisplaySlot.SIDEBAR, objective);
         updateLeaderboard();
@@ -280,14 +290,7 @@ public class EconomyManager {
         Scoreboard board = server.getScoreboard();
         if (objective != null) board.removeObjective(objective);
 
-        objective = board.addObjective(
-                "eco_balance",
-                ObjectiveCriteria.DUMMY,
-                Component.literal("Balance"),
-                ObjectiveCriteria.RenderType.INTEGER,
-                true,
-                null
-        );
+        objective = createBalanceObjective(board);
         board.setDisplayObjective(DisplaySlot.SIDEBAR, objective);
         displayed.clear();
 
@@ -304,11 +307,11 @@ public class EconomyManager {
             return a.getKey().compareTo(b.getKey());
         });
 
-        for (var e : sorted.stream().limit(5).toList()) {
+        for (var e : sorted.stream().limit(LEADERBOARD_SIZE).toList()) {
             UUID id = e.getKey();
             String name = resolveName(server, id);
             board.getOrCreatePlayerScore(
-                    net.minecraft.world.scores.ScoreHolder.forNameOnly(name),
+                    ScoreHolder.forNameOnly(name),
                     objective
             ).set(e.getValue().intValue());
             displayed.add(id);
@@ -337,11 +340,11 @@ public class EconomyManager {
     // === Misc ============================================================
     // =====================================================================
 
-    public com.reazip.economycraft.shop.ShopManager getShop() {
+    public ShopManager getShop() {
         return shop;
     }
 
-    public com.reazip.economycraft.orders.OrderManager getOrders() {
+    public OrderManager getOrders() {
         return orders;
     }
 
@@ -417,11 +420,11 @@ public class EconomyManager {
 
         victim.sendSystemMessage(Component.literal(
                 "You lost " + EconomyCraft.formatMoney(loss) + " for being killed by " + killer.getName().getString())
-                .withStyle(net.minecraft.ChatFormatting.RED));
+                .withStyle(ChatFormatting.RED));
 
         killer.sendSystemMessage(Component.literal(
                 "You received " + EconomyCraft.formatMoney(loss) + " for killing " + victim.getName().getString())
-                .withStyle(net.minecraft.ChatFormatting.GREEN));
+                .withStyle(ChatFormatting.GREEN));
     }
 
     private long clamp(long value) {

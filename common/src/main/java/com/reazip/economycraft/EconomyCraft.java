@@ -9,6 +9,7 @@ import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 
 import java.text.NumberFormat;
 import java.util.Locale;
@@ -67,6 +68,13 @@ public final class EconomyCraft {
             lastServer = server;
         }
         return manager;
+    }
+
+    /** Applies PVP balance loss if the damage source was another player. */
+    public static void tryHandlePvpKill(ServerPlayer victim, Entity damageSource) {
+        if (damageSource instanceof ServerPlayer killer) {
+            getManager(victim.level().getServer()).handlePvpKill(victim, killer);
+        }
     }
 
     public static Component createBalanceTitle(String baseTitle, ServerPlayer player) {

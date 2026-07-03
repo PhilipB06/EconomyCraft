@@ -9,3 +9,5 @@
 /neoforge/build/
 /.architectury-transformer/
 /local_servers/
+**/bin/
+/.vscode/

@@ -8,11 +8,14 @@ import com.reazip.economycraft.util.ChatCompat;
 import com.reazip.economycraft.util.IdentifierCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -24,6 +27,7 @@ import static net.minecraft.commands.Commands.literal;
 public final class SellCommand {
     private static final Map<UUID, PendingSale> PENDING = new HashMap<>();
     private static final long CONFIRM_EXPIRY_MS = 20_000L;
+    private static final int MAIN_INVENTORY_SLOTS = 36;
 
     private SellCommand() {}
 
@@ -37,15 +41,21 @@ public final class SellCommand {
                 .executes(ctx -> sellMainHand(ctx, -1));
     }
 
-    private static int sellMainHand(CommandContext<CommandSourceStack> ctx, int amount) {
+    /** Holding item + price validation shared by sellMainHand and previewSellAll. */
+    private record SellContext(CommandSourceStack source, ServerPlayer player, ItemStack hand,
+                                EconomyManager manager, PriceRegistry prices,
+                                ResolvedPrice resolved, long unitSell) {}
+
+    @Nullable
+    private static SellContext validateSellable(CommandContext<CommandSourceStack> ctx) {
         CommandSourceStack source = ctx.getSource();
         ServerPlayer player = getPlayer(source);
-        if (player == null) return 0;
+        if (player == null) return null;
 
         ItemStack hand = player.getMainHandItem();
         if (hand.isEmpty()) {
             source.sendFailure(Component.literal("You are not holding any item.").withStyle(ChatFormatting.RED));
-            return 0;
+            return null;
         }
 
         EconomyManager manager = EconomyCraft.getManager(source.getServer());
@@ -55,18 +65,29 @@ public final class SellCommand {
         Long unitSell = prices.getUnitSell(hand);
         if (resolved == null || unitSell == null) {
             source.sendFailure(Component.literal("This item cannot be sold.").withStyle(ChatFormatting.RED));
-            return 0;
+            return null;
         }
 
         if (prices.isSellBlockedByDamage(hand)) {
             source.sendFailure(Component.literal("Damaged items cannot be sold.").withStyle(ChatFormatting.RED));
-            return 0;
+            return null;
         }
 
         if (prices.isSellBlockedByContents(hand)) {
             source.sendFailure(Component.literal("Items with contents cannot be sold.").withStyle(ChatFormatting.RED));
-            return 0;
+            return null;
         }
+
+        return new SellContext(source, player, hand, manager, prices, resolved, unitSell);
+    }
+
+    private static int sellMainHand(CommandContext<CommandSourceStack> ctx, int amount) {
+        SellContext sc = validateSellable(ctx);
+        if (sc == null) return 0;
+        CommandSourceStack source = sc.source();
+        ServerPlayer player = sc.player();
+        ItemStack hand = sc.hand();
+        EconomyManager manager = sc.manager();
 
         int available = hand.getCount();
         int toSell = amount < 0 ? available : amount;
@@ -76,7 +97,7 @@ public final class SellCommand {
         }
 
         String itemName = hand.getHoverName().getString();
-        Long total = safeMultiply(unitSell, toSell);
+        Long total = safeMultiply(sc.unitSell(), toSell);
         if (total == null) {
             source.sendFailure(Component.literal("Sale amount is too large.").withStyle(ChatFormatting.RED));
             return 0;
@@ -88,7 +109,7 @@ public final class SellCommand {
 
         hand.shrink(toSell);
         if (hand.isEmpty()) {
-            player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+            player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
         }
 
         manager.addMoney(player.getUUID(), total);
@@ -100,49 +121,27 @@ public final class SellCommand {
     }
 
     private static int previewSellAll(CommandContext<CommandSourceStack> ctx) {
-        CommandSourceStack source = ctx.getSource();
-        ServerPlayer player = getPlayer(source);
-        if (player == null) return 0;
+        SellContext sc = validateSellable(ctx);
+        if (sc == null) return 0;
+        CommandSourceStack source = sc.source();
+        ServerPlayer player = sc.player();
+        ItemStack hand = sc.hand();
+        PriceRegistry prices = sc.prices();
 
-        ItemStack hand = player.getMainHandItem();
-        if (hand.isEmpty()) {
-            source.sendFailure(Component.literal("You are not holding any item.").withStyle(ChatFormatting.RED));
-            return 0;
-        }
-
-        EconomyManager manager = EconomyCraft.getManager(source.getServer());
-        PriceRegistry prices = manager.getPrices();
-        ResolvedPrice resolved = prices.resolve(hand);
-        Long unitSell = prices.getUnitSell(hand);
-        if (resolved == null || unitSell == null) {
-            source.sendFailure(Component.literal("This item cannot be sold.").withStyle(ChatFormatting.RED));
-            return 0;
-        }
-
-        if (prices.isSellBlockedByDamage(hand)) {
-            source.sendFailure(Component.literal("Damaged items cannot be sold.").withStyle(ChatFormatting.RED));
-            return 0;
-        }
-
-        if (prices.isSellBlockedByContents(hand)) {
-            source.sendFailure(Component.literal("Items with contents cannot be sold.").withStyle(ChatFormatting.RED));
-            return 0;
-        }
-
-        int totalCount = countMatchingSellable(player, prices, resolved.key());
+        int totalCount = countMatchingSellable(player, prices, sc.resolved().key());
         if (totalCount <= 0) {
             source.sendFailure(Component.literal("This item cannot be sold.").withStyle(ChatFormatting.RED));
             return 0;
         }
 
-        Long total = safeMultiply(unitSell, totalCount);
+        Long total = safeMultiply(sc.unitSell(), totalCount);
         if (total == null) {
             source.sendFailure(Component.literal("Sale amount is too large.").withStyle(ChatFormatting.RED));
             return 0;
         }
 
-        IdentifierCompat.Id heldItemId = IdentifierCompat.wrap(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(hand.getItem()));
-        PENDING.put(player.getUUID(), new PendingSale(resolved.key(), totalCount, total,
+        IdentifierCompat.Id heldItemId = IdentifierCompat.wrap(BuiltInRegistries.ITEM.getKey(hand.getItem()));
+        PENDING.put(player.getUUID(), new PendingSale(sc.resolved().key(), totalCount, total,
                 System.currentTimeMillis() + CONFIRM_EXPIRY_MS, heldItemId));
 
         String itemName = hand.getHoverName().getString();
@@ -185,7 +184,7 @@ public final class SellCommand {
             return 0;
         }
 
-        IdentifierCompat.Id currentItemId = IdentifierCompat.wrap(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(hand.getItem()));
+        IdentifierCompat.Id currentItemId = IdentifierCompat.wrap(BuiltInRegistries.ITEM.getKey(hand.getItem()));
         if (!currentItemId.equals(pending.heldItemId())) {
             source.sendFailure(Component.literal("Held item changed. Run /sell all again.").withStyle(ChatFormatting.RED));
             PENDING.remove(player.getUUID());
@@ -230,7 +229,7 @@ public final class SellCommand {
     private static int countMatchingSellable(ServerPlayer player, PriceRegistry prices, IdentifierCompat.Id key) {
         var inv = player.getInventory();
         int total = 0;
-        for (int i = 0; i < 36; i++) {
+        for (int i = 0; i < MAIN_INVENTORY_SLOTS; i++) {
             ItemStack stack = inv.getItem(i);
             if (isMatchingSellable(prices, stack, key)) {
                 total += stack.getCount();
@@ -247,7 +246,7 @@ public final class SellCommand {
     private static void removeMatching(ServerPlayer player, PriceRegistry prices, IdentifierCompat.Id key, int toRemove) {
         var inv = player.getInventory();
         int remaining = toRemove;
-        for (int i = 0; i < 36; i++) {
+        for (int i = 0; i < MAIN_INVENTORY_SLOTS; i++) {
             ItemStack stack = inv.getItem(i);
             remaining = drainStack(prices, stack, key, remaining);
             if (stack.isEmpty()) {
@@ -259,7 +258,7 @@ public final class SellCommand {
         ItemStack offhand = player.getOffhandItem();
         remaining = drainStack(prices, offhand, key, remaining);
         if (offhand.isEmpty()) {
-            player.setItemInHand(net.minecraft.world.InteractionHand.OFF_HAND, ItemStack.EMPTY);
+            player.setItemInHand(InteractionHand.OFF_HAND, ItemStack.EMPTY);
         }
     }
 

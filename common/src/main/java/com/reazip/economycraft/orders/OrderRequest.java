@@ -7,9 +7,10 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.RegistryOps;
 import com.reazip.economycraft.util.IdentifierCompat;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
-
+import java.util.Optional;
 import java.util.UUID;
 
 public class OrderRequest {
@@ -44,7 +45,7 @@ public class OrderRequest {
             String itemId = obj.get("item").getAsString();
             IdentifierCompat.Id rl = IdentifierCompat.tryParse(itemId);
             if (rl != null) {
-                java.util.Optional<net.minecraft.world.item.Item> opt = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, rl);
+                Optional<Item> opt = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, rl);
                 opt.ifPresent(item -> r.item = new ItemStack(item));
             }
         }

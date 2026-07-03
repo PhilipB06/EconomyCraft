@@ -5,8 +5,7 @@ import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyManager;
 import com.reazip.economycraft.PriceRegistry;
 import com.reazip.economycraft.util.ChatCompat;
-import com.reazip.economycraft.util.IdentityCompat;
-import com.reazip.economycraft.util.ProfileComponentCompat;
+import com.reazip.economycraft.util.MenuUiSupport;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
@@ -49,12 +48,6 @@ public final class ServerShopUi {
             .withStyle(ChatFormatting.YELLOW);
     private static final Map<String, IdentifierCompat.Id> CATEGORY_ICONS = buildCategoryIcons();
     private static final List<Integer> STAR_SLOT_ORDER = buildStarSlotOrder(5);
-    private static final ChatFormatting LABEL_PRIMARY_COLOR = ChatFormatting.GOLD;
-    private static final ChatFormatting LABEL_SECONDARY_COLOR = ChatFormatting.AQUA;
-    private static final ChatFormatting VALUE_COLOR = ChatFormatting.DARK_PURPLE;
-    private static final ChatFormatting BALANCE_NAME_COLOR = ChatFormatting.YELLOW;
-    private static final ChatFormatting BALANCE_LABEL_COLOR = ChatFormatting.GOLD;
-    private static final ChatFormatting BALANCE_VALUE_COLOR = ChatFormatting.DARK_PURPLE;
 
     private ServerShopUi() {}
 
@@ -94,11 +87,7 @@ public final class ServerShopUi {
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                try {
-                    return new CategoryMenu(id, inv, eco, player);
-                } catch (Exception e) {
-                    throw e;
-                }
+                return new CategoryMenu(id, inv, eco, player);
             }
         });
     }
@@ -114,11 +103,7 @@ public final class ServerShopUi {
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                try {
-                    return new SubcategoryMenu(id, inv, eco, topCategory, player);
-                } catch (Exception e) {
-                    throw e;
-                }
+                return new SubcategoryMenu(id, inv, eco, topCategory, player);
             }
         });
     }
@@ -143,11 +128,7 @@ public final class ServerShopUi {
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                try {
-                    return new ItemMenu(id, inv, eco, category, player);
-                } catch (Exception e) {
-                    throw e;
-                }
+                return new ItemMenu(id, inv, eco, category, player);
             }
         });
     }
@@ -195,22 +176,11 @@ public final class ServerShopUi {
         }
 
         private void setupSlots(Inventory inv) {
-            for (int i = 0; i < 54; i++) {
-                int r = i / 9;
-                int c = i % 9;
-                this.addSlot(new Slot(container, i, 8 + c * 18, 18 + r * 18) {
-                    @Override public boolean mayPickup(Player player) { return false; }
-                    @Override public boolean mayPlace(ItemStack stack) { return false; }
-                });
+            for (Slot slot : MenuUiSupport.readOnlyGridSlots(container, 54)) {
+                this.addSlot(slot);
             }
-            int y = 18 + 6 * 18 + 14;
-            for (int r = 0; r < 3; r++) {
-                for (int c = 0; c < 9; c++) {
-                    this.addSlot(new Slot(inv, c + r * 9 + 9, 8 + c * 18, y + r * 18));
-                }
-            }
-            for (int c = 0; c < 9; c++) {
-                this.addSlot(new Slot(inv, c, 8 + c * 18, y + 58));
+            for (Slot slot : MenuUiSupport.playerInventorySlots(inv, 18 + 6 * 18 + 14)) {
+                this.addSlot(slot);
             }
         }
 
@@ -249,7 +219,7 @@ public final class ServerShopUi {
                 container.setItem(navRowStart + 5, next);
             }
 
-            ItemStack balance = createBalanceItem(viewer);
+            ItemStack balance = MenuUiSupport.createBalanceItem(viewer);
             container.setItem(navRowStart, balance);
 
             ItemStack paper = new ItemStack(Items.PAPER);
@@ -320,22 +290,11 @@ public final class ServerShopUi {
         }
 
         private void setupSlots(Inventory inv) {
-            for (int i = 0; i < rows * 9; i++) {
-                int r = i / 9;
-                int c = i % 9;
-                this.addSlot(new Slot(container, i, 8 + c * 18, 18 + r * 18) {
-                    @Override public boolean mayPickup(Player player) { return false; }
-                    @Override public boolean mayPlace(ItemStack stack) { return false; }
-                });
+            for (Slot slot : MenuUiSupport.readOnlyGridSlots(container, rows * 9)) {
+                this.addSlot(slot);
             }
-            int y = 18 + rows * 18 + 14;
-            for (int r = 0; r < 3; r++) {
-                for (int c = 0; c < 9; c++) {
-                    this.addSlot(new Slot(inv, c + r * 9 + 9, 8 + c * 18, y + r * 18));
-                }
-            }
-            for (int c = 0; c < 9; c++) {
-                this.addSlot(new Slot(inv, c, 8 + c * 18, y + 58));
+            for (Slot slot : MenuUiSupport.playerInventorySlots(inv, 18 + rows * 18 + 14)) {
+                this.addSlot(slot);
             }
         }
 
@@ -374,7 +333,7 @@ public final class ServerShopUi {
             back.set(DataComponents.CUSTOM_NAME, Component.literal("Back").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.DARK_RED).withBold(true)));
             container.setItem(navRowStart + 8, back);
 
-            ItemStack balance = createBalanceItem(viewer);
+            ItemStack balance = MenuUiSupport.createBalanceItem(viewer);
             container.setItem(navRowStart, balance);
 
             ItemStack paper = new ItemStack(Items.PAPER);
@@ -437,22 +396,11 @@ public final class ServerShopUi {
         }
 
         private void setupSlots(Inventory inv) {
-            for (int i = 0; i < rows * 9; i++) {
-                int r = i / 9;
-                int c = i % 9;
-                this.addSlot(new Slot(container, i, 8 + c * 18, 18 + r * 18) {
-                    @Override public boolean mayPickup(Player player) { return false; }
-                    @Override public boolean mayPlace(ItemStack stack) { return false; }
-                });
+            for (Slot slot : MenuUiSupport.readOnlyGridSlots(container, rows * 9)) {
+                this.addSlot(slot);
             }
-            int y = 18 + rows * 18 + 14;
-            for (int r = 0; r < 3; r++) {
-                for (int c = 0; c < 9; c++) {
-                    this.addSlot(new Slot(inv, c + r * 9 + 9, 8 + c * 18, y + r * 18));
-                }
-            }
-            for (int c = 0; c < 9; c++) {
-                this.addSlot(new Slot(inv, c, 8 + c * 18, y + 58));
+            for (Slot slot : MenuUiSupport.playerInventorySlots(inv, 18 + rows * 18 + 14)) {
+                this.addSlot(slot);
             }
         }
 
@@ -471,16 +419,16 @@ public final class ServerShopUi {
 
                 int stackSize = Math.max(1, entry.stack());
                 List<Component> lore = new ArrayList<>();
-                lore.add(labeledValue("Buy", EconomyCraft.formatMoney(entry.unitBuy()), LABEL_PRIMARY_COLOR));
+                lore.add(MenuUiSupport.labeledValue("Buy", EconomyCraft.formatMoney(entry.unitBuy()), MenuUiSupport.LABEL_PRIMARY_COLOR));
 
                 Long stackPrice = safeMultiply(entry.unitBuy(), stackSize);
                 if (stackSize > 1 && stackPrice != null) {
-                    lore.add(labeledValue("Stack (" + stackSize + ")", EconomyCraft.formatMoney(stackPrice), LABEL_PRIMARY_COLOR));
+                    lore.add(MenuUiSupport.labeledValue("Stack (" + stackSize + ")", EconomyCraft.formatMoney(stackPrice), MenuUiSupport.LABEL_PRIMARY_COLOR));
                 }
 
-                lore.add(labeledValue("Left click", "Buy 1", LABEL_SECONDARY_COLOR));
+                lore.add(MenuUiSupport.labeledValue("Left click", "Buy 1", MenuUiSupport.LABEL_SECONDARY_COLOR));
                 if (stackSize > 1) {
-                    lore.add(labeledValue("Shift-click", "Buy " + stackSize, LABEL_SECONDARY_COLOR));
+                    lore.add(MenuUiSupport.labeledValue("Shift-click", "Buy " + stackSize, MenuUiSupport.LABEL_SECONDARY_COLOR));
                 }
 
                 display.set(DataComponents.LORE, new ItemLore(lore));
@@ -504,7 +452,7 @@ public final class ServerShopUi {
             back.set(DataComponents.CUSTOM_NAME, Component.literal("Back").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.DARK_RED).withBold(true)));
             container.setItem(navRowStart + 8, back);
 
-            ItemStack balance = createBalanceItem(viewer);
+            ItemStack balance = MenuUiSupport.createBalanceItem(viewer);
             container.setItem(navRowStart, balance);
 
             ItemStack paper = new ItemStack(Items.PAPER);
@@ -630,7 +578,7 @@ public final class ServerShopUi {
         if (iconId != null) {
             Optional<?> item = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, iconId);
             if (item.isPresent()) {
-                Item resolved = resolveItemValue(item.get(), iconId, "category icon");
+                Item resolved = resolveItemValue(item.get());
                 if (resolved != null) {
                     return new ItemStack(resolved);
                 }
@@ -795,64 +743,13 @@ public final class ServerShopUi {
         return Math.min(6, Math.max(2, contentRows + 1));
     }
 
-    private static Component labeledValue(String label, String value, ChatFormatting labelColor) {
-        return Component.literal(label + ": ")
-                .withStyle(s -> s.withItalic(false).withColor(labelColor))
-                .append(Component.literal(value)
-                        .withStyle(s -> s.withItalic(false).withColor(VALUE_COLOR)));
-    }
-
-    private static Component balanceLore(long balance) {
-        return Component.literal("Balance: ")
-                .withStyle(s -> s.withItalic(false).withColor(BALANCE_LABEL_COLOR))
-                .append(Component.literal(EconomyCraft.formatMoney(balance))
-                        .withStyle(s -> s.withItalic(false).withColor(BALANCE_VALUE_COLOR)));
-    }
-
-    private static ItemStack createBalanceItem(ServerPlayer player) {
-        ItemStack head = new ItemStack(Items.PLAYER_HEAD);
-        ProfileComponentCompat.tryResolvedOrUnresolved(player.getGameProfile()).ifPresent(resolvable ->
-                head.set(DataComponents.PROFILE, resolvable));
-        long balance = EconomyCraft.getManager(player.level().getServer()).getBalance(player.getUUID(), true);
-        String name = IdentityCompat.of(player).name();
-        head.set(DataComponents.CUSTOM_NAME, Component.literal(name).withStyle(s -> s.withItalic(false).withColor(BALANCE_NAME_COLOR)));
-        head.set(DataComponents.LORE, new ItemLore(List.of(balanceLore(balance))));
-        return head;
-    }
-
-    private static List<Integer> buildStarSlotOrder() {
-        int width = 9;
-        int height = 5;
-        int centerX = (width - 1) / 2;
-        int centerY = (height - 1) / 2;
-        List<int[]> entries = new ArrayList<>();
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                int idx = y * width + x;
-                double dx = x - centerX;
-                double dy = y - centerY;
-                double dist = Math.sqrt(dx * dx + dy * dy);
-                entries.add(new int[]{idx, (int) (dist * 1000), y, x});
-            }
-        }
-
-        entries.sort(Comparator
-                .comparingInt((int[] a) -> a[1])
-                .thenComparingInt(a -> a[2])
-                .thenComparingInt(a -> a[3]));
-
-        List<Integer> order = new ArrayList<>(entries.size());
-        for (int[] e : entries) order.add(e[0]);
-        return order;
-    }
-
     private static ItemStack createDisplayStack(PriceRegistry.PriceEntry entry, ServerPlayer viewer) {
         try {
             IdentifierCompat.Id id = entry.id();
 
             Optional<?> item = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, id);
             if (item.isPresent()) {
-                Item resolved = resolveItemValue(item.get(), id, "display stack");
+                Item resolved = resolveItemValue(item.get());
                 if (resolved != null && resolved != Items.AIR) {
                     return new ItemStack(resolved);
                 }
@@ -968,14 +865,14 @@ public final class ServerShopUi {
         Optional<?> potion = IdentifierCompat.registryGetOptional(BuiltInRegistries.POTION, potionId);
         if (potion.isEmpty()) return ItemStack.EMPTY;
 
-        Holder<Potion> holder = resolvePotionHolder(potion.get(), potionId);
+        Holder<Potion> holder = resolvePotionHolder(potion.get());
         if (holder == null) {
             return ItemStack.EMPTY;
         }
         return PotionContents.createItemStack(baseItem, holder);
     }
 
-    private static Item resolveItemValue(Object value, IdentifierCompat.Id id, String context) {
+    private static Item resolveItemValue(Object value) {
         if (value instanceof Item resolved) {
             return resolved;
         }
@@ -990,7 +887,7 @@ public final class ServerShopUi {
     }
 
     @SuppressWarnings("unchecked")
-    private static Holder<Potion> resolvePotionHolder(Object value, IdentifierCompat.Id id) {
+    private static Holder<Potion> resolvePotionHolder(Object value) {
         if (value instanceof Potion potion) {
             return BuiltInRegistries.POTION.wrapAsHolder(potion);
         }
