@@ -228,7 +228,7 @@ public final class OrdersUi {
             this.request = req;
             this.parent = parent;
 
-            ItemStack confirm = new ItemStack(Items.LIME_STAINED_GLASS_PANE);
+            ItemStack confirm = new ItemStack(Items.STAINED_GLASS_PANE.lime());
             confirm.set(DataComponents.CUSTOM_NAME,
                     Component.literal("Confirm").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.GREEN)));
             container.setItem(2, confirm);
@@ -247,7 +247,7 @@ public final class OrdersUi {
                     )));
             container.setItem(4, item);
 
-            ItemStack cancel = new ItemStack(Items.RED_STAINED_GLASS_PANE);
+            ItemStack cancel = new ItemStack(Items.STAINED_GLASS_PANE.red());
             cancel.set(DataComponents.CUSTOM_NAME,
                     Component.literal("Cancel").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.DARK_RED)));
             container.setItem(6, cancel);
@@ -355,7 +355,7 @@ public final class OrdersUi {
             this.request = req;
             this.parent = parent;
 
-            ItemStack confirm = new ItemStack(Items.LIME_STAINED_GLASS_PANE);
+            ItemStack confirm = new ItemStack(Items.STAINED_GLASS_PANE.lime());
             confirm.set(DataComponents.CUSTOM_NAME,
                     Component.literal("Confirm").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.GREEN)));
             container.setItem(2, confirm);
@@ -368,7 +368,7 @@ public final class OrdersUi {
                     Component.literal("This will remove the request").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.RED)))));
             container.setItem(4, item);
 
-            ItemStack cancel = new ItemStack(Items.RED_STAINED_GLASS_PANE);
+            ItemStack cancel = new ItemStack(Items.STAINED_GLASS_PANE.red());
             cancel.set(DataComponents.CUSTOM_NAME,
                     Component.literal("Cancel").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.DARK_RED)));
             container.setItem(6, cancel);

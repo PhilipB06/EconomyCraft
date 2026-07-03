@@ -718,7 +718,7 @@ public final class ServerShopUi {
     }
 
     private static void fillEmptyWithPanes(SimpleContainer container, int limit) {
-        ItemStack filler = new ItemStack(Items.GRAY_STAINED_GLASS_PANE);
+        ItemStack filler = new ItemStack(Items.STAINED_GLASS_PANE.gray());
         filler.set(DataComponents.CUSTOM_NAME, Component.literal(" "));
         for (int i = 0; i < limit && i < container.getContainerSize(); i++) {
             if (container.getItem(i).isEmpty()) {

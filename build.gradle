@@ -64,12 +64,12 @@ subprojects {
             def mcLo = "${major}.${minor}"
             def mcHi = "${major}.${minor + 1}"
 
-            def nfLo = (rootProject.findProperty("neoforge_line_lo") ?: "26.1").toString()
-            def nfHi = (rootProject.findProperty("neoforge_line_hi") ?: "26.2").toString()
+            def nfLo = (rootProject.findProperty("neoforge_line_lo") ?: "26.2").toString()
+            def nfHi = (rootProject.findProperty("neoforge_line_hi") ?: "26.3").toString()
 
             def archVer = (rootProject.findProperty("architectury_version_plain")
                     ?: project.findProperty("architectury_version_plain")
-                    ?: "20.0.7").toString()
+                    ?: "21.0.2").toString()
 
             inputs.property "mcLo", mcLo
             inputs.property "mcHi", mcHi
@@ -111,7 +111,7 @@ ext.mcTaskVer = { String v ->
 
 // ---- BUILD TARGETS
 ext.mcTargets = [
-        [ mc: "26.1.2", fabricApi: "0.154.0+26.1.2", architecturyVer: "20.0.7", neoforge: "26.1.2.76", neoforgeLineLo: "26.1", neoforgeLineHi: "26.2" ],
+        [ mc: "26.2", fabricApi: "0.154.0+26.2", architecturyVer: "21.0.2", neoforge: "26.2.0.7-beta", neoforgeLineLo: "26.2", neoforgeLineHi: "26.3" ],
 ]
 
 // ---- Build per version via external gradlew
