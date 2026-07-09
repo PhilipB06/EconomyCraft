@@ -2195,6 +2195,12 @@
     "unit_buy": 110,
     "unit_sell": 33
   },
+  "minecraft:music_disc_bounce": {
+    "category": "discs",
+    "stack": 1,
+    "unit_buy": 130,
+    "unit_sell": 39
+  },
   "minecraft:music_disc_cat": {
     "category": "discs",
     "stack": 1,
@@ -5369,6 +5375,12 @@
     "unit_buy": 0,
     "unit_sell": 450
   },
+  "minecraft:respawn_anchor": {
+    "category": "blocks.nether",
+    "stack": 64,
+    "unit_buy": 204,
+    "unit_sell": 61
+  },
   "minecraft:basalt": {
     "category": "blocks.nether",
     "stack": 64,
@@ -6503,6 +6515,12 @@
     "unit_buy": 2,
     "unit_sell": 1
   },
+  "minecraft:golden_dandelion": {
+    "category": "plants",
+    "stack": 64,
+    "unit_buy": 55,
+    "unit_sell": 17
+  },
   "minecraft:lilac": {
     "category": "plants",
     "stack": 64,
@@ -7583,6 +7601,84 @@
     "unit_buy": 2,
     "unit_sell": 1
   },
+  "minecraft:chiseled_cinnabar": {
+    "category": "blocks.stones",
+    "stack": 64,
+    "unit_buy": 10,
+    "unit_sell": 3
+  },
+  "minecraft:cinnabar": {
+    "category": "blocks.stones",
+    "stack": 64,
+    "unit_buy": 10,
+    "unit_sell": 3
+  },
+  "minecraft:cinnabar_brick_slab": {
+    "category": "blocks.stones",
+    "stack": 64,
+    "unit_buy": 5,
+    "unit_sell": 2
+  },
+  "minecraft:cinnabar_brick_stairs": {
+    "category": "blocks.stones",
+    "stack": 64,
+    "unit_buy": 15,
+    "unit_sell": 5
+  },
+  "minecraft:cinnabar_brick_wall": {
+    "category": "blocks.stones",
+    "stack": 64,
+    "unit_buy": 10,
+    "unit_sell": 3
+  },
+  "minecraft:cinnabar_bricks": {
+    "category": "blocks.stones",
+    "stack": 64,
+    "unit_buy": 10,
+    "unit_sell": 3
+  },
+  "minecraft:cinnabar_slab": {
+    "category": "blocks.stones",
+    "stack": 64,
+    "unit_buy": 5,
+    "unit_sell": 2
+  },
+  "minecraft:cinnabar_stairs": {
+    "category": "blocks.stones",
+    "stack": 64,
+    "unit_buy": 15,
+    "unit_sell": 5
+  },
+  "minecraft:cinnabar_wall": {
+    "category": "blocks.stones",
+    "stack": 64,
+    "unit_buy": 10,
+    "unit_sell": 3
+  },
+  "minecraft:polished_cinnabar": {
+    "category": "blocks.stones",
+    "stack": 64,
+    "unit_buy": 10,
+    "unit_sell": 3
+  },
+  "minecraft:polished_cinnabar_slab": {
+    "category": "blocks.stones",
+    "stack": 64,
+    "unit_buy": 5,
+    "unit_sell": 2
+  },
+  "minecraft:polished_cinnabar_stairs": {
+    "category": "blocks.stones",
+    "stack": 64,
+    "unit_buy": 15,
+    "unit_sell": 5
+  },
+  "minecraft:polished_cinnabar_wall": {
+    "category": "blocks.stones",
+    "stack": 64,
+    "unit_buy": 10,
+    "unit_sell": 3
+  },
   "minecraft:chiseled_deepslate": {
     "category": "blocks.stones",
     "stack": 64,
@@ -7846,6 +7942,96 @@
     "stack": 64,
     "unit_buy": 4,
     "unit_sell": 1
+  },
+  "minecraft:chiseled_sulfur": {
+    "category": "blocks.stones",
+    "stack": 64,
+    "unit_buy": 10,
+    "unit_sell": 3
+  },
+  "minecraft:polished_sulfur": {
+    "category": "blocks.stones",
+    "stack": 64,
+    "unit_buy": 10,
+    "unit_sell": 3
+  },
+  "minecraft:polished_sulfur_slab": {
+    "category": "blocks.stones",
+    "stack": 64,
+    "unit_buy": 5,
+    "unit_sell": 2
+  },
+  "minecraft:polished_sulfur_stairs": {
+    "category": "blocks.stones",
+    "stack": 64,
+    "unit_buy": 15,
+    "unit_sell": 5
+  },
+  "minecraft:polished_sulfur_wall": {
+    "category": "blocks.stones",
+    "stack": 64,
+    "unit_buy": 10,
+    "unit_sell": 3
+  },
+  "minecraft:potent_sulfur": {
+    "category": "blocks.stones",
+    "stack": 64,
+    "unit_buy": 90,
+    "unit_sell": 27
+  },
+  "minecraft:sulfur": {
+    "category": "blocks.stones",
+    "stack": 64,
+    "unit_buy": 10,
+    "unit_sell": 3
+  },
+  "minecraft:sulfur_brick_slab": {
+    "category": "blocks.stones",
+    "stack": 64,
+    "unit_buy": 5,
+    "unit_sell": 2
+  },
+  "minecraft:sulfur_brick_stairs": {
+    "category": "blocks.stones",
+    "stack": 64,
+    "unit_buy": 15,
+    "unit_sell": 5
+  },
+  "minecraft:sulfur_brick_wall": {
+    "category": "blocks.stones",
+    "stack": 64,
+    "unit_buy": 10,
+    "unit_sell": 3
+  },
+  "minecraft:sulfur_bricks": {
+    "category": "blocks.stones",
+    "stack": 64,
+    "unit_buy": 10,
+    "unit_sell": 3
+  },
+  "minecraft:sulfur_slab": {
+    "category": "blocks.stones",
+    "stack": 64,
+    "unit_buy": 5,
+    "unit_sell": 2
+  },
+  "minecraft:sulfur_spike": {
+    "category": "blocks.stones",
+    "stack": 64,
+    "unit_buy": 3,
+    "unit_sell": 1
+  },
+  "minecraft:sulfur_stairs": {
+    "category": "blocks.stones",
+    "stack": 64,
+    "unit_buy": 15,
+    "unit_sell": 5
+  },
+  "minecraft:sulfur_wall": {
+    "category": "blocks.stones",
+    "stack": 64,
+    "unit_buy": 10,
+    "unit_sell": 3
   },
   "minecraft:chiseled_tuff": {
     "category": "blocks.stones",
@@ -8452,6 +8638,12 @@
     "stack": 16,
     "unit_buy": 45,
     "unit_sell": 14
+  },
+  "minecraft:sulfur_cube_bucket": {
+    "category": "utility",
+    "stack": 1,
+    "unit_buy": 80,
+    "unit_sell": 24
   },
   "minecraft:bundle": {
     "category": "utility",
