@@ -791,7 +791,7 @@
     "unit_buy": 6,
     "unit_sell": 2
   },
-  "minecraft:potion_of_wind_charging_1": {
+  "minecraft:potion_of_wind_charged_1": {
     "category": "brewing",
     "stack": 1,
     "unit_buy": 28,
@@ -1049,7 +1049,7 @@
     "unit_buy": 0,
     "unit_sell": 7
   },
-  "minecraft:lingering_potion_of_wind_charging_1": {
+  "minecraft:lingering_potion_of_wind_charged_1": {
     "category": "brewing",
     "stack": 1,
     "unit_buy": 0,
@@ -1301,7 +1301,7 @@
     "unit_buy": 0,
     "unit_sell": 3
   },
-  "minecraft:splash_potion_of_wind_charging_1": {
+  "minecraft:splash_potion_of_wind_charged_1": {
     "category": "brewing",
     "stack": 1,
     "unit_buy": 0,
@@ -1547,7 +1547,7 @@
     "unit_buy": 0,
     "unit_sell": 2
   },
-  "minecraft:arrow_of_wind_charging_1": {
+  "minecraft:arrow_of_wind_charged_1": {
     "category": "brewing",
     "stack": 1,
     "unit_buy": 0,

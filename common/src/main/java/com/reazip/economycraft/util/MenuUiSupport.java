@@ -5,6 +5,7 @@ import com.reazip.economycraft.EconomyManager;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
@@ -21,10 +22,8 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Shared building blocks for the shop/orders/server-shop container menus
- * (label formatting, the balance-head item, player-name resolution, the
- * standard slot grid). ShopUi, OrdersUi and ServerShopUi previously carried
- * byte-identical copies of all of this.
+ * Shared building blocks for the shop/orders/server-shop container menus: label formatting,
+ * the balance-head item, player-name resolution, and the standard slot grid.
  */
 public final class MenuUiSupport {
     private MenuUiSupport() {}
@@ -42,10 +41,29 @@ public final class MenuUiSupport {
     private static final int CONFIRM_ROW_Y = 20;
 
     public static Component labeledValue(String label, String value, ChatFormatting labelColor) {
-        return Component.literal(label + ": ")
-                .withStyle(s -> s.withItalic(false).withColor(labelColor))
-                .append(Component.literal(value)
-                        .withStyle(s -> s.withItalic(false).withColor(VALUE_COLOR)));
+        return labeledValues(label, labelColor, value);
+    }
+
+    /** One label followed by several values joined by a gray " | " (e.g. "Stack (64): $128 | $64"). */
+    public static Component labeledValues(String label, ChatFormatting labelColor, String... values) {
+        MutableComponent line = Component.literal(label + ": ").withStyle(s -> s.withItalic(false).withColor(labelColor));
+        for (int i = 0; i < values.length; i++) {
+            if (i > 0) {
+                line.append(Component.literal(" | ").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.DARK_GRAY)));
+            }
+            line.append(Component.literal(values[i]).withStyle(s -> s.withItalic(false).withColor(VALUE_COLOR)));
+        }
+        return line;
+    }
+
+    /** Joins several lore parts onto one line, separated by " | ". */
+    public static Component joinLore(Component... parts) {
+        MutableComponent joined = parts[0].copy();
+        for (int i = 1; i < parts.length; i++) {
+            joined.append(Component.literal(" | ").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.DARK_GRAY)))
+                    .append(parts[i]);
+        }
+        return joined;
     }
 
     public static Component balanceLore(long balance) {

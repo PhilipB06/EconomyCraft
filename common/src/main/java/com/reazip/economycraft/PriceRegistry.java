@@ -271,6 +271,17 @@ public final class PriceRegistry {
         }
     }
 
+    /**
+     * Price ids not present in the bundled defaults. Stripped from an existing user prices.json
+     * on merge so these never linger as dead, unresolvable entries.
+     */
+    private static final Set<String> REMOVED_LEGACY_IDS = Set.of(
+            "minecraft:potion_of_wind_charging_1",
+            "minecraft:splash_potion_of_wind_charging_1",
+            "minecraft:lingering_potion_of_wind_charging_1",
+            "minecraft:arrow_of_wind_charging_1"
+    );
+
     private void mergeNewDefaultsFromBundledDefault() {
         JsonObject defaults = readBundledDefaultJson();
         if (defaults == null) {
@@ -289,6 +300,16 @@ public final class PriceRegistry {
             return;
         }
 
+        String before = GSON.toJson(userRoot);
+
+        int removed = 0;
+        for (String legacyId : REMOVED_LEGACY_IDS) {
+            if (userRoot.remove(legacyId) != null) removed++;
+        }
+
+        // Rebuild in the bundled default's key order so entries land in the same category-grouped
+        // position new installs get.
+        JsonObject merged = new JsonObject();
         int added = 0;
         for (Map.Entry<String, JsonElement> e : defaults.entrySet()) {
             String key = e.getKey();
@@ -298,16 +319,28 @@ public final class PriceRegistry {
                 continue;
             }
 
-            if (!userRoot.has(key)) {
+            if (userRoot.has(key)) {
+                merged.add(key, userRoot.get(key));
+            } else {
                 JsonElement value = e.getValue();
-                userRoot.add(key, value == null ? null : value.deepCopy());
+                merged.add(key, value == null ? null : value.deepCopy());
                 added++;
             }
         }
 
-        if (added > 0) {
+        // Preserve any entries the user added beyond the bundled defaults (custom items), appended
+        // after the default-ordered block in their existing relative order.
+        for (Map.Entry<String, JsonElement> e : userRoot.entrySet()) {
+            if (!merged.has(e.getKey())) {
+                merged.add(e.getKey(), e.getValue());
+            }
+        }
+
+        String after = GSON.toJson(merged);
+        if (!after.equals(before)) {
             try {
-                Files.writeString(file, GSON.toJson(userRoot), StandardCharsets.UTF_8);
+                Files.writeString(file, after, StandardCharsets.UTF_8);
+                LOGGER.info("[EconomyCraft] prices.json synced with bundled defaults ({} added, {} legacy removed).", added, removed);
             } catch (IOException ex) {
                 LOGGER.error("[EconomyCraft] Failed to write merged prices.json at {}", file, ex);
             }

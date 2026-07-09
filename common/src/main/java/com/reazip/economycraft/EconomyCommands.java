@@ -1,6 +1,7 @@
 package com.reazip.economycraft;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -50,7 +51,7 @@ public final class EconomyCommands {
 
         dispatcher.register(buildBalance().requires(s -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(buildPay().requires(s -> EconomyConfig.get().standaloneCommands));
-        dispatcher.register(SellCommand.register().requires(s -> EconomyConfig.get().standaloneCommands));
+        dispatcher.register(SellCommand.register().requires(s -> EconomyConfig.get().standaloneCommands && EconomyConfig.get().sellEnabled));
         dispatcher.register(buildShop().requires(s -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(buildOrders().requires(s -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(buildDaily().requires(s -> EconomyConfig.get().standaloneCommands));
@@ -109,7 +110,7 @@ public final class EconomyCommands {
 
         root.then(buildBalance());
         root.then(buildPay());
-        root.then(SellCommand.register());
+        root.then(SellCommand.register().requires(s -> EconomyConfig.get().sellEnabled));
         root.then(buildShop());
         root.then(buildOrders());
         root.then(buildDaily());
@@ -148,13 +149,22 @@ public final class EconomyCommands {
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildPay() {
+        String payUsage = "/pay <player> <amount>";
         return literal("pay")
+                .executes(ctx -> usage(ctx.getSource(), payUsage))
                 .then(argument("player", StringArgumentType.word())
                         .suggests((ctx, builder) -> suggestPlayers(ctx.getSource(), builder))
+                        .executes(ctx -> usage(ctx.getSource(), payUsage))
                         .then(argument("amount", LongArgumentType.longArg(1, EconomyManager.MAX))
                                 .executes(ctx -> pay(ctx.getSource().getPlayerOrException(),
                                         StringArgumentType.getString(ctx, "player"),
                                         LongArgumentType.getLong(ctx, "amount"), ctx.getSource()))));
+    }
+
+    /** Sends a short usage hint instead of Brigadier's default argument-missing error. */
+    private static int usage(CommandSourceStack source, String usage) {
+        source.sendFailure(Component.literal("Usage: " + usage).withStyle(ChatFormatting.RED));
+        return 0;
     }
 
     private static int showBalance(IdentityCompat.PlayerRef target, CommandSourceStack source) {
@@ -562,10 +572,16 @@ public final class EconomyCommands {
         return literal("shop")
                 .executes(ctx -> openShop(ctx.getSource().getPlayerOrException(), ctx.getSource()))
                 .then(literal("list")
+                        .executes(ctx -> usage(ctx.getSource(), "/shop list <price> [<amount>]"))
                         .then(argument("price", LongArgumentType.longArg(1, EconomyManager.MAX))
                                 .executes(ctx -> listItem(ctx.getSource().getPlayerOrException(),
-                                        LongArgumentType.getLong(ctx, "price"),
-                                        ctx.getSource()))));
+                                        LongArgumentType.getLong(ctx, "price"), -1,
+                                        ctx.getSource()))
+                                .then(argument("amount", IntegerArgumentType.integer(1))
+                                        .executes(ctx -> listItem(ctx.getSource().getPlayerOrException(),
+                                                LongArgumentType.getLong(ctx, "price"),
+                                                IntegerArgumentType.getInteger(ctx, "amount"),
+                                                ctx.getSource())))));
     }
 
     private static int openShop(ServerPlayer player, CommandSourceStack source) {
@@ -579,9 +595,16 @@ public final class EconomyCommands {
         }
     }
 
-    private static int listItem(ServerPlayer player, long price, CommandSourceStack source) {
-        if (player.getMainHandItem().isEmpty()) {
+    private static int listItem(ServerPlayer player, long price, int amount, CommandSourceStack source) {
+        ItemStack hand = player.getMainHandItem();
+        if (hand.isEmpty()) {
             source.sendFailure(Component.literal("Hold the item to list in your hand").withStyle(ChatFormatting.RED));
+            return 0;
+        }
+
+        int count = amount > 0 ? amount : Math.min(hand.getCount(), hand.getMaxStackSize());
+        if (count > hand.getCount()) {
+            source.sendFailure(Component.literal("You only have " + hand.getCount() + ".").withStyle(ChatFormatting.RED));
             return 0;
         }
 
@@ -589,9 +612,6 @@ public final class EconomyCommands {
         ShopListing listing = new ShopListing();
         listing.seller = player.getUUID();
         listing.price = price;
-
-        ItemStack hand = player.getMainHandItem();
-        int count = Math.min(hand.getCount(), hand.getMaxStackSize());
         listing.item = hand.copyWithCount(count);
         hand.shrink(count);
         shop.addListing(listing);
@@ -642,11 +662,15 @@ public final class EconomyCommands {
     // =====================================================================
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildOrders() {
+        String requestUsage = "/orders request <item> <amount> <price>";
         return literal("orders")
                 .executes(ctx -> openOrders(ctx.getSource().getPlayerOrException(), ctx.getSource()))
                 .then(literal("request")
+                        .executes(ctx -> usage(ctx.getSource(), requestUsage))
                         .then(argument("item", StringArgumentType.word())
+                                .executes(ctx -> usage(ctx.getSource(), requestUsage))
                                 .then(argument("amount", LongArgumentType.longArg(1, EconomyManager.MAX))
+                                        .executes(ctx -> usage(ctx.getSource(), requestUsage))
                                         .then(argument("price", LongArgumentType.longArg(1, EconomyManager.MAX))
                                                 .executes(ctx -> requestItem(ctx.getSource().getPlayerOrException(),
                                                         StringArgumentType.getString(ctx, "item"),

@@ -7,5 +7,6 @@
   "standalone_commands": true,
   "standalone_admin_commands": false,
   "scoreboard_enabled": true,
-  "server_shop_enabled": true
+  "server_shop_enabled": true,
+  "sell_enabled": true
 }

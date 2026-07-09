@@ -3,6 +3,7 @@ plugins {
 }
 
 def mcCoord = (rootProject.findProperty("minecraft_version") ?: rootProject.minecraft_version) as String
+def tgt     = rootProject.ext.resolveMcTarget(mcCoord)
 
 def platforms = (rootProject.findProperty("filter_platforms") ?: "fabric,neoforge")
         .split(",")
@@ -19,6 +20,8 @@ dependencies {
     // Fabric loader only for @Environment annotations
     implementation "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"
 
-    // Architectury API
-    implementation "dev.architectury:architectury:${rootProject.architectury_api_version}"
+    // Architectury API — resolved per MC target (same as the fabric/neoforge modules) so
+    // multi-version builds pull the matching architectury version instead of the
+    // gradle.properties fallback, which only fits the default target.
+    implementation "dev.architectury:architectury:${rootProject.findProperty('architectury_version_plain') ?: tgt.architecturyVer}"
 }

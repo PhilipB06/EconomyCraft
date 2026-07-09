@@ -3,11 +3,10 @@ package com.reazip.economycraft.orders;
 import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyManager;
-import com.reazip.economycraft.util.ChatCompat;
 import com.reazip.economycraft.util.IdentityCompat;
+import com.reazip.economycraft.util.ItemsCompat;
 import com.reazip.economycraft.util.MenuUiSupport;
 import net.minecraft.ChatFormatting;
-import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.level.ServerPlayer;
@@ -147,10 +146,14 @@ public final class OrdersUi {
                     int index = page * 45 + slot;
                     if (index < requests.size()) {
                         OrderRequest req = requests.get(index);
-                        if (req.requester.equals(player.getUUID())) {
-                            openRemove((ServerPlayer) player, req);
+                        ServerPlayer sp = (ServerPlayer) player;
+                        if (req.requester.equals(sp.getUUID())) {
+                            openRemove(sp, req);
+                        } else if (OrderFulfillment.countHeld(sp, req.item) <= 0) {
+                            sp.sendSystemMessage(Component.literal("You have no " + req.item.getHoverName().getString() +
+                                    " to fulfill this.").withStyle(ChatFormatting.RED));
                         } else {
-                            openConfirm((ServerPlayer) player, req);
+                            openConfirm(sp, req);
                         }
                         return;
                     }
@@ -159,28 +162,6 @@ public final class OrdersUi {
                 if (slot == navRowStart + 6 && (page + 1) * 45 < requests.size()) { page++; updatePage(); return; }
             }
             super.clicked(slot, dragType, type, player);
-        }
-
-        private boolean hasItems(ServerPlayer player, ItemStack proto, int amount) {
-            int total = 0;
-            for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
-                ItemStack s = player.getInventory().getItem(i);
-                if (s.is(proto.getItem())) total += s.getCount();
-            }
-            return total >= amount;
-        }
-
-        private void removeItems(ServerPlayer player, ItemStack proto, int amount) {
-            int remaining = amount;
-            for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
-                ItemStack s = player.getInventory().getItem(i);
-                if (s.is(proto.getItem())) {
-                    int take = Math.min(s.getCount(), remaining);
-                    s.shrink(take);
-                    remaining -= take;
-                    if (remaining <= 0) return;
-                }
-            }
         }
 
         private void openConfirm(ServerPlayer player, OrderRequest req) {
@@ -228,26 +209,32 @@ public final class OrdersUi {
             this.request = req;
             this.parent = parent;
 
-            ItemStack confirm = new ItemStack(Items.STAINED_GLASS_PANE.lime());
+            int give = Math.min(OrderFulfillment.countHeld(parent.viewer, req.item), req.amount);
+            boolean complete = give >= req.amount;
+            long payout = OrderFulfillment.payoutFor(req, give);
+
+            ItemStack confirm = new ItemStack(ItemsCompat.limeStainedGlassPane());
             confirm.set(DataComponents.CUSTOM_NAME,
-                    Component.literal("Confirm").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.GREEN)));
+                    Component.literal(complete ? "Fulfill completely" : "Fulfill partially")
+                            .withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.GREEN)));
+            confirm.set(DataComponents.LORE, new ItemLore(List.of(
+                    MenuUiSupport.labeledValue("Give", give + " of " + req.amount, MenuUiSupport.LABEL_PRIMARY_COLOR),
+                    MenuUiSupport.labeledValue("Earn", EconomyCraft.formatMoney(payout), MenuUiSupport.LABEL_PRIMARY_COLOR))));
             container.setItem(2, confirm);
 
             ItemStack item = req.item.copy();
             var server = parent.viewer.level().getServer();
-
             String requesterName = MenuUiSupport.resolvePlayerName(server, req.requester);
-
             long tax = Math.round(req.price * EconomyConfig.get().taxRate);
+            item.setCount(1);
             item.set(DataComponents.LORE,
                     new ItemLore(List.of(
                             createRewardLore(req.price, tax),
                             MenuUiSupport.labeledValue("Amount", String.valueOf(req.amount), MenuUiSupport.LABEL_PRIMARY_COLOR),
-                            MenuUiSupport.labeledValue("Requester", requesterName, MenuUiSupport.LABEL_SECONDARY_COLOR)
-                    )));
+                            MenuUiSupport.labeledValue("Requester", requesterName, MenuUiSupport.LABEL_SECONDARY_COLOR))));
             container.setItem(4, item);
 
-            ItemStack cancel = new ItemStack(Items.STAINED_GLASS_PANE.red());
+            ItemStack cancel = new ItemStack(ItemsCompat.redStainedGlassPane());
             cancel.set(DataComponents.CUSTOM_NAME,
                     Component.literal("Cancel").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.DARK_RED)));
             container.setItem(6, cancel);
@@ -264,69 +251,34 @@ public final class OrdersUi {
         public void clicked(int slot, int drag, ContainerInput type, Player player) {
             if (type == ContainerInput.PICKUP) {
                 if (slot == 2) {
-                    OrderRequest current = parent.orders.getRequest(request.id);
                     ServerPlayer serverPlayer = (ServerPlayer) player;
                     var server = serverPlayer.level().getServer();
 
+                    OrderRequest current = parent.orders.getRequest(request.id);
+                    int give = current == null ? 0 : Math.min(OrderFulfillment.countHeld(serverPlayer, current.item), current.amount);
                     if (current == null) {
                         serverPlayer.sendSystemMessage(Component.literal("Request no longer available").withStyle(ChatFormatting.RED));
-                    } else if (!parent.hasItems(serverPlayer, current.item, current.amount)) {
-                        serverPlayer.sendSystemMessage(Component.literal("Not enough items").withStyle(ChatFormatting.RED));
+                    } else if (give <= 0) {
+                        serverPlayer.sendSystemMessage(Component.literal("You have none to give").withStyle(ChatFormatting.RED));
                     } else {
-                        long cost = current.price;
-                        long bal = parent.eco.getBalance(current.requester, true);
-                        if (bal < cost) {
-                            serverPlayer.sendSystemMessage(Component.literal("Requester can't pay").withStyle(ChatFormatting.RED));
-                        } else {
-                            parent.removeItems(serverPlayer, current.item.copy(), current.amount);
-                            long tax = Math.round(cost * EconomyConfig.get().taxRate);
-                            parent.eco.removeMoney(current.requester, cost);
-                            parent.eco.addMoney(player.getUUID(), cost - tax);
-                            parent.orders.removeRequest(current.id);
-
-                            int remaining = current.amount;
-                            while (remaining > 0) {
-                                int c = Math.min(current.item.getMaxStackSize(), remaining);
-                                parent.orders.addDelivery(current.requester, new ItemStack(current.item.getItem(), c));
-                                remaining -= c;
+                        OrderFulfillment.Result result = OrderFulfillment.fulfill(parent.eco, serverPlayer, current.id, give);
+                        switch (result.status()) {
+                            case OK -> {
+                                String requesterName = MenuUiSupport.resolvePlayerName(server, result.requester());
+                                String extra = result.remaining() > 0 ? " (" + result.remaining() + " still wanted)" : "";
+                                serverPlayer.sendSystemMessage(
+                                        Component.literal("Fulfilled " + result.given() + "x " +
+                                                        result.item().getHoverName().getString() + " (" + requesterName + ") and earned " +
+                                                        EconomyCraft.formatMoney(result.payout()) + extra)
+                                                .withStyle(ChatFormatting.GREEN));
                             }
-
-                            ServerPlayer requesterPlayer = server.getPlayerList().getPlayer(current.requester);
-                            String requesterName = MenuUiSupport.resolvePlayerName(server, current.requester);
-
-                            serverPlayer.sendSystemMessage(
-                                    Component.literal("Fulfilled request for " + current.amount + "x " +
-                                                    current.item.getHoverName().getString() + " (" + requesterName + ")" +
-                                                    " and earned " + EconomyCraft.formatMoney(cost - tax))
-                                            .withStyle(ChatFormatting.GREEN)
-                            );
-
-                            if (requesterPlayer != null) {
-                                ClickEvent ev = ChatCompat.runCommandEvent("/eco orders claim");
-                                if (ev != null) {
-                                    Component msg = Component.literal("Your request for " + current.amount + "x " +
-                                                    current.item.getHoverName().getString() +
-                                                    " has been fulfilled: ")
-                                            .withStyle(ChatFormatting.YELLOW)
-                                            .append(Component.literal("[Claim]")
-                                                    .withStyle(s -> s.withUnderlined(true)
-                                                            .withColor(ChatFormatting.GREEN)
-                                                            .withClickEvent(ev)));
-                                    requesterPlayer.sendSystemMessage(msg);
-                                } else {
-                                    ChatCompat.sendRunCommandTellraw(
-                                            requesterPlayer,
-                                            "Your request for " + current.amount + "x " + current.item.getHoverName().getString() + " has been fulfilled: ",
-                                            "[Claim]",
-                                            "/eco orders claim"
-                                    );
-                                }
-                            }
-
-                            parent.requests.removeIf(r -> r.id == current.id);
-                            parent.updatePage();
+                            case REQUESTER_CANT_PAY -> serverPlayer.sendSystemMessage(Component.literal("Requester can't pay").withStyle(ChatFormatting.RED));
+                            case OWN_ORDER -> serverPlayer.sendSystemMessage(Component.literal("You cannot fulfill your own request").withStyle(ChatFormatting.RED));
+                            default -> serverPlayer.sendSystemMessage(Component.literal("Request no longer available").withStyle(ChatFormatting.RED));
                         }
                     }
+
+                    parent.updatePage();
                     player.closeContainer();
                     OrdersUi.open(serverPlayer, parent.eco);
                     return;
@@ -355,7 +307,7 @@ public final class OrdersUi {
             this.request = req;
             this.parent = parent;
 
-            ItemStack confirm = new ItemStack(Items.STAINED_GLASS_PANE.lime());
+            ItemStack confirm = new ItemStack(ItemsCompat.limeStainedGlassPane());
             confirm.set(DataComponents.CUSTOM_NAME,
                     Component.literal("Confirm").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.GREEN)));
             container.setItem(2, confirm);
@@ -368,7 +320,7 @@ public final class OrdersUi {
                     Component.literal("This will remove the request").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.RED)))));
             container.setItem(4, item);
 
-            ItemStack cancel = new ItemStack(Items.STAINED_GLASS_PANE.red());
+            ItemStack cancel = new ItemStack(ItemsCompat.redStainedGlassPane());
             cancel.set(DataComponents.CUSTOM_NAME,
                     Component.literal("Cancel").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.DARK_RED)));
             container.setItem(6, cancel);

@@ -4,6 +4,7 @@ import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyManager;
 import com.reazip.economycraft.util.ChatCompat;
+import com.reazip.economycraft.util.ItemsCompat;
 import com.reazip.economycraft.util.MenuUiSupport;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
@@ -70,6 +71,12 @@ public final class ShopUi {
                 return new RemoveMenu(id, inv, shop, listing, player);
             }
         });
+    }
+
+    /** Whether the player can cover the listing price plus tax (buyers pay price + tax). */
+    private static boolean canAfford(ServerPlayer player, long price) {
+        long total = price + Math.round(price * EconomyConfig.get().taxRate);
+        return EconomyCraft.getManager(player.level().getServer()).getBalance(player.getUUID(), true) >= total;
     }
 
     private static Component createPriceLore(long price, long tax) {
@@ -152,10 +159,13 @@ public final class ShopUi {
                     int index = page * 45 + slot;
                     if (index < listings.size()) {
                         ShopListing listing = listings.get(index);
-                        if (listing.seller.equals(player.getUUID())) {
-                            openRemove((ServerPlayer) player, shop, listing);
+                        ServerPlayer sp = (ServerPlayer) player;
+                        if (listing.seller.equals(sp.getUUID())) {
+                            openRemove(sp, shop, listing);
+                        } else if (!canAfford(sp, listing.price)) {
+                            sp.sendSystemMessage(Component.literal("Not enough balance").withStyle(ChatFormatting.RED));
                         } else {
-                            ShopUi.openConfirm((ServerPlayer) player, shop, listing);
+                            ShopUi.openConfirm(sp, shop, listing);
                         }
                         return;
                     }
@@ -191,7 +201,7 @@ public final class ShopUi {
             this.listing = listing;
             this.viewer = viewer;
 
-            ItemStack confirm = new ItemStack(Items.STAINED_GLASS_PANE.lime());
+            ItemStack confirm = new ItemStack(ItemsCompat.limeStainedGlassPane());
             confirm.set(DataComponents.CUSTOM_NAME,
                     Component.literal("Confirm").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.GREEN)));
             container.setItem(2, confirm);
@@ -205,7 +215,7 @@ public final class ShopUi {
                     MenuUiSupport.labeledValue("Seller", sellerName, MenuUiSupport.LABEL_SECONDARY_COLOR))));
             container.setItem(4, item);
 
-            ItemStack cancel = new ItemStack(Items.STAINED_GLASS_PANE.red());
+            ItemStack cancel = new ItemStack(ItemsCompat.redStainedGlassPane());
             cancel.set(DataComponents.CUSTOM_NAME,
                     Component.literal("Cancel").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.DARK_RED)));
             container.setItem(6, cancel);
@@ -307,7 +317,7 @@ public final class ShopUi {
             this.listing = listing;
             this.viewer = viewer;
 
-            ItemStack confirm = new ItemStack(Items.STAINED_GLASS_PANE.lime());
+            ItemStack confirm = new ItemStack(ItemsCompat.limeStainedGlassPane());
             confirm.set(DataComponents.CUSTOM_NAME,
                     Component.literal("Confirm").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.GREEN)));
             container.setItem(2, confirm);
@@ -320,7 +330,7 @@ public final class ShopUi {
                     Component.literal("This will remove the listing").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.RED)))));
             container.setItem(4, item);
 
-            ItemStack cancel = new ItemStack(Items.STAINED_GLASS_PANE.red());
+            ItemStack cancel = new ItemStack(ItemsCompat.redStainedGlassPane());
             cancel.set(DataComponents.CUSTOM_NAME,
                     Component.literal("Cancel").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.DARK_RED)));
             container.setItem(6, cancel);

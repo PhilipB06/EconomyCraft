@@ -1,7 +1,7 @@
 # EconomyCraft
 
 EconomyCraft provides a simple server-side cross-platform economy system for Fabric and NeoForge servers.  
-The mod requires Architectury API and targets **Minecraft 1.21.x**.
+The mod requires Architectury API and targets **Minecraft 26.1.2 and 26.2**.
 
 ---
 
@@ -11,10 +11,10 @@ The mod requires Architectury API and targets **Minecraft 1.21.x**.
 - `/pay <player> <amount>` - Transfer money to another player.
 - `/daily` - Claim a daily login bonus.
 - `/shop` - Player-driven marketplace where players list items for sale.
-  - `list <price>` - List the item in your hand.
-- `/servershop` - Server-managed shop with unlimited supply. Prices can be edited in config/prices.json.
-- `/sell [<amount>|all]` - Sell the item in your hand. Use `all` to sell all matching items from your inventory.
-- `/orders` - Request-based trading system.
+  - `list <price> [<amount>]` - List the item in your hand. Omit `<amount>` to list up to a full stack.
+- `/servershop` - Server-managed shop with unlimited supply. Prices can be edited in config/prices.json. Left click to buy, right click to sell (shift for a stack). 
+- `/sell [<amount>|all|everything]` - Sell the item in your hand. Use `all` to sell all matching items from your inventory, or `everything` to sell your entire inventory. 
+- `/orders` - Request-based trading system. Click a request to fulfill it fully/partially.
   - `request <item> <amount> <price>` - Create an item request.
   - `claim` - Claim items bought or requested while offline.
 
@@ -46,7 +46,8 @@ Configuration and player data are stored in `config/economycraft/`.
   "standalone_commands": true,
   "standalone_admin_commands": false,
   "scoreboard_enabled": true,
-  "server_shop_enabled": true
+  "server_shop_enabled": true,
+  "sell_enabled": true
 }
 ```
 
@@ -59,6 +60,7 @@ Configuration and player data are stored in `config/economycraft/`.
 - `standalone_admin_commands` - enable standalone `/addmoney`, `/setmoney`, etc. Default: `false`.
 - `scoreboard_enabled` - show the balance sidebar by default. Can be toggled with `/eco toggleScoreboard`. Default: `true`.
 - `server_shop_enabled` - enables the server shop (`/servershop` and `/eco servershop`). Default: `true`.
+- `sell_enabled` - enables the `/sell` command (selling farmed items directly to the server). Set to `false` to steer players toward supply-driven trading via `/shop` and `/orders`. Default: `true`.
 
 
 ---

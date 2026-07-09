@@ -110,13 +110,29 @@ ext.mcTaskVer = { String v ->
 }
 
 // ---- BUILD TARGETS
+// One entry per supported Minecraft version. Each drives a generated set of
+// build/deploy/run tasks (buildFabric_<v>, buildAndCopyFabricJars_<v>, runLocalFabric_<v>, ...).
 ext.mcTargets = [
+        [ mc: "26.1.2", fabricApi: "0.154.0+26.1.2", architecturyVer: "20.0.7", neoforge: "26.1.2.76", neoforgeLineLo: "26.1", neoforgeLineHi: "26.2" ],
         [ mc: "26.2", fabricApi: "0.154.0+26.2", architecturyVer: "21.0.2", neoforge: "26.2.0.7-beta", neoforgeLineLo: "26.2", neoforgeLineHi: "26.3" ],
 ]
 
 // ---- Build per version via external gradlew
+// On Windows a .bat cannot be launched directly by Exec/ProcessBuilder ("A problem occurred
+// starting process"), and `cmd /c` will not resolve a bare name from the working dir, so the
+// wrapper must be referenced by absolute path.
 import org.gradle.internal.os.OperatingSystem
-def gradleWrapper = OperatingSystem.current().isWindows() ? "gradlew.bat" : "./gradlew"
+def gradleWrapperCmd = OperatingSystem.current().isWindows()
+        ? ["cmd", "/c", new File(rootProject.projectDir, "gradlew.bat").absolutePath]
+        : [new File(rootProject.projectDir, "gradlew").absolutePath]
+
+// Minecraft 26.x server classes are compiled for Java 25 (class-file version 69). Launch the
+// local dev servers with the provisioned JDK 25 toolchain rather than a bare `java`, whose
+// version depends on the (Gradle daemon's) PATH and may be an older JDK.
+apply plugin: "jvm-toolchains"
+def serverJavaLauncher = javaToolchains.launcherFor {
+    languageVersion = JavaLanguageVersion.of(25)
+}
 
 ext.mcTargets.each { t ->
     def mcTask = ext.mcTaskVer(t.mc)
@@ -124,13 +140,14 @@ ext.mcTargets.each { t ->
     // Fabric only
     def buildFabricTask = tasks.register("buildFabric_${mcTask}", Exec) {
         workingDir rootProject.projectDir
-        commandLine gradleWrapper,
+        commandLine(gradleWrapperCmd + [
                 "--no-daemon",
                 "-Pfilter_platforms=fabric",
                 "-Pminecraft_version=${t.mc}",
                 "-Pfabric_api_version=${t.fabricApi}",
                 "-Parchitectury_version_plain=${t.architecturyVer}",
                 ":fabric:clean", ":fabric:build"
+        ])
     }
 
     tasks.register("buildAndCopyFabricJars_${mcTask}") {
@@ -184,14 +201,17 @@ ext.mcTargets.each { t ->
         dependsOn "buildAndCopyFabricJars_${mcTask}"
 
         workingDir "$rootProject.projectDir/local_servers/fabric/${t.mc}"
-        // java -Xmx4G -jar fabric-server-launch.jar nogui
-        commandLine "java", "-Xmx4G", "-jar", "fabric-server-launch.jar", "nogui"
+        args "-Xmx4G", "-jar", "fabric-server-launch.jar", "nogui"
+        // MC 26.x needs Java 25 — use the toolchain JDK, not a PATH-dependent `java`.
+        doFirst {
+            executable serverJavaLauncher.get().executablePath.asFile.absolutePath
+        }
     }
 
     // NeoForge only
     def buildNeoForgeTask = tasks.register("buildNeoForge_${mcTask}", Exec) {
         workingDir rootProject.projectDir
-        commandLine gradleWrapper,
+        commandLine(gradleWrapperCmd + [
                 "--no-daemon",
                 "-Pfilter_platforms=neoforge",
                 "-Pminecraft_version=${t.mc}",
@@ -200,6 +220,7 @@ ext.mcTargets.each { t ->
                 "-Pneoforge_line_lo=${t.neoforgeLineLo}",
                 "-Pneoforge_line_hi=${t.neoforgeLineHi}",
                 ":neoforge:clean", ":neoforge:build"
+        ])
     }
 
     tasks.register("buildAndCopyNeoForgeJars_${mcTask}") {
@@ -252,14 +273,21 @@ ext.mcTargets.each { t ->
         description = "Build, deploy and run local NeoForge server for MC ${t.mc}"
         dependsOn "buildAndCopyNeoForgeJars_${mcTask}"
 
-        workingDir "$rootProject.projectDir/local_servers/neoforge/${t.mc}"
+        def serverDir = file("$rootProject.projectDir/local_servers/neoforge/${t.mc}")
+        workingDir serverDir
 
+        // Reference the launch script by absolute path (cmd /c will not resolve a bare name from
+        // the working dir on this setup, same as the wrapper above).
         if (OperatingSystem.current().isWindows()) {
-            // cmd /c run.bat
-            commandLine "cmd", "/c", "run.bat"
+            commandLine "cmd", "/c", new File(serverDir, "run.bat").absolutePath
         } else {
-            // bash run.sh
-            commandLine "bash", "run.sh"
+            commandLine "bash", new File(serverDir, "run.sh").absolutePath
+        }
+        // run.bat / run.sh invoke a bare `java`; put the Java 25 toolchain first on PATH so the
+        // MC 26.x (Java 25) server classes load.
+        doFirst {
+            def javaBin = serverJavaLauncher.get().executablePath.asFile.parentFile.absolutePath
+            environment "PATH", javaBin + File.pathSeparator + (System.getenv("PATH") ?: "")
         }
     }
 }

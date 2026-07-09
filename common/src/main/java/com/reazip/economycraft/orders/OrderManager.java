@@ -54,6 +54,15 @@ public class OrderManager {
         return r;
     }
 
+    /**
+     * Persists and broadcasts an in-place change to an existing request (e.g. a partial
+     * fulfillment reducing its outstanding amount/price), refreshing any open orders view.
+     */
+    public void markChanged() {
+        deliveries.notifyListeners();
+        save();
+    }
+
     public void addDelivery(UUID player, ItemStack stack) {
         deliveries.add(player, stack);
         save();

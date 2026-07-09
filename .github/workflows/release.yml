@@ -17,18 +17,8 @@ jobs:
       matrix:
         platform: [fabric, neoforge]
         mc_game:
-          - "1.21"
-          - "1.21.1"
-          - "1.21.2"
-          - "1.21.3"
-          - "1.21.4"
-          - "1.21.5"
-          - "1.21.6"
-          - "1.21.7"
-          - "1.21.8"
-          - "1.21.9"
-          - "1.21.10"
-          - "1.21.11"
+          - "26.1.2"
+          - "26.2"
 
     steps:
       - uses: actions/checkout@v4
@@ -88,7 +78,7 @@ jobs:
       # -------------------------
       #     NEOFORGE BUILDS
       # -------------------------
-      - name: Publish NeoForge 1.21
+      - name: Publish NeoForge 26.1.2
         uses: Kir-Antipov/mc-publish@v3.3
         with:
           modrinth-id: H4o5bO7g
@@ -96,16 +86,16 @@ jobs:
           modrinth-token: ${{ secrets.MODRINTH_PERSONAL_ACCESS_TOKEN }}
           curseforge-token: ${{ secrets.CURSEFORGE_PERSONAL_ACCESS_TOKEN }}
           version: ${{ inputs.release_version }}
-          name: EconomyCraft ${{ inputs.release_version }} - NeoForge - 1.21
+          name: EconomyCraft ${{ inputs.release_version }} - NeoForge - 26.1.2
           version-type: release
           changelog-file: CHANGELOG.md
-          game-versions: 1.21
+          game-versions: 26.1.2
           dependencies: |
             architectury-api | depends
           files: |
-            artifacts/neoforge-1.21/*.jar
+            artifacts/neoforge-26.1.2/*.jar
 
-      - name: Publish NeoForge 1.21.1
+      - name: Publish NeoForge 26.2
         uses: Kir-Antipov/mc-publish@v3.3
         with:
           modrinth-id: H4o5bO7g
@@ -113,189 +103,19 @@ jobs:
           modrinth-token: ${{ secrets.MODRINTH_PERSONAL_ACCESS_TOKEN }}
           curseforge-token: ${{ secrets.CURSEFORGE_PERSONAL_ACCESS_TOKEN }}
           version: ${{ inputs.release_version }}
-          name: EconomyCraft ${{ inputs.release_version }} - NeoForge - 1.21.1
+          name: EconomyCraft ${{ inputs.release_version }} - NeoForge - 26.2
           version-type: release
           changelog-file: CHANGELOG.md
-          game-versions: 1.21.1
+          game-versions: 26.2
           dependencies: |
             architectury-api | depends
           files: |
-            artifacts/neoforge-1.21.1/*.jar
-
-      - name: Publish NeoForge 1.21.2
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: H4o5bO7g
-          curseforge-id: 1321557
-          modrinth-token: ${{ secrets.MODRINTH_PERSONAL_ACCESS_TOKEN }}
-          curseforge-token: ${{ secrets.CURSEFORGE_PERSONAL_ACCESS_TOKEN }}
-          version: ${{ inputs.release_version }}
-          name: EconomyCraft ${{ inputs.release_version }} - NeoForge - 1.21.2
-          version-type: release
-          changelog-file: CHANGELOG.md
-          game-versions: 1.21.2
-          dependencies: |
-            architectury-api | depends
-          files: |
-            artifacts/neoforge-1.21.2/*.jar
-
-      - name: Publish NeoForge 1.21.3
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: H4o5bO7g
-          curseforge-id: 1321557
-          modrinth-token: ${{ secrets.MODRINTH_PERSONAL_ACCESS_TOKEN }}
-          curseforge-token: ${{ secrets.CURSEFORGE_PERSONAL_ACCESS_TOKEN }}
-          version: ${{ inputs.release_version }}
-          name: EconomyCraft ${{ inputs.release_version }} - NeoForge - 1.21.3
-          version-type: release
-          changelog-file: CHANGELOG.md
-          game-versions: 1.21.3
-          dependencies: |
-            architectury-api | depends
-          files: |
-            artifacts/neoforge-1.21.3/*.jar
-
-      - name: Publish NeoForge 1.21.4
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: H4o5bO7g
-          curseforge-id: 1321557
-          modrinth-token: ${{ secrets.MODRINTH_PERSONAL_ACCESS_TOKEN }}
-          curseforge-token: ${{ secrets.CURSEFORGE_PERSONAL_ACCESS_TOKEN }}
-          version: ${{ inputs.release_version }}
-          name: EconomyCraft ${{ inputs.release_version }} - NeoForge - 1.21.4
-          version-type: release
-          changelog-file: CHANGELOG.md
-          game-versions: 1.21.4
-          dependencies: |
-            architectury-api | depends
-          files: |
-            artifacts/neoforge-1.21.4/*.jar
-
-      - name: Publish NeoForge 1.21.5
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: H4o5bO7g
-          curseforge-id: 1321557
-          modrinth-token: ${{ secrets.MODRINTH_PERSONAL_ACCESS_TOKEN }}
-          curseforge-token: ${{ secrets.CURSEFORGE_PERSONAL_ACCESS_TOKEN }}
-          version: ${{ inputs.release_version }}
-          name: EconomyCraft ${{ inputs.release_version }} - NeoForge - 1.21.5
-          version-type: release
-          changelog-file: CHANGELOG.md
-          game-versions: 1.21.5
-          dependencies: |
-            architectury-api | depends
-          files: |
-            artifacts/neoforge-1.21.5/*.jar
-
-      - name: Publish NeoForge 1.21.6
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: H4o5bO7g
-          curseforge-id: 1321557
-          modrinth-token: ${{ secrets.MODRINTH_PERSONAL_ACCESS_TOKEN }}
-          curseforge-token: ${{ secrets.CURSEFORGE_PERSONAL_ACCESS_TOKEN }}
-          version: ${{ inputs.release_version }}
-          name: EconomyCraft ${{ inputs.release_version }} - NeoForge - 1.21.6
-          version-type: release
-          changelog-file: CHANGELOG.md
-          game-versions: 1.21.6
-          dependencies: |
-            architectury-api | depends
-          files: |
-            artifacts/neoforge-1.21.6/*.jar
-
-      - name: Publish NeoForge 1.21.7
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: H4o5bO7g
-          curseforge-id: 1321557
-          modrinth-token: ${{ secrets.MODRINTH_PERSONAL_ACCESS_TOKEN }}
-          curseforge-token: ${{ secrets.CURSEFORGE_PERSONAL_ACCESS_TOKEN }}
-          version: ${{ inputs.release_version }}
-          name: EconomyCraft ${{ inputs.release_version }} - NeoForge - 1.21.7
-          version-type: release
-          changelog-file: CHANGELOG.md
-          game-versions: 1.21.7
-          dependencies: |
-            architectury-api | depends
-          files: |
-            artifacts/neoforge-1.21.7/*.jar
-
-      - name: Publish NeoForge 1.21.8
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: H4o5bO7g
-          curseforge-id: 1321557
-          modrinth-token: ${{ secrets.MODRINTH_PERSONAL_ACCESS_TOKEN }}
-          curseforge-token: ${{ secrets.CURSEFORGE_PERSONAL_ACCESS_TOKEN }}
-          version: ${{ inputs.release_version }}
-          name: EconomyCraft ${{ inputs.release_version }} - NeoForge - 1.21.8
-          version-type: release
-          changelog-file: CHANGELOG.md
-          game-versions: 1.21.8
-          dependencies: |
-            architectury-api | depends
-          files: |
-            artifacts/neoforge-1.21.8/*.jar
-
-      - name: Publish NeoForge 1.21.9
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: H4o5bO7g
-          curseforge-id: 1321557
-          modrinth-token: ${{ secrets.MODRINTH_PERSONAL_ACCESS_TOKEN }}
-          curseforge-token: ${{ secrets.CURSEFORGE_PERSONAL_ACCESS_TOKEN }}
-          version: ${{ inputs.release_version }}
-          name: EconomyCraft ${{ inputs.release_version }} - NeoForge - 1.21.9
-          version-type: release
-          changelog-file: CHANGELOG.md
-          game-versions: 1.21.9
-          dependencies: |
-            architectury-api | depends
-          files: |
-            artifacts/neoforge-1.21.9/*.jar
-
-      - name: Publish NeoForge 1.21.10
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: H4o5bO7g
-          curseforge-id: 1321557
-          modrinth-token: ${{ secrets.MODRINTH_PERSONAL_ACCESS_TOKEN }}
-          curseforge-token: ${{ secrets.CURSEFORGE_PERSONAL_ACCESS_TOKEN }}
-          version: ${{ inputs.release_version }}
-          name: EconomyCraft ${{ inputs.release_version }} - NeoForge - 1.21.10
-          version-type: release
-          changelog-file: CHANGELOG.md
-          game-versions: 1.21.10
-          dependencies: |
-            architectury-api | depends
-          files: |
-            artifacts/neoforge-1.21.10/*.jar
-
-      - name: Publish NeoForge 1.21.11
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: H4o5bO7g
-          curseforge-id: 1321557
-          modrinth-token: ${{ secrets.MODRINTH_PERSONAL_ACCESS_TOKEN }}
-          curseforge-token: ${{ secrets.CURSEFORGE_PERSONAL_ACCESS_TOKEN }}
-          version: ${{ inputs.release_version }}
-          name: EconomyCraft ${{ inputs.release_version }} - NeoForge - 1.21.11
-          version-type: release
-          changelog-file: CHANGELOG.md
-          game-versions: 1.21.11
-          dependencies: |
-            architectury-api | depends
-          files: |
-            artifacts/neoforge-1.21.11/*.jar
+            artifacts/neoforge-26.2/*.jar
 
       # -------------------------
       #     FABRIC BUILDS
       # -------------------------
-      - name: Publish Fabric 1.21
+      - name: Publish Fabric 26.1.2
         uses: Kir-Antipov/mc-publish@v3.3
         with:
           modrinth-id: H4o5bO7g
@@ -303,16 +123,16 @@ jobs:
           modrinth-token: ${{ secrets.MODRINTH_PERSONAL_ACCESS_TOKEN }}
           curseforge-token: ${{ secrets.CURSEFORGE_PERSONAL_ACCESS_TOKEN }}
           version: ${{ inputs.release_version }}
-          name: EconomyCraft ${{ inputs.release_version }} - Fabric - 1.21
+          name: EconomyCraft ${{ inputs.release_version }} - Fabric - 26.1.2
           version-type: release
           changelog-file: CHANGELOG.md
-          game-versions: 1.21
+          game-versions: 26.1.2
           dependencies: |
             architectury-api | depends
           files: |
-            artifacts/fabric-1.21/*.jar
+            artifacts/fabric-26.1.2/*.jar
 
-      - name: Publish Fabric 1.21.1
+      - name: Publish Fabric 26.2
         uses: Kir-Antipov/mc-publish@v3.3
         with:
           modrinth-id: H4o5bO7g
@@ -320,181 +140,11 @@ jobs:
           modrinth-token: ${{ secrets.MODRINTH_PERSONAL_ACCESS_TOKEN }}
           curseforge-token: ${{ secrets.CURSEFORGE_PERSONAL_ACCESS_TOKEN }}
           version: ${{ inputs.release_version }}
-          name: EconomyCraft ${{ inputs.release_version }} - Fabric - 1.21.1
+          name: EconomyCraft ${{ inputs.release_version }} - Fabric - 26.2
           version-type: release
           changelog-file: CHANGELOG.md
-          game-versions: 1.21.1
+          game-versions: 26.2
           dependencies: |
             architectury-api | depends
           files: |
-            artifacts/fabric-1.21.1/*.jar
-
-      - name: Publish Fabric 1.21.2
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: H4o5bO7g
-          curseforge-id: 1321557
-          modrinth-token: ${{ secrets.MODRINTH_PERSONAL_ACCESS_TOKEN }}
-          curseforge-token: ${{ secrets.CURSEFORGE_PERSONAL_ACCESS_TOKEN }}
-          version: ${{ inputs.release_version }}
-          name: EconomyCraft ${{ inputs.release_version }} - Fabric - 1.21.2
-          version-type: release
-          changelog-file: CHANGELOG.md
-          game-versions: 1.21.2
-          dependencies: |
-            architectury-api | depends
-          files: |
-            artifacts/fabric-1.21.2/*.jar
-
-      - name: Publish Fabric 1.21.3
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: H4o5bO7g
-          curseforge-id: 1321557
-          modrinth-token: ${{ secrets.MODRINTH_PERSONAL_ACCESS_TOKEN }}
-          curseforge-token: ${{ secrets.CURSEFORGE_PERSONAL_ACCESS_TOKEN }}
-          version: ${{ inputs.release_version }}
-          name: EconomyCraft ${{ inputs.release_version }} - Fabric - 1.21.3
-          version-type: release
-          changelog-file: CHANGELOG.md
-          game-versions: 1.21.3
-          dependencies: |
-            architectury-api | depends
-          files: |
-            artifacts/fabric-1.21.3/*.jar
-
-      - name: Publish Fabric 1.21.4
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: H4o5bO7g
-          curseforge-id: 1321557
-          modrinth-token: ${{ secrets.MODRINTH_PERSONAL_ACCESS_TOKEN }}
-          curseforge-token: ${{ secrets.CURSEFORGE_PERSONAL_ACCESS_TOKEN }}
-          version: ${{ inputs.release_version }}
-          name: EconomyCraft ${{ inputs.release_version }} - Fabric - 1.21.4
-          version-type: release
-          changelog-file: CHANGELOG.md
-          game-versions: 1.21.4
-          dependencies: |
-            architectury-api | depends
-          files: |
-            artifacts/fabric-1.21.4/*.jar
-
-      - name: Publish Fabric 1.21.5
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: H4o5bO7g
-          curseforge-id: 1321557
-          modrinth-token: ${{ secrets.MODRINTH_PERSONAL_ACCESS_TOKEN }}
-          curseforge-token: ${{ secrets.CURSEFORGE_PERSONAL_ACCESS_TOKEN }}
-          version: ${{ inputs.release_version }}
-          name: EconomyCraft ${{ inputs.release_version }} - Fabric - 1.21.5
-          version-type: release
-          changelog-file: CHANGELOG.md
-          game-versions: 1.21.5
-          dependencies: |
-            architectury-api | depends
-          files: |
-            artifacts/fabric-1.21.5/*.jar
-
-      - name: Publish Fabric 1.21.6
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: H4o5bO7g
-          curseforge-id: 1321557
-          modrinth-token: ${{ secrets.MODRINTH_PERSONAL_ACCESS_TOKEN }}
-          curseforge-token: ${{ secrets.CURSEFORGE_PERSONAL_ACCESS_TOKEN }}
-          version: ${{ inputs.release_version }}
-          name: EconomyCraft ${{ inputs.release_version }} - Fabric - 1.21.6
-          version-type: release
-          changelog-file: CHANGELOG.md
-          game-versions: 1.21.6
-          dependencies: |
-            architectury-api | depends
-          files: |
-            artifacts/fabric-1.21.6/*.jar
-
-      - name: Publish Fabric 1.21.7
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: H4o5bO7g
-          curseforge-id: 1321557
-          modrinth-token: ${{ secrets.MODRINTH_PERSONAL_ACCESS_TOKEN }}
-          curseforge-token: ${{ secrets.CURSEFORGE_PERSONAL_ACCESS_TOKEN }}
-          version: ${{ inputs.release_version }}
-          name: EconomyCraft ${{ inputs.release_version }} - Fabric - 1.21.7
-          version-type: release
-          changelog-file: CHANGELOG.md
-          game-versions: 1.21.7
-          dependencies: |
-            architectury-api | depends
-          files: |
-            artifacts/fabric-1.21.7/*.jar
-
-      - name: Publish Fabric 1.21.8
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: H4o5bO7g
-          curseforge-id: 1321557
-          modrinth-token: ${{ secrets.MODRINTH_PERSONAL_ACCESS_TOKEN }}
-          curseforge-token: ${{ secrets.CURSEFORGE_PERSONAL_ACCESS_TOKEN }}
-          version: ${{ inputs.release_version }}
-          name: EconomyCraft ${{ inputs.release_version }} - Fabric - 1.21.8
-          version-type: release
-          changelog-file: CHANGELOG.md
-          game-versions: 1.21.8
-          dependencies: |
-            architectury-api | depends
-          files: |
-            artifacts/fabric-1.21.8/*.jar
-
-      - name: Publish Fabric 1.21.9
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: H4o5bO7g
-          curseforge-id: 1321557
-          modrinth-token: ${{ secrets.MODRINTH_PERSONAL_ACCESS_TOKEN }}
-          curseforge-token: ${{ secrets.CURSEFORGE_PERSONAL_ACCESS_TOKEN }}
-          version: ${{ inputs.release_version }}
-          name: EconomyCraft ${{ inputs.release_version }} - Fabric - 1.21.9
-          version-type: release
-          changelog-file: CHANGELOG.md
-          game-versions: 1.21.9
-          dependencies: |
-            architectury-api | depends
-          files: |
-            artifacts/fabric-1.21.9/*.jar
-
-      - name: Publish Fabric 1.21.10
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: H4o5bO7g
-          curseforge-id: 1321557
-          modrinth-token: ${{ secrets.MODRINTH_PERSONAL_ACCESS_TOKEN }}
-          curseforge-token: ${{ secrets.CURSEFORGE_PERSONAL_ACCESS_TOKEN }}
-          version: ${{ inputs.release_version }}
-          name: EconomyCraft ${{ inputs.release_version }} - Fabric - 1.21.10
-          version-type: release
-          changelog-file: CHANGELOG.md
-          game-versions: 1.21.10
-          dependencies: |
-            architectury-api | depends
-          files: |
-            artifacts/fabric-1.21.10/*.jar
-
-      - name: Publish Fabric 1.21.11
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: H4o5bO7g
-          curseforge-id: 1321557
-          modrinth-token: ${{ secrets.MODRINTH_PERSONAL_ACCESS_TOKEN }}
-          curseforge-token: ${{ secrets.CURSEFORGE_PERSONAL_ACCESS_TOKEN }}
-          version: ${{ inputs.release_version }}
-          name: EconomyCraft ${{ inputs.release_version }} - Fabric - 1.21.11
-          version-type: release
-          changelog-file: CHANGELOG.md
-          game-versions: 1.21.11
-          dependencies: |
-            architectury-api | depends
-          files: |
-            artifacts/fabric-1.21.11/*.jar
+            artifacts/fabric-26.2/*.jar

@@ -33,6 +33,8 @@ public class EconomyConfig {
     public boolean scoreboardEnabled;
     @SerializedName("server_shop_enabled")
     public boolean serverShopEnabled = true;
+    @SerializedName("sell_enabled")
+    public boolean sellEnabled = true;
 
     private static EconomyConfig INSTANCE = new EconomyConfig();
     private static Path file;

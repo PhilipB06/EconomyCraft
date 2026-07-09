@@ -1,10 +1,13 @@
 package com.reazip.economycraft.shop;
 
 import com.mojang.logging.LogUtils;
+import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyManager;
 import com.reazip.economycraft.PriceRegistry;
+import com.reazip.economycraft.SellService;
 import com.reazip.economycraft.util.ChatCompat;
+import com.reazip.economycraft.util.ItemsCompat;
 import com.reazip.economycraft.util.MenuUiSupport;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Holder;
@@ -42,12 +45,15 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class ServerShopUi {
     private static final Component STORED_MSG = Component.literal("Item stored: ")
             .withStyle(ChatFormatting.YELLOW);
     private static final Map<String, IdentifierCompat.Id> CATEGORY_ICONS = buildCategoryIcons();
     private static final List<Integer> STAR_SLOT_ORDER = buildStarSlotOrder(5);
+    private static final Set<String> LOGGED_UNAVAILABLE = ConcurrentHashMap.newKeySet();
 
     private ServerShopUi() {}
 
@@ -418,17 +424,37 @@ public final class ServerShopUi {
                 if (display.isEmpty()) continue;
 
                 int stackSize = Math.max(1, entry.stack());
-                List<Component> lore = new ArrayList<>();
-                lore.add(MenuUiSupport.labeledValue("Buy", EconomyCraft.formatMoney(entry.unitBuy()), MenuUiSupport.LABEL_PRIMARY_COLOR));
+                boolean canSell = entry.unitSell() > 0 && EconomyConfig.get().sellEnabled;
 
-                Long stackPrice = safeMultiply(entry.unitBuy(), stackSize);
-                if (stackSize > 1 && stackPrice != null) {
-                    lore.add(MenuUiSupport.labeledValue("Stack (" + stackSize + ")", EconomyCraft.formatMoney(stackPrice), MenuUiSupport.LABEL_PRIMARY_COLOR));
+                List<Component> lore = new ArrayList<>();
+                Component buyLore = MenuUiSupport.labeledValue("Buy", EconomyCraft.formatMoney(entry.unitBuy()), MenuUiSupport.LABEL_PRIMARY_COLOR);
+                if (canSell) {
+                    Component sellLore = MenuUiSupport.labeledValue("Sell", EconomyCraft.formatMoney(entry.unitSell()), MenuUiSupport.LABEL_PRIMARY_COLOR);
+                    lore.add(MenuUiSupport.joinLore(buyLore, sellLore));
+                } else {
+                    lore.add(buyLore);
                 }
 
-                lore.add(MenuUiSupport.labeledValue("Left click", "Buy 1", MenuUiSupport.LABEL_SECONDARY_COLOR));
                 if (stackSize > 1) {
-                    lore.add(MenuUiSupport.labeledValue("Shift-click", "Buy " + stackSize, MenuUiSupport.LABEL_SECONDARY_COLOR));
+                    Long buyStack = safeMultiply(entry.unitBuy(), stackSize);
+                    Long sellStack = safeMultiply(entry.unitSell(), stackSize);
+                    if (buyStack != null) {
+                        String label = "Stack (" + stackSize + ")";
+                        if (canSell && sellStack != null) {
+                            lore.add(MenuUiSupport.labeledValues(label, MenuUiSupport.LABEL_PRIMARY_COLOR,
+                                    EconomyCraft.formatMoney(buyStack), EconomyCraft.formatMoney(sellStack)));
+                        } else {
+                            lore.add(MenuUiSupport.labeledValue(label, EconomyCraft.formatMoney(buyStack), MenuUiSupport.LABEL_PRIMARY_COLOR));
+                        }
+                    }
+                }
+
+                lore.add(MenuUiSupport.labeledValue("Left click", "Buy 1x", MenuUiSupport.LABEL_SECONDARY_COLOR));
+                if (canSell) {
+                    lore.add(MenuUiSupport.labeledValue("Right click", "Sell 1x", MenuUiSupport.LABEL_SECONDARY_COLOR));
+                }
+                if (stackSize > 1) {
+                    lore.add(MenuUiSupport.labeledValue("Shift-click", (canSell ? "Buy/Sell " : "Buy ") + stackSize + "x", MenuUiSupport.LABEL_SECONDARY_COLOR));
                 }
 
                 display.set(DataComponents.LORE, new ItemLore(lore));
@@ -466,7 +492,13 @@ public final class ServerShopUi {
                 if (slot < navRowStart) {
                     int index = page * itemsPerPage + slot;
                     if (index < entries.size()) {
-                        handlePurchase(entries.get(index), type);
+                        PriceRegistry.PriceEntry entry = entries.get(index);
+                        int amount = (type == ContainerInput.QUICK_MOVE) ? Math.max(1, entry.stack()) : 1;
+                        if (dragType == 1) {
+                            handleSell(entry, amount);
+                        } else {
+                            handlePurchase(entry, amount);
+                        }
                         return;
                     }
                 }
@@ -485,7 +517,7 @@ public final class ServerShopUi {
             super.clicked(slot, dragType, type, player);
         }
 
-        private void handlePurchase(PriceRegistry.PriceEntry entry, ContainerInput clickType) {
+        private void handlePurchase(PriceRegistry.PriceEntry entry, int amount) {
             if (entry.unitBuy() <= 0) {
                 viewer.sendSystemMessage(Component.literal("This item cannot be purchased.")
                         .withStyle(ChatFormatting.RED));
@@ -498,9 +530,6 @@ public final class ServerShopUi {
                         .withStyle(ChatFormatting.RED));
                 return;
             }
-
-            int stackSize = Math.max(1, entry.stack());
-            int amount = clickType == ContainerInput.QUICK_MOVE ? stackSize : 1;
 
             Long total = safeMultiply(entry.unitBuy(), amount);
             if (total == null) {
@@ -534,6 +563,45 @@ public final class ServerShopUi {
                 sendStoredMessage(viewer);
             }
 
+            updatePage();
+        }
+
+        private void handleSell(PriceRegistry.PriceEntry entry, int amount) {
+            if (!EconomyConfig.get().sellEnabled || entry.unitSell() <= 0) {
+                viewer.sendSystemMessage(Component.literal("This item cannot be sold.").withStyle(ChatFormatting.RED));
+                return;
+            }
+
+            // Enchanted items are excluded here (they resell at base price and have no confirm step
+            // in the GUI); sell those via "/sell", which asks for confirmation.
+            int have = SellService.countMatching(viewer, prices, entry.id(), true);
+            if (have <= 0) {
+                viewer.sendSystemMessage(Component.literal("You have none to sell.").withStyle(ChatFormatting.RED));
+                return;
+            }
+
+            int toSell = Math.min(amount, have);
+            Long total = safeMultiply(entry.unitSell(), toSell);
+            if (total == null) {
+                viewer.sendSystemMessage(Component.literal("Price too large.").withStyle(ChatFormatting.RED));
+                return;
+            }
+
+            if (EconomyConfig.get().dailySellLimit > 0 && eco.tryRecordDailySell(viewer.getUUID(), total)) {
+                long remaining = eco.getDailySellRemaining(viewer.getUUID());
+                viewer.sendSystemMessage(Component.literal(remaining <= 0
+                        ? "Daily sell limit reached. Try again tomorrow."
+                        : "That exceeds your daily sell limit.").withStyle(ChatFormatting.RED));
+                return;
+            }
+
+            ItemStack disp = createDisplayStack(entry, viewer);
+            String name = disp.isEmpty() ? entry.id().path() : disp.getHoverName().getString();
+            SellService.removeMatching(viewer, prices, entry.id(), toSell, true);
+            eco.addMoney(viewer.getUUID(), total);
+
+            viewer.sendSystemMessage(Component.literal("Sold " + toSell + "x " + name + " for " + EconomyCraft.formatMoney(total))
+                    .withStyle(ChatFormatting.GREEN));
             updatePage();
         }
 
@@ -718,7 +786,7 @@ public final class ServerShopUi {
     }
 
     private static void fillEmptyWithPanes(SimpleContainer container, int limit) {
-        ItemStack filler = new ItemStack(Items.STAINED_GLASS_PANE.gray());
+        ItemStack filler = new ItemStack(ItemsCompat.grayStainedGlassPane());
         filler.set(DataComponents.CUSTOM_NAME, Component.literal(" "));
         for (int i = 0; i < limit && i < container.getContainerSize(); i++) {
             if (container.getItem(i).isEmpty()) {
@@ -744,6 +812,17 @@ public final class ServerShopUi {
     }
 
     private static ItemStack createDisplayStack(PriceRegistry.PriceEntry entry, ServerPlayer viewer) {
+        ItemStack stack = buildDisplayStack(entry, viewer);
+        // Log each unbuildable entry once so bad price ids are diagnosable without letting a
+        // spam-clicker flood the log.
+        if (stack.isEmpty() && LOGGED_UNAVAILABLE.add(entry.id().asString())) {
+            LogUtils.getLogger().warn("[EconomyCraft] Server shop entry '{}' (category '{}') could not be built; it is hidden and shows as unavailable.",
+                    entry.id().asString(), entry.category());
+        }
+        return stack;
+    }
+
+    private static ItemStack buildDisplayStack(PriceRegistry.PriceEntry entry, ServerPlayer viewer) {
         try {
             IdentifierCompat.Id id = entry.id();
 
@@ -820,8 +899,12 @@ public final class ServerShopUi {
         } else if (path.startsWith("arrow_of_")) {
             baseItem = Items.TIPPED_ARROW;
             working = path.substring("arrow_of_".length());
-        } else if (path.startsWith("potion_of_")) {
-            working = path.substring("potion_of_".length());
+        }
+
+        // Strip a "potion_of_" infix left after the form prefix (e.g. "splash_potion_of_healing_1"),
+        // which also covers the plain "potion_of_x" form.
+        if (working.startsWith("potion_of_")) {
+            working = working.substring("potion_of_".length());
         }
 
         if (working.endsWith("_splash_potion")) {

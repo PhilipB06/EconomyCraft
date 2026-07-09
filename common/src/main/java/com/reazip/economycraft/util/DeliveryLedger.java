@@ -19,8 +19,7 @@ import java.util.UUID;
 
 /**
  * Per-player pending item stacks plus change-listener bookkeeping.
- * Shared by {@code OrderManager} and {@code ShopManager}, which otherwise
- * had identical delivery/listener/persistence logic.
+ * Shared by {@code OrderManager} and {@code ShopManager}.
  */
 public final class DeliveryLedger {
     private final Map<UUID, List<ItemStack>> deliveries = new HashMap<>();
