@@ -35,5 +35,13 @@ versionRange = "[${archVer},)"
 ordering = "NONE"
 side = "BOTH"
 
+# ---- Placeholder API NeoForge (optional, for mod-to-mod placeholder integration):
+[[dependencies.economycraft]]
+modId = "placeholder-api-neoforge"
+type = "optional"
+versionRange = "[1,)"
+ordering = "AFTER"
+side = "BOTH"
+
 [[mixins]]
 config = "economycraft.mixins.json"

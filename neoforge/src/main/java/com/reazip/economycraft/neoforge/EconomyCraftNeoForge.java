@@ -1,5 +1,6 @@
 package com.reazip.economycraft.neoforge;
 
+import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.Mod;
 import com.reazip.economycraft.EconomyCraft;
 
@@ -13,6 +14,10 @@ public final class EconomyCraftNeoForge {
     public EconomyCraftNeoForge() {
         EconomyCraft.registerEvents();
         NeoForge.EVENT_BUS.register(this);
+
+        if (ModList.get().isLoaded("placeholder-api-neoforge")) {
+            EconomyCraftNeoForgePlaceholders.register();
+        }
     }
 
     @SubscribeEvent

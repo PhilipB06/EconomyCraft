@@ -1,7 +1,7 @@
 # EconomyCraft
 
 EconomyCraft provides a simple server-side cross-platform economy system for Fabric and NeoForge servers.  
-The mod requires Architectury API and targets **Minecraft 26.1.2 and 26.2**.
+The mod requires Architectury API.
 
 ---
 
@@ -62,5 +62,18 @@ Configuration and player data are stored in `config/economycraft/`.
 - `server_shop_enabled` - enables the server shop (`/servershop` and `/eco servershop`). Default: `true`.
 - `sell_enabled` - enables the `/sell` command (selling farmed items directly to the server). Set to `false` to steer players toward supply-driven trading via `/shop` and `/orders`. Default: `true`.
 
+## Placeholders
+
+EconomyCraft can expose economy data to other mods through [Text Placeholder API](https://modrinth.com/mod/placeholder-api) on Fabric, or its unofficial [Placeholder API NeoForge](https://modrinth.com/mod/placeholder-api-neoforge) port on NeoForge.
+
+Both are **optional and not bundled with EconomyCraft**, the mod runs fine without them, but you must download the jar matching your Minecraft version/loader and drop it into your server's `mods` folder yourself before any placeholder below will resolve:
+- Fabric: [Text Placeholder API on Modrinth](https://modrinth.com/mod/placeholder-api)
+- NeoForge: [Placeholder API NeoForge on Modrinth](https://modrinth.com/mod/placeholder-api-neoforge)
+
+| Placeholder | Description                                                                                                                  |
+| --- |------------------------------------------------------------------------------------------------------------------------------|
+| `%economycraft:balance%` | Raw numeric balance of the viewed player (e.g. `1000`).                                                                        |
+| `%economycraft:balance_formatted%` | Balance formatted with currency symbol and thousands separator (e.g. `$1.000`).                                              |
+| `%economycraft:daily_sell_remaining%` | Remaining amount the player can earn from `/sell` today before hitting `dailySellLimit`. Shows `∞` if the limit is disabled. |
 
 ---

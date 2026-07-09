@@ -1,3 +1,5 @@
+import org.gradle.api.GradleException
+
 plugins {
     id "com.gradleup.shadow"
 }
@@ -19,6 +21,7 @@ repositories {
     gradlePluginPortal()
     maven { url "https://maven.fabricmc.net/" }
     maven { url "https://maven.architectury.dev/" }
+    maven { url "https://maven.nucleoid.xyz/"; name "Nucleoid" }
     mavenCentral()
 }
 
@@ -36,15 +39,26 @@ dependencies {
     // Link common module
     common(project(path: ":common")) { transitive = false }
     shadowBundle project(path: ":common", configuration: "transformProductionFabric")
+
+    compileOnly "eu.pb4:placeholder-api:${rootProject.findProperty('text_placeholder_api_version') ?: tgt.textPlaceholderApi}"
 }
 
 processResources {
+    def mcFull = mcCoord.toString()
+    def parts = mcFull.tokenize('.')
+    if (parts.size() < 2) throw new GradleException("Invalid minecraft_version: ${mcFull}")
+    def major = parts[0] as int
+    def minor = parts[1] as int
+    def mcLo = "${major}.${minor}"
+    def mcHi = "${major}.${minor + 1}"
+
     inputs.property("version", project.version)
-    inputs.property("mcVer", mcCoord)
+    inputs.property("mcLo", mcLo)
+    inputs.property("mcHi", mcHi)
     inputs.property("archVer", tgt.architecturyVer)
 
     filesMatching("fabric.mod.json") {
-        expand version: project.version, mcVer: mcCoord, archVer: tgt.architecturyVer
+        expand version: project.version, mcLo: mcLo, mcHi: mcHi, archVer: tgt.architecturyVer
     }
 }
 

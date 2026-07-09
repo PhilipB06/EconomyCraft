@@ -1,4 +1,6 @@
 ### Features
+- Added support for 26.1.2 and 26.2.
+- Added optional placeholder support for other mods (TAB, HUD mods, etc.), exposing `economycraft:balance`, `economycraft:balance_formatted`, and `economycraft:daily_sell_remaining`
 - Added `/sell everything` to sell your entire inventory at once
 - Added a `sell_enabled` config option to disable `/sell` entirely
 - `/shop list <price>` now accepts an optional `<amount>`, to list only part of a held stack
@@ -14,3 +16,4 @@
 ### Fixes
 - Fixed splash and lingering potions (e.g. Splash Potion of Healing) showing as unavailable in the server shop
 - Fixed the Potion of Wind Charging showing as unavailable and refusing to sell
+- Fixed the balance scoreboard reclaiming the sidebar on every balance change (even while disabled), which could overwrite another plugin's or mod's own sidebar

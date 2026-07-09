@@ -1,6 +1,7 @@
 package com.reazip.economycraft.fabric;
 
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.loader.api.FabricLoader;
 import com.reazip.economycraft.EconomyCraft;
 
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
@@ -16,5 +17,9 @@ public final class EconomyCraftFabric implements ModInitializer {
                 EconomyCraft.tryHandlePvpKill(victim, damageSource.getEntity());
             }
         });
+
+        if (FabricLoader.getInstance().isModLoaded("placeholder-api")) {
+            EconomyCraftFabricPlaceholders.register();
+        }
     }
 }

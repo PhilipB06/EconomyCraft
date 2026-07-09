@@ -44,7 +44,7 @@ public class EconomyManager {
     private Objective objective;
     private final ShopManager shop;
     private final OrderManager orders;
-    private final Set<UUID> displayed = new HashSet<>();
+    private final Map<UUID, String> displayed = new HashMap<>();
 
     public static final long MAX = 999_999_999L;
 
@@ -237,22 +237,11 @@ public class EconomyManager {
     // =====================================================================
 
     private void applyScoreboardSettingOnStartup() {
-        Scoreboard board = server.getScoreboard();
-
         if (EconomyConfig.get().scoreboardEnabled) {
             setupObjective();
-            return;
+        } else {
+            teardownObjective(server.getScoreboard());
         }
-
-        board.setDisplayObjective(DisplaySlot.SIDEBAR, null);
-
-        Objective existing = board.getObjective(ECO_BALANCE_OBJECTIVE);
-        if (existing != null) {
-            board.removeObjective(existing);
-        }
-
-        objective = null;
-        displayed.clear();
     }
 
     private Objective createBalanceObjective(Scoreboard board) {
@@ -266,33 +255,42 @@ public class EconomyManager {
         );
     }
 
-    private void setupObjective() {
-        Scoreboard board = server.getScoreboard();
-        objective = board.getObjective(ECO_BALANCE_OBJECTIVE);
+    /** Claims the SIDEBAR slot only if we don't already hold it, so other plugins/mods keeping the slot afterward aren't fought over on every score update. */
+    private void ensureObjective(Scoreboard board) {
+        if (objective != null) return;
 
+        objective = board.getObjective(ECO_BALANCE_OBJECTIVE);
         if (objective == null) {
             objective = createBalanceObjective(board);
         }
         board.setDisplayObjective(DisplaySlot.SIDEBAR, objective);
+    }
+
+    /** Releases the SIDEBAR slot. A no-op if we don't currently hold an objective, so callers on a hot path (every balance change) can skip touching the scoreboard entirely. */
+    private void teardownObjective(Scoreboard board) {
+        Objective existing = objective != null ? objective : board.getObjective(ECO_BALANCE_OBJECTIVE);
+        if (existing == null) return;
+
+        board.setDisplayObjective(DisplaySlot.SIDEBAR, null);
+        board.removeObjective(existing);
+        objective = null;
+        displayed.clear();
+    }
+
+    private void setupObjective() {
+        ensureObjective(server.getScoreboard());
         updateLeaderboard();
     }
 
     private void updateLeaderboard() {
+        Scoreboard board = server.getScoreboard();
+
         if (!EconomyConfig.get().scoreboardEnabled) {
-            Scoreboard board = server.getScoreboard();
-            board.setDisplayObjective(DisplaySlot.SIDEBAR, null);
-            if (objective != null) board.removeObjective(objective);
-            objective = null;
-            displayed.clear();
+            teardownObjective(board);
             return;
         }
 
-        Scoreboard board = server.getScoreboard();
-        if (objective != null) board.removeObjective(objective);
-
-        objective = createBalanceObjective(board);
-        board.setDisplayObjective(DisplaySlot.SIDEBAR, objective);
-        displayed.clear();
+        ensureObjective(board);
 
         List<Map.Entry<UUID, Long>> sorted = new ArrayList<>(balances.entrySet());
         sorted.sort((a, b) -> {
@@ -307,6 +305,7 @@ public class EconomyManager {
             return a.getKey().compareTo(b.getKey());
         });
 
+        Map<UUID, String> updated = new HashMap<>();
         for (var e : sorted.stream().limit(LEADERBOARD_SIZE).toList()) {
             UUID id = e.getKey();
             String name = resolveName(server, id);
@@ -314,23 +313,26 @@ public class EconomyManager {
                     ScoreHolder.forNameOnly(name),
                     objective
             ).set(e.getValue().intValue());
-            displayed.add(id);
+            updated.put(id, name);
         }
+
+        for (var e : displayed.entrySet()) {
+            if (!updated.containsKey(e.getKey())) {
+                board.resetSinglePlayerScore(ScoreHolder.forNameOnly(e.getValue()), objective);
+            }
+        }
+        displayed.clear();
+        displayed.putAll(updated);
     }
 
     public boolean toggleScoreboard() {
-        Scoreboard board = server.getScoreboard();
         EconomyConfig.get().scoreboardEnabled = !EconomyConfig.get().scoreboardEnabled;
         EconomyConfig.save();
 
         if (EconomyConfig.get().scoreboardEnabled) {
             setupObjective();
         } else {
-            board.setDisplayObjective(DisplaySlot.SIDEBAR, null);
-            if (objective != null) {
-                board.removeObjective(objective);
-                objective = null;
-            }
+            teardownObjective(server.getScoreboard());
         }
 
         return EconomyConfig.get().scoreboardEnabled;

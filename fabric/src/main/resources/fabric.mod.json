@@ -13,9 +13,12 @@
   },
   "mixins": ["economycraft.mixins.json"],
   "depends": {
-    "minecraft": "${mcVer}",
+    "minecraft": ">=${mcLo} <${mcHi}",
     "fabricloader": ">=0.15.0",
     "fabric-api": "*",
     "architectury": ">=${archVer}"
+  },
+  "suggests": {
+    "placeholder-api": "*"
   }
 }

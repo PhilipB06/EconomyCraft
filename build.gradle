@@ -113,8 +113,8 @@ ext.mcTaskVer = { String v ->
 // One entry per supported Minecraft version. Each drives a generated set of
 // build/deploy/run tasks (buildFabric_<v>, buildAndCopyFabricJars_<v>, runLocalFabric_<v>, ...).
 ext.mcTargets = [
-        [ mc: "26.1.2", fabricApi: "0.154.0+26.1.2", architecturyVer: "20.0.7", neoforge: "26.1.2.76", neoforgeLineLo: "26.1", neoforgeLineHi: "26.2" ],
-        [ mc: "26.2", fabricApi: "0.154.0+26.2", architecturyVer: "21.0.2", neoforge: "26.2.0.7-beta", neoforgeLineLo: "26.2", neoforgeLineHi: "26.3" ],
+        [ mc: "26.1.2", fabricApi: "0.154.0+26.1.2", architecturyVer: "20.0.7", neoforge: "26.1.2.76", neoforgeLineLo: "26.1", neoforgeLineHi: "26.2", textPlaceholderApi: "3.0.0+26.1", placeholderApiNeoForge: "3.0.0+26.1+neoforge" ],
+        [ mc: "26.2", fabricApi: "0.154.0+26.2", architecturyVer: "21.0.2", neoforge: "26.2.0.7-beta", neoforgeLineLo: "26.2", neoforgeLineHi: "26.3", textPlaceholderApi: "3.1.0-beta.1+26.2", placeholderApiNeoForge: "3.1.0-beta.1+26.2+neoforge" ],
 ]
 
 // ---- Build per version via external gradlew
