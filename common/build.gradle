@@ -13,15 +13,40 @@ architectury {
     common(platforms)
 }
 
+// A handful of Minecraft classes were renamed between the last obfuscated version (1.21.11,
+// e.g. ClickType) and the unobfuscated 26.x line (e.g. ContainerInput). Everything else lives in
+// src/main/java; only the files that actually reference one of those renamed classes live here.
+sourceSets {
+    main {
+        java {
+            srcDir "src/${tgt.obfuscated ? 'obfuscated' : 'unobfuscated'}/java"
+        }
+    }
+}
+
 dependencies {
     // Required Minecraft jar for Loom
     minecraft "com.mojang:minecraft:${mcCoord}"
 
-    // Fabric loader only for @Environment annotations
-    implementation "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"
+    if (tgt.obfuscated) {
+        // 1.21.11 is obfuscated; common compiles against Mojang's official mappings and gets
+        // remapped per-platform at build time (see fabric/neoforge transformProduction*).
+        mappings loom.officialMojangMappings()
 
-    // Architectury API — resolved per MC target (same as the fabric/neoforge modules) so
-    // multi-version builds pull the matching architectury version instead of the
-    // gradle.properties fallback, which only fits the default target.
-    implementation "dev.architectury:architectury:${rootProject.findProperty('architectury_version_plain') ?: tgt.architecturyVer}"
+        // Fabric loader only for @Environment annotations
+        modImplementation "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"
+
+        // Architectury API — resolved per MC target (same as the fabric/neoforge modules) so
+        // multi-version builds pull the matching architectury version instead of the
+        // gradle.properties fallback, which only fits the default target.
+        modImplementation "dev.architectury:architectury:${rootProject.findProperty('architectury_version_plain') ?: tgt.architecturyVer}"
+    } else {
+        // Fabric loader only for @Environment annotations
+        implementation "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"
+
+        // Architectury API — resolved per MC target (same as the fabric/neoforge modules) so
+        // multi-version builds pull the matching architectury version instead of the
+        // gradle.properties fallback, which only fits the default target.
+        implementation "dev.architectury:architectury:${rootProject.findProperty('architectury_version_plain') ?: tgt.architecturyVer}"
+    }
 }

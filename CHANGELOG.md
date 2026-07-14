@@ -1,6 +1,6 @@
 ### Features
-- Added support for 26.1.2 and 26.2.
-- Added optional placeholder support for other mods (TAB, HUD mods, etc.), exposing `economycraft:balance`, `economycraft:balance_formatted`, and `economycraft:daily_sell_remaining`
+- Added support for 26.1.2, 26.2, and 1.21.11.
+- Added optional placeholder support for other mods (TAB, HUD mods, etc.), exposing `economycraft:balance`, `economycraft:balance_formatted`, and `economycraft:daily_sell_remaining` (Fabric only on 1.21.11, unavailable on NeoForge 1.21.11)
 - Added `/sell everything` to sell your entire inventory at once
 - Added a `sell_enabled` config option to disable `/sell` entirely
 - `/shop list <price>` now accepts an optional `<amount>`, to list only part of a held stack

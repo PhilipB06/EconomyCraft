@@ -282,10 +282,6 @@ public final class SellCommand {
         return pending.count();
     }
 
-    // =====================================================================
-    // === /sell everything ================================================
-    // =====================================================================
-
     private static int previewSellEverything(CommandContext<CommandSourceStack> ctx) {
         CommandSourceStack source = ctx.getSource();
         ServerPlayer player = getPlayer(source);
