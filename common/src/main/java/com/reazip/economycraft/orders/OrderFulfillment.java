@@ -63,23 +63,19 @@ public final class OrderFulfillment {
             return new Result(Status.NOT_ENOUGH_ITEMS, 0, 0, order.amount, order.item.copy(), order.requester);
         }
 
-        // Proportional gross payment, bounded by the order's remaining price so repeated partial
-        // fulfillments never pay out more than the original total or overspend the requester.
         long payment = order.amount <= 0 ? 0 : Math.round((double) order.price * give / order.amount);
         payment = Math.min(payment, order.price);
-
-        long bal = eco.getBalance(order.requester, true);
-        if (bal < payment) {
-            return new Result(Status.REQUESTER_CANT_PAY, 0, 0, order.amount, order.item.copy(), order.requester);
-        }
 
         ItemStack itemProto = order.item.copy();
         UUID requester = order.requester;
 
+        if (!eco.removeMoney(requester, payment)) {
+            return new Result(Status.REQUESTER_CANT_PAY, 0, 0, order.amount, itemProto, order.requester);
+        }
+
         removeItems(fulfiller, itemProto, give);
         long tax = Math.round(payment * EconomyConfig.get().taxRate);
         long payout = payment - tax;
-        eco.removeMoney(requester, payment);
         eco.addMoney(fulfiller.getUUID(), payout);
 
         deliver(orders, requester, itemProto, give);

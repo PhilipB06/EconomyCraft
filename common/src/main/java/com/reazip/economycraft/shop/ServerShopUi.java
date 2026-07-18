@@ -808,7 +808,7 @@ public final class ServerShopUi {
 
     private static int requiredRows(int itemCount) {
         int contentRows = (int) Math.ceil(Math.max(1, itemCount) / 9.0);
-        return Math.min(6, Math.max(2, contentRows + 1));
+        return Math.clamp(contentRows + 1, 2, 6);
     }
 
     private static ItemStack createDisplayStack(PriceRegistry.PriceEntry entry, ServerPlayer viewer) {
