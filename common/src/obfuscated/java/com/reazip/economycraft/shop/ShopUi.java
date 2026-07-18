@@ -243,12 +243,10 @@ public final class ShopUi {
                         long cost = current.price;
                         long tax = Math.round(cost * EconomyConfig.get().taxRate);
                         long total = cost + tax;
-                        long bal = eco.getBalance(player.getUUID(), true);
 
-                        if (bal < total) {
+                        if (!eco.removeMoney(player.getUUID(), total)) {
                             sp.sendSystemMessage(Component.literal("Not enough balance").withStyle(ChatFormatting.RED));
                         } else {
-                            eco.removeMoney(player.getUUID(), total);
                             eco.addMoney(current.seller, cost);
                             ShopListing sold = shop.removeListing(current.id);
                             if (sold != null) {

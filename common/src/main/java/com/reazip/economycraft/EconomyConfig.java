@@ -60,10 +60,25 @@ public class EconomyConfig {
             if (parsed == null) {
                 throw new IllegalStateException("config.json parsed to null");
             }
+            parsed.taxRate = clampPercentage("taxRate", parsed.taxRate);
+            parsed.pvpBalanceLossPercentage = clampPercentage("pvp_balance_loss_percentage", parsed.pvpBalanceLossPercentage);
+            if (parsed.dailyAmount < 0) {
+                LOGGER.warn("[EconomyCraft] dailyAmount ({}) is negative; clamping to 0.", parsed.dailyAmount);
+                parsed.dailyAmount = 0;
+            }
             INSTANCE = parsed;
         } catch (Exception e) {
             throw new IllegalStateException("[EconomyCraft] Failed to read/parse config.json at " + file, e);
         }
+    }
+
+    private static double clampPercentage(String fieldName, double value) {
+        double clamped = Math.clamp(value, 0.0, 1.0);
+        if (clamped != value) {
+            LOGGER.warn("[EconomyCraft] {} ({}) is outside the valid 0.0-1.0 range (decimal factor, e.g. 0.1 = 10%); clamping to {}.",
+                    fieldName, value, clamped);
+        }
+        return clamped;
     }
 
     public static void save() {

@@ -160,6 +160,7 @@ public class EconomyManager {
     }
 
     public boolean removeMoney(UUID player, long amount) {
+        if (amount < 0) return false;
         long balance = getBalance(player, true);
         if (balance < amount) return false;
         balances.put(player, clamp(balance - amount));
@@ -169,9 +170,9 @@ public class EconomyManager {
     }
 
     public boolean pay(UUID from, UUID to, long amount) {
-        long balance = getBalance(from, false);
-        if (balance < amount) return false;
-        removeMoney(from, amount);
+        Long balance = getBalance(from, false);
+        if (balance == null || balance < amount) return false;
+        if (!removeMoney(from, amount)) return false;
         addMoney(to, amount);
         return true;
     }
@@ -187,7 +188,8 @@ public class EconomyManager {
                 Map<UUID, Double> map = GSON.fromJson(json, new TypeToken<Map<UUID, Double>>(){}.getType());
                 if (map != null) {
                     for (Map.Entry<UUID, Double> e : map.entrySet()) {
-                        balances.put(e.getKey(), Math.min(e.getValue().longValue(), MAX));
+                        if (e.getValue() == null) continue;
+                        balances.put(e.getKey(), clamp(e.getValue().longValue()));
                     }
                 }
             } catch (IOException ignored) {}
@@ -217,7 +219,11 @@ public class EconomyManager {
             try {
                 String json = Files.readString(dailyFile);
                 Map<UUID, Long> map = GSON.fromJson(json, new TypeToken<Map<UUID, Long>>(){}.getType());
-                if (map != null) lastDaily.putAll(map);
+                if (map != null) {
+                    for (Map.Entry<UUID, Long> e : map.entrySet()) {
+                        if (e.getValue() != null) lastDaily.put(e.getKey(), e.getValue());
+                    }
+                }
             } catch (IOException ignored) {}
         }
     }
@@ -406,7 +412,7 @@ public class EconomyManager {
     }
 
     public void handlePvpKill(ServerPlayer victim, ServerPlayer killer) {
-        double pct = EconomyConfig.get().pvpBalanceLossPercentage;
+        double pct = Math.min(EconomyConfig.get().pvpBalanceLossPercentage, 1.0);
         if (pct <= 0.0) return;
         if (victim == null || killer == null) return;
         if (victim.getUUID().equals(killer.getUUID())) return;
@@ -414,10 +420,10 @@ public class EconomyManager {
         long victimBal = getBalance(victim.getUUID(), true);
         if (victimBal <= 0L) return;
 
-        long loss = (long)Math.floor(pct * victimBal);
+        long loss = Math.min((long)Math.floor(pct * victimBal), victimBal);
         if (loss <= 0L) return;
+        if (!removeMoney(victim.getUUID(), loss)) return;
 
-        removeMoney(victim.getUUID(), loss);
         addMoney(killer.getUUID(), loss);
 
         victim.sendSystemMessage(Component.literal(
@@ -430,7 +436,7 @@ public class EconomyManager {
     }
 
     private long clamp(long value) {
-        return Math.max(0, Math.min(MAX, value));
+        return Math.clamp(value, 0, MAX);
     }
 
     private static final class UserCacheEntry {
