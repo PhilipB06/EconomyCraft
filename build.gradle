@@ -16,12 +16,11 @@ allprojects {
     version = rootProject.mod_version
 }
 
-// ---- BUILD TARGETS
-// One entry per supported Minecraft version. Each drives a generated set of
-// build/deploy/run tasks (buildFabric_<v>, buildAndCopyFabricJars_<v>, runLocalFabric_<v>, ...).
-// Defined before subprojects{} (below) so resolveMcTarget/mcTargets are available to it —
-// subprojects{}'s configuration closure is not guaranteed to run only after the rest of this
-// script finishes, so forward references to ext values defined later in this same file are unsafe.
+// ---- Build targets ----
+// One entry per supported Minecraft version; each drives a generated set of build/deploy/run
+// tasks below (buildFabric_<v>, runLocalFabric_<v>, ...). Must stay defined before subprojects{}
+// — its configuration closure isn't guaranteed to run after the rest of this script, so it can't
+// safely forward-reference an ext value defined later in the file.
 ext.mcTargets = [
         [ mc: "26.1.2", fabricApi: "0.154.0+26.1.2", architecturyVer: "20.0.7", neoforge: "26.1.2.76", neoforgeLineLo: "26.1", neoforgeLineHi: "26.2", textPlaceholderApi: "3.0.0+26.1", placeholderApiNeoForge: "3.0.0+26.1+neoforge" ],
         [ mc: "26.2", fabricApi: "0.154.0+26.2", architecturyVer: "21.0.2", neoforge: "26.2.0.7-beta", neoforgeLineLo: "26.2", neoforgeLineHi: "26.3", textPlaceholderApi: "3.1.0-beta.1+26.2", placeholderApiNeoForge: "3.1.0-beta.1+26.2+neoforge" ],
@@ -95,7 +94,8 @@ subprojects {
                 from components.java
             }
         }
-        repositories { /* leer gelassen */ }
+        // Intentionally empty: release jars are published to Modrinth/CurseForge in CI, not a Maven repo.
+        repositories {}
     }
 
     if (project.name == "neoforge") {

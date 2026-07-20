@@ -11,7 +11,6 @@
     "main": ["com.reazip.economycraft.fabric.EconomyCraftFabric"],
     "client": ["com.reazip.economycraft.fabric.client.EconomyCraftFabricClient"]
   },
-  "mixins": ["economycraft.mixins.json"],
   "depends": {
     "minecraft": ">=${mcLo} <${mcHi}",
     "fabricloader": ">=0.15.0",

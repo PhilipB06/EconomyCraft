@@ -24,7 +24,6 @@ public final class IdentifierCompat {
     private static final Method REGISTRY_GET_OPTIONAL;
     private static final Method RESOURCE_KEY_CREATE;
     private static final Method RESOURCE_KEY_IDENTIFIER;
-    private static final Method HOLDER_VALUE;
     private static final Method EITHER_LEFT;
     private static final Method EITHER_RIGHT;
 
@@ -38,7 +37,6 @@ public final class IdentifierCompat {
         Method registryGetOptional = null;
         Method resourceKeyCreate = null;
         Method resourceKeyIdentifier = null;
-        Method holderValue = null;
         Method eitherLeft = null;
         Method eitherRight = null;
         Object sample = BuiltInRegistries.ITEM.getKey(Items.AIR);
@@ -82,7 +80,6 @@ public final class IdentifierCompat {
         registryGetOptional = findRegistryMethod(Registry.class, Optional.class, idClass);
         resourceKeyCreate = findResourceKeyCreate(idClass);
         resourceKeyIdentifier = findResourceKeyIdentifier(idClass);
-        holderValue = findHolderValue();
         Method[] eitherMethods = findEitherMethods();
         if (eitherMethods != null) {
             eitherLeft = eitherMethods[0];
@@ -98,7 +95,6 @@ public final class IdentifierCompat {
         REGISTRY_GET_OPTIONAL = registryGetOptional;
         RESOURCE_KEY_CREATE = resourceKeyCreate;
         RESOURCE_KEY_IDENTIFIER = resourceKeyIdentifier;
-        HOLDER_VALUE = holderValue;
         EITHER_LEFT = eitherLeft;
         EITHER_RIGHT = eitherRight;
     }
@@ -329,39 +325,6 @@ public final class IdentifierCompat {
         throw new ExceptionInInitializerError("Registry method not found");
     }
 
-    private static Method findNoArgMethod(Class<?> type, String... names) {
-        for (String name : names) {
-            Method method = null;
-            try {
-                method = type.getMethod(name);
-            } catch (NoSuchMethodException ignored) {
-                // try declared method instead
-            }
-            if (method == null) {
-                try {
-                    method = type.getDeclaredMethod(name);
-                    method.setAccessible(true);
-                } catch (NoSuchMethodException ignored) {
-                    // try next name
-                } catch (RuntimeException ignored) {
-                    // access failure; try next name
-                }
-            }
-            if (method == null) {
-                continue;
-            }
-            Class<?> returnType = method.getReturnType();
-            if (returnType.equals(void.class)
-                    || returnType.equals(boolean.class)
-                    || Optional.class.isAssignableFrom(returnType)
-                    || ResourceKey.class.isAssignableFrom(returnType)) {
-                continue;
-            }
-            return method;
-        }
-        return null;
-    }
-
     private static Method findResourceKeyCreate(Class<?> idClass) {
         for (Method method : ResourceKey.class.getMethods()) {
             if (!java.lang.reflect.Modifier.isStatic(method.getModifiers())) {
@@ -384,10 +347,6 @@ public final class IdentifierCompat {
             }
         }
         throw new ExceptionInInitializerError("ResourceKey identifier method not found");
-    }
-
-    private static Method findHolderValue() {
-        return findNoArgMethod(Holder.class, "value", "get");
     }
 
     private static Method[] findEitherMethods() {

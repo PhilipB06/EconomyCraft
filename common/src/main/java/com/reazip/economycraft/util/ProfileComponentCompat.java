@@ -47,11 +47,6 @@ public final class ProfileComponentCompat {
         throw new IllegalStateException("No compatible ResolvableProfile factory found for resolved profile");
     }
 
-    public static ResolvableProfile resolvedOrUnresolved(GameProfile profile) {
-        return tryResolvedOrUnresolved(profile)
-                .orElseThrow(() -> new IllegalStateException("No compatible ResolvableProfile factory found"));
-    }
-
     public static Optional<ResolvableProfile> tryResolvedOrUnresolved(GameProfile profile) {
         try {
             return Optional.of(resolved(profile));

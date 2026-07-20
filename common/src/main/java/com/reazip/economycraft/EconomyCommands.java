@@ -128,9 +128,7 @@ public final class EconomyCommands {
         return root;
     }
 
-    // =====================================================================
-    // === Balance & payments ==============================================
-    // =====================================================================
+    // ---- Balance & payments ----
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildBalance() {
         return literal("bal")
@@ -302,9 +300,7 @@ public final class EconomyCommands {
         return 1;
     }
 
-    // =====================================================================
-    // === Admin commands ==================================================
-    // =====================================================================
+    // ---- Admin commands ----
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildAddMoney() {
         return literal("addmoney").requires(PermissionCompat.gamemaster())
@@ -542,9 +538,7 @@ public final class EconomyCommands {
         return count;
     }
 
-    // =====================================================================
-    // === Scoreboard toggle ===============================================
-    // =====================================================================
+    // ---- Scoreboard toggle ----
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildToggleScoreboard() {
         return literal("toggleScoreboard").requires(PermissionCompat.gamemaster())
@@ -564,9 +558,7 @@ public final class EconomyCommands {
         return 1;
     }
 
-    // =====================================================================
-    // === Shop commands ===================================================
-    // =====================================================================
+    // ---- Shop commands ----
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildShop() {
         return literal("shop")
@@ -657,9 +649,7 @@ public final class EconomyCommands {
         }
     }
 
-    // =====================================================================
-    // === Orders commands =================================================
-    // =====================================================================
+    // ---- Orders commands ----
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildOrders() {
         String requestUsage = "/orders request <item> <amount> <price>";
@@ -725,9 +715,7 @@ public final class EconomyCommands {
         return 1;
     }
 
-    // =====================================================================
-    // === Daily reward ====================================================
-    // =====================================================================
+    // ---- Daily reward ----
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildDaily() {
         return literal("daily")
@@ -746,9 +734,7 @@ public final class EconomyCommands {
         return 1;
     }
 
-    // =====================================================================
-    // === Helpers =========================================================
-    // =====================================================================
+    // ---- Helpers ----
 
     @Nullable
     private static ServerPlayer tryGetPlayer(CommandSourceStack source) {

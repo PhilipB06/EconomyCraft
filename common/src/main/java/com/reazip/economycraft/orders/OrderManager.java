@@ -77,12 +77,6 @@ public class OrderManager {
         if (deliveries.remove(player, stack)) save();
     }
 
-    public List<ItemStack> claimDeliveries(UUID player) {
-        List<ItemStack> list = deliveries.claim(player);
-        if (list != null) save();
-        return list;
-    }
-
     public boolean hasDeliveries(UUID player) {
         return deliveries.has(player);
     }

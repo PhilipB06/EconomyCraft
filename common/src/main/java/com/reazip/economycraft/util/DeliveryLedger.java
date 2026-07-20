@@ -43,10 +43,6 @@ public final class DeliveryLedger {
         return true;
     }
 
-    public List<ItemStack> claim(UUID player) {
-        return deliveries.remove(player);
-    }
-
     public boolean has(UUID player) {
         List<ItemStack> list = deliveries.get(player);
         return list != null && !list.isEmpty();

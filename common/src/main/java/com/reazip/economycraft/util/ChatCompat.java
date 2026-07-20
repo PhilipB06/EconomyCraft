@@ -90,7 +90,7 @@ public final class ChatCompat {
         return null;
     }
 
-    // ---- Guaranteed fallback ------------------------------------------------
+    // ---- Guaranteed fallback ----
 
     /**
      * Guaranteed clickable RUN_COMMAND via /tellraw.
@@ -105,7 +105,7 @@ public final class ChatCompat {
                     "\",\"underlined\":true,\"color\":\"green\",\"clickEvent\":{\"action\":\"run_command\",\"value\":\"" +
                     escCmd + "\"}}]}";
 
-            String selector = target.getScoreboardName(); // safe
+            String selector = target.getScoreboardName(); // restricted charset, safe to inline unescaped
             String line = "tellraw " + selector + " " + json;
 
             var srv = target.level().getServer();
@@ -117,7 +117,7 @@ public final class ChatCompat {
         }
     }
 
-    // ---- Scan & helpers -----------------------------------------------------
+    // ---- Scan & helpers ----
 
     private static void ensureScanned() {
         if (scanned) return;
@@ -166,7 +166,7 @@ public final class ChatCompat {
                         if (probe instanceof ClickEvent ce && isRunCommand(ce)) {
                             nestedCtorString = sCtor;
                         }
-                    } catch (NoSuchMethodException ignored) { /* no-op */ } catch (Throwable ignored) { /* no-op */ }
+                    } catch (NoSuchMethodException ignored) {} catch (Throwable ignored) {}
 
                     try {
                         Constructor<?> cCtor = nested.getConstructor(Component.class);
@@ -174,7 +174,7 @@ public final class ChatCompat {
                         if (probe instanceof ClickEvent ce && isRunCommand(ce)) {
                             nestedCtorComponent = cCtor;
                         }
-                    } catch (NoSuchMethodException ignored) { /* no-op */ } catch (Throwable ignored) { /* no-op */ }
+                    } catch (NoSuchMethodException ignored) {} catch (Throwable ignored) {}
                 }
             } catch (Throwable t) {
                 LOGGER.debug("[ChatCompat] Reflective scan for ClickEvent shape failed", t);

@@ -119,10 +119,6 @@ public final class PriceRegistry {
         }
     }
 
-    public PriceEntry get(IdentifierCompat.Id id) {
-        return prices.get(id);
-    }
-
     public PriceEntry get(ItemStack stack) {
         ResolvedPrice rp = resolve(stack);
         return rp != null ? rp.entry() : null;
@@ -148,21 +144,6 @@ public final class PriceRegistry {
         return (p != null && p.unitSell() > 0) ? p.unitSell() : null;
     }
 
-    public Integer getStackSize(ItemStack stack) {
-        PriceEntry p = get(stack);
-        return (p != null && p.stack() > 0) ? p.stack() : null;
-    }
-
-    public boolean canBuyUnit(ItemStack stack) {
-        PriceEntry p = get(stack);
-        return p != null && p.unitBuy() > 0;
-    }
-
-    public boolean canSellUnit(ItemStack stack) {
-        PriceEntry p = get(stack);
-        return p != null && p.unitSell() > 0;
-    }
-
     public boolean isSellBlockedByDamage(ItemStack stack) {
         return stack != null && stack.isDamageableItem() && stack.getDamageValue() > 0;
     }
@@ -175,34 +156,11 @@ public final class PriceRegistry {
         return bundle != null && !bundle.isEmpty();
     }
 
-    public Collection<PriceEntry> all() {
-        return Collections.unmodifiableCollection(prices.values());
-    }
-
-    public Set<String> categories() {
-        Set<String> out = new LinkedHashSet<>();
-        for (PriceEntry p : prices.values()) out.add(p.category());
-        return out;
-    }
-
     public Set<String> buyCategories() {
         Set<String> out = new LinkedHashSet<>();
         for (PriceEntry p : prices.values()) {
             if (p.unitBuy() > 0) {
                 out.add(p.category());
-            }
-        }
-        return out;
-    }
-
-    public List<PriceEntry> byCategory(String category) {
-        if (category == null) return List.of();
-        String c = category.trim().toLowerCase(Locale.ROOT);
-
-        List<PriceEntry> out = new ArrayList<>();
-        for (PriceEntry p : prices.values()) {
-            if (p.category() != null && p.category().trim().toLowerCase(Locale.ROOT).equals(c)) {
-                out.add(p);
             }
         }
         return out;

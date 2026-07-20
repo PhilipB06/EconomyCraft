@@ -73,9 +73,7 @@ public class EconomyManager {
         return server;
     }
 
-    // =====================================================================
-    // === Name handling ================================
-    // =====================================================================
+    // ---- Name handling ----
 
     private void ensureDiskUserCacheLoaded() {
         if (diskUserCache != null) return;
@@ -129,9 +127,7 @@ public class EconomyManager {
         return null;
     }
 
-    // =====================================================================
-    // === Balances ========================================================
-    // =====================================================================
+    // ---- Balances ----
 
     public Long getBalance(UUID player, boolean newBalanceIfNonExistent) {
         if (!balances.containsKey(player)) {
@@ -177,9 +173,7 @@ public class EconomyManager {
         return true;
     }
 
-    // =====================================================================
-    // === Load / Save =====================================================
-    // =====================================================================
+    // ---- Load / Save ----
 
     public void load() {
         if (Files.exists(file)) {
@@ -238,9 +232,7 @@ public class EconomyManager {
         }
     }
 
-    // =====================================================================
-    // === Scoreboard / Leaderboard =======================================
-    // =====================================================================
+    // ---- Scoreboard / Leaderboard ----
 
     private void applyScoreboardSettingOnStartup() {
         if (EconomyConfig.get().scoreboardEnabled) {
@@ -344,9 +336,7 @@ public class EconomyManager {
         return EconomyConfig.get().scoreboardEnabled;
     }
 
-    // =====================================================================
-    // === Misc ============================================================
-    // =====================================================================
+    // ---- Misc ----
 
     public ShopManager getShop() {
         return shop;
