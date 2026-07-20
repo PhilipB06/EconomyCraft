@@ -9,7 +9,7 @@ pluginManagement {
 }
 
 plugins {
-    // Auto-provisions a JDK 25 toolchain for compilation if none is installed locally.
+    // Auto-provisions a JDK toolchain (21 or 25, depending on the target) for compilation if none is installed locally.
     id "org.gradle.toolchains.foojay-resolver-convention" version "1.0.0"
 }
 

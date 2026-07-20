@@ -28,19 +28,47 @@ repositories {
 def mcCoord = (rootProject.findProperty("minecraft_version") ?: rootProject.minecraft_version) as String
 def tgt     = rootProject.ext.resolveMcTarget(mcCoord)
 
+// The placeholder-api-neoforge library did a major API redesign between the 1.21.11-era release
+// (Placeholders.register) and the 26.x-era release (Placeholders.registerServer); only the
+// placeholder integration entrypoint lives here, forked per era.
+sourceSets {
+    main {
+        java {
+            srcDir "src/${tgt.obfuscated ? 'obfuscated' : 'unobfuscated'}/java"
+        }
+    }
+}
+
 dependencies {
     // Required for Loom
     minecraft "com.mojang:minecraft:${mcCoord}"
 
     // Platform loader + API
     neoForge "net.neoforged:neoforge:${rootProject.findProperty('neoforge_version') ?: tgt.neoforge}"
-    api "dev.architectury:architectury-neoforge:${rootProject.findProperty('architectury_version_plain') ?: tgt.architecturyVer}"
 
-    // Link common module
-    common(project(path: ":common")) { transitive = false }
+    if (tgt.obfuscated) {
+        // 1.21.11 is obfuscated; NeoForge itself already uses Mojang's official mappings (it
+        // dropped its own obfuscation years ago), but common still needs remapping into them.
+        mappings loom.officialMojangMappings()
+
+        modApi "dev.architectury:architectury-neoforge:${rootProject.findProperty('architectury_version_plain') ?: tgt.architecturyVer}"
+
+        // Link common module — namedElements is the remap-aware configuration Loom needs when
+        // common was compiled against Mojang official mappings and must be remapped here too.
+        common(project(path: ":common", configuration: "namedElements")) { transitive = false }
+    } else {
+        api "dev.architectury:architectury-neoforge:${rootProject.findProperty('architectury_version_plain') ?: tgt.architecturyVer}"
+
+        // Link common module
+        common(project(path: ":common")) { transitive = false }
+    }
     shadowBundle project(path: ":common", configuration: "transformProductionNeoForge")
 
-    compileOnly "eu.pb4:placeholder-api-neoforge:${rootProject.findProperty('placeholder_api_neoforge_version') ?: tgt.placeholderApiNeoForge}"
+    // placeholder-api-neoforge was never published for the 1.21.x line (only 26.x+), so there's
+    // no artifact to compile against on the obfuscated target.
+    if (!tgt.obfuscated) {
+        compileOnly "eu.pb4:placeholder-api-neoforge:${rootProject.findProperty('placeholder_api_neoforge_version') ?: tgt.placeholderApiNeoForge}"
+    }
 }
 
 processResources {
@@ -88,22 +116,41 @@ tasks.withType(Jar).configureEach {
     }
 }
 
-jar {
-    archiveClassifier = "raw"
-}
+if (tgt.obfuscated) {
+    shadowJar {
+        configurations = [project.configurations.shadowBundle]
+        archiveClassifier = "dev-shadow"
 
-shadowJar {
-    dependsOn jar
-    mainSpec.sourcePaths.clear()
-    from(zipTree(jar.archiveFile))
+        manifest {
+            attributes(
+                    'Implementation-Title': project.name,
+                    'Implementation-Version': project.version
+            )
+        }
+    }
 
-    configurations = [project.configurations.shadowBundle]
-    archiveClassifier = null
+    remapJar {
+        inputFile.set(shadowJar.archiveFile)
+        archiveVersion = ""
+    }
+} else {
+    jar {
+        archiveClassifier = "raw"
+    }
 
-    manifest {
-        attributes(
-                'Implementation-Title': project.name,
-                'Implementation-Version': project.version
-        )
+    shadowJar {
+        dependsOn jar
+        mainSpec.sourcePaths.clear()
+        from(zipTree(jar.archiveFile))
+
+        configurations = [project.configurations.shadowBundle]
+        archiveClassifier = null
+
+        manifest {
+            attributes(
+                    'Implementation-Title': project.name,
+                    'Implementation-Version': project.version
+            )
+        }
     }
 }

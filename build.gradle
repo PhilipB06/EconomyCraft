@@ -2,6 +2,7 @@ import org.gradle.api.GradleException
 
 plugins {
     id "dev.architectury.loom-no-remap" version "1.17.487" apply false
+    id "dev.architectury.loom" version "1.17.487" apply false
     id "architectury-plugin" version "3.5.169"
     id "com.gradleup.shadow" version "9.3.1" apply false
 }
@@ -15,17 +16,59 @@ allprojects {
     version = rootProject.mod_version
 }
 
+// ---- BUILD TARGETS
+// One entry per supported Minecraft version. Each drives a generated set of
+// build/deploy/run tasks (buildFabric_<v>, buildAndCopyFabricJars_<v>, runLocalFabric_<v>, ...).
+// Defined before subprojects{} (below) so resolveMcTarget/mcTargets are available to it —
+// subprojects{}'s configuration closure is not guaranteed to run only after the rest of this
+// script finishes, so forward references to ext values defined later in this same file are unsafe.
+ext.mcTargets = [
+        [ mc: "26.1.2", fabricApi: "0.154.0+26.1.2", architecturyVer: "20.0.7", neoforge: "26.1.2.76", neoforgeLineLo: "26.1", neoforgeLineHi: "26.2", textPlaceholderApi: "3.0.0+26.1", placeholderApiNeoForge: "3.0.0+26.1+neoforge" ],
+        [ mc: "26.2", fabricApi: "0.154.0+26.2", architecturyVer: "21.0.2", neoforge: "26.2.0.7-beta", neoforgeLineLo: "26.2", neoforgeLineHi: "26.3", textPlaceholderApi: "3.1.0-beta.1+26.2", placeholderApiNeoForge: "3.1.0-beta.1+26.2+neoforge" ],
+        // 1.21.11 is the last obfuscated Minecraft version, so it needs real remapping (Mojang
+        // official mappings) instead of loom-no-remap, and runs on Java 21 instead of 25.
+        // No placeholderApiNeoForge: that library was never published for the 1.21.x line.
+        [ mc: "1.21.11", fabricApi: "0.141.4+1.21.11", architecturyVer: "19.0.1", neoforge: "21.11.42", neoforgeLineLo: "21.11", neoforgeLineHi: "21.12", textPlaceholderApi: "2.8.2+1.21.10", obfuscated: true, javaVersion: 21 ],
+]
+
+// ---- TARGET RESOLVER
+ext.resolveMcTarget = { String mcStr ->
+    def t = ext.mcTargets.find { it.mc == mcStr }
+    if (!t) throw new GradleException("No mcTarget for minecraft_version='$mcStr'")
+    return t
+}
+
+// ---- TASK NAME VERSION
+ext.mcTaskVer = { String v ->
+    def parts = v.tokenize('.')
+    if (parts.size() < 3) return v
+    def major = parts[0] as int
+    def minor = parts[1] as int
+    def patch = parts[2] as int
+    return "${major}.${minor}.${String.format('%02d', patch)}"
+}
+
 subprojects {
-    apply plugin: "dev.architectury.loom-no-remap"
+    def mcCoord = (rootProject.findProperty("minecraft_version") ?: rootProject.minecraft_version) as String
+    def tgt = rootProject.ext.resolveMcTarget(mcCoord)
+
+    apply plugin: tgt.obfuscated ? "dev.architectury.loom" : "dev.architectury.loom-no-remap"
     apply plugin: "architectury-plugin"
     apply plugin: "maven-publish"
 
     base {
-        def mcVer = (rootProject.findProperty("minecraft_version") ?: rootProject.minecraft_version)
-        archivesName = "${rootProject.archives_name}-${project.name}-${rootProject.mod_version}_${mcVer}"
+        archivesName = "${rootProject.archives_name}-${project.name}-${rootProject.mod_version}_${mcCoord}"
     }
 
     tasks.withType(Jar).configureEach { archiveVersion = "" }
+
+    // Auto-accepts the Mojang mappings license so --no-daemon builds don't block on a prompt;
+    // only obfuscated targets remap against those mappings at all.
+    if (tgt.obfuscated) {
+        loom {
+            silentMojangMappingsLicense()
+        }
+    }
 
     repositories {
         gradlePluginPortal()
@@ -35,14 +78,15 @@ subprojects {
         mavenCentral()
     }
 
+    def javaVer = (tgt.javaVersion ?: 25) as int
     java {
-        sourceCompatibility = JavaVersion.VERSION_25
-        targetCompatibility = JavaVersion.VERSION_25
+        sourceCompatibility = JavaVersion.toVersion(javaVer)
+        targetCompatibility = JavaVersion.toVersion(javaVer)
         toolchain {
-            languageVersion = JavaLanguageVersion.of(25)
+            languageVersion = JavaLanguageVersion.of(javaVer)
         }
     }
-    tasks.withType(JavaCompile).configureEach { options.release = 25 }
+    tasks.withType(JavaCompile).configureEach { options.release = javaVer }
 
     publishing {
         publications {
@@ -64,12 +108,12 @@ subprojects {
             def mcLo = "${major}.${minor}"
             def mcHi = "${major}.${minor + 1}"
 
-            def nfLo = (rootProject.findProperty("neoforge_line_lo") ?: "26.2").toString()
-            def nfHi = (rootProject.findProperty("neoforge_line_hi") ?: "26.3").toString()
+            def nfLo = (rootProject.findProperty("neoforge_line_lo") ?: tgt.neoforgeLineLo).toString()
+            def nfHi = (rootProject.findProperty("neoforge_line_hi") ?: tgt.neoforgeLineHi).toString()
 
             def archVer = (rootProject.findProperty("architectury_version_plain")
                     ?: project.findProperty("architectury_version_plain")
-                    ?: "21.0.2").toString()
+                    ?: tgt.architecturyVer).toString()
 
             inputs.property "mcLo", mcLo
             inputs.property "mcHi", mcHi
@@ -92,31 +136,6 @@ subprojects {
     }
 }
 
-// ---- TARGET RESOLVER
-ext.resolveMcTarget = { String mcStr ->
-    def t = ext.mcTargets.find { it.mc == mcStr }
-    if (!t) throw new GradleException("No mcTarget for minecraft_version='$mcStr'")
-    return t
-}
-
-// ---- TASK NAME VERSION
-ext.mcTaskVer = { String v ->
-    def parts = v.tokenize('.')
-    if (parts.size() < 3) return v
-    def major = parts[0] as int
-    def minor = parts[1] as int
-    def patch = parts[2] as int
-    return "${major}.${minor}.${String.format('%02d', patch)}"
-}
-
-// ---- BUILD TARGETS
-// One entry per supported Minecraft version. Each drives a generated set of
-// build/deploy/run tasks (buildFabric_<v>, buildAndCopyFabricJars_<v>, runLocalFabric_<v>, ...).
-ext.mcTargets = [
-        [ mc: "26.1.2", fabricApi: "0.154.0+26.1.2", architecturyVer: "20.0.7", neoforge: "26.1.2.76", neoforgeLineLo: "26.1", neoforgeLineHi: "26.2", textPlaceholderApi: "3.0.0+26.1", placeholderApiNeoForge: "3.0.0+26.1+neoforge" ],
-        [ mc: "26.2", fabricApi: "0.154.0+26.2", architecturyVer: "21.0.2", neoforge: "26.2.0.7-beta", neoforgeLineLo: "26.2", neoforgeLineHi: "26.3", textPlaceholderApi: "3.1.0-beta.1+26.2", placeholderApiNeoForge: "3.1.0-beta.1+26.2+neoforge" ],
-]
-
 // ---- Build per version via external gradlew
 // On Windows a .bat cannot be launched directly by Exec/ProcessBuilder ("A problem occurred
 // starting process"), and `cmd /c` will not resolve a bare name from the working dir, so the
@@ -126,16 +145,16 @@ def gradleWrapperCmd = OperatingSystem.current().isWindows()
         ? ["cmd", "/c", new File(rootProject.projectDir, "gradlew.bat").absolutePath]
         : [new File(rootProject.projectDir, "gradlew").absolutePath]
 
-// Minecraft 26.x server classes are compiled for Java 25 (class-file version 69). Launch the
-// local dev servers with the provisioned JDK 25 toolchain rather than a bare `java`, whose
-// version depends on the (Gradle daemon's) PATH and may be an older JDK.
+// Each target's server jar is compiled for that target's Java version. Launch the local dev
+// servers with the provisioned toolchain JDK rather than a bare `java`, whose version depends
+// on the (Gradle daemon's) PATH and may not match.
 apply plugin: "jvm-toolchains"
-def serverJavaLauncher = javaToolchains.launcherFor {
-    languageVersion = JavaLanguageVersion.of(25)
-}
 
 ext.mcTargets.each { t ->
     def mcTask = ext.mcTaskVer(t.mc)
+    def serverJavaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of((t.javaVersion ?: 25) as int)
+    }
 
     // Fabric only
     def buildFabricTask = tasks.register("buildFabric_${mcTask}", Exec) {
@@ -146,6 +165,7 @@ ext.mcTargets.each { t ->
                 "-Pminecraft_version=${t.mc}",
                 "-Pfabric_api_version=${t.fabricApi}",
                 "-Parchitectury_version_plain=${t.architecturyVer}",
+                "-Ptext_placeholder_api_version=${t.textPlaceholderApi}",
                 ":fabric:clean", ":fabric:build"
         ])
     }
@@ -163,7 +183,8 @@ ext.mcTargets.each { t ->
             def builtJars = libsDir.listFiles().findAll { File f ->
                 f.name.endsWith(".jar") &&
                         !f.name.endsWith("-sources.jar") &&
-                        !f.name.contains("-raw")
+                        !f.name.contains("-raw") &&
+                        !f.name.contains("dev-shadow")
             }
             if (builtJars.isEmpty()) {
                 throw new GradleException("No built jars found in ${libsDir}")
@@ -202,7 +223,6 @@ ext.mcTargets.each { t ->
 
         workingDir "$rootProject.projectDir/local_servers/fabric/${t.mc}"
         args "-Xmx4G", "-jar", "fabric-server-launch.jar", "nogui"
-        // MC 26.x needs Java 25 — use the toolchain JDK, not a PATH-dependent `java`.
         doFirst {
             executable serverJavaLauncher.get().executablePath.asFile.absolutePath
         }
@@ -219,6 +239,7 @@ ext.mcTargets.each { t ->
                 "-Parchitectury_version_plain=${t.architecturyVer}",
                 "-Pneoforge_line_lo=${t.neoforgeLineLo}",
                 "-Pneoforge_line_hi=${t.neoforgeLineHi}",
+                "-Pplaceholder_api_neoforge_version=${t.placeholderApiNeoForge}",
                 ":neoforge:clean", ":neoforge:build"
         ])
     }
@@ -236,7 +257,8 @@ ext.mcTargets.each { t ->
             def nfJars = nfLibsDir.listFiles().findAll { File f ->
                 f.name.endsWith(".jar") &&
                         !f.name.endsWith("-sources.jar") &&
-                        !f.name.contains("-raw")
+                        !f.name.contains("-raw") &&
+                        !f.name.contains("dev-shadow")
             }
             if (nfJars.isEmpty()) {
                 throw new GradleException("No NeoForge jars found in ${nfLibsDir}")
@@ -283,8 +305,8 @@ ext.mcTargets.each { t ->
         } else {
             commandLine "bash", new File(serverDir, "run.sh").absolutePath
         }
-        // run.bat / run.sh invoke a bare `java`; put the Java 25 toolchain first on PATH so the
-        // MC 26.x (Java 25) server classes load.
+        // run.bat / run.sh invoke a bare `java`; put this target's toolchain JDK first on PATH so
+        // the server classes load on the right Java version.
         doFirst {
             def javaBin = serverJavaLauncher.get().executablePath.asFile.parentFile.absolutePath
             environment "PATH", javaBin + File.pathSeparator + (System.getenv("PATH") ?: "")

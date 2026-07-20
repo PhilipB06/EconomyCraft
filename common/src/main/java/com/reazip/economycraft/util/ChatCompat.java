@@ -20,7 +20,6 @@ public final class ChatCompat {
 
     private ChatCompat() {}
 
-    // ---- Caches (filled lazily on first use) --------------------------------
     private static volatile boolean scanned = false;
 
     private static volatile Method factoryMethod;                 // (String) -> ClickEvent
