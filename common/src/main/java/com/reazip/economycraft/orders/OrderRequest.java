@@ -4,13 +4,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.core.HolderLookup;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.RegistryOps;
-import com.reazip.economycraft.util.IdentifierCompat;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
-import java.util.Optional;
 import java.util.UUID;
 
 public class OrderRequest {
@@ -25,7 +21,6 @@ public class OrderRequest {
         obj.addProperty("id", id);
         if (requester != null) obj.addProperty("requester", requester.toString());
         obj.addProperty("price", price);
-        obj.addProperty("item", BuiltInRegistries.ITEM.getKey(item.getItem()).toString());
         obj.addProperty("amount", amount);
         JsonElement stackEl = ItemStack.CODEC.encodeStart(RegistryOps.create(JsonOps.INSTANCE, provider), item).result().orElse(new JsonObject());
         obj.add("stack", stackEl);
@@ -38,17 +33,7 @@ public class OrderRequest {
         if (obj.has("requester")) r.requester = UUID.fromString(obj.get("requester").getAsString());
         r.price = obj.get("price").getAsLong();
         r.amount = obj.get("amount").getAsInt();
-        if (obj.has("stack")) {
-            r.item = ItemStack.CODEC.parse(RegistryOps.create(JsonOps.INSTANCE, provider), obj.get("stack")).result().orElse(ItemStack.EMPTY);
-        }
-        if (r.item == null || r.item.isEmpty()) {
-            String itemId = obj.get("item").getAsString();
-            IdentifierCompat.Id rl = IdentifierCompat.tryParse(itemId);
-            if (rl != null) {
-                Optional<Item> opt = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, rl);
-                opt.ifPresent(item -> r.item = new ItemStack(item));
-            }
-        }
+        r.item = ItemStack.CODEC.parse(RegistryOps.create(JsonOps.INSTANCE, provider), obj.get("stack")).result().orElse(ItemStack.EMPTY);
         return r;
     }
 }

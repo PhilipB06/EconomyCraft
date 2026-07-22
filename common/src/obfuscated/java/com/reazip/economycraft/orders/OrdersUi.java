@@ -3,6 +3,7 @@ package com.reazip.economycraft.orders;
 import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyManager;
+import com.reazip.economycraft.util.ContainerPreviewUi;
 import com.reazip.economycraft.util.IdentityCompat;
 import com.reazip.economycraft.util.ItemsCompat;
 import com.reazip.economycraft.util.MenuUiSupport;
@@ -31,6 +32,10 @@ public final class OrdersUi {
     private OrdersUi() {}
 
     public static void open(ServerPlayer player, EconomyManager eco) {
+        open(player, eco, 0);
+    }
+
+    private static void open(ServerPlayer player, EconomyManager eco, int page) {
         Component title = Component.literal("Orders");
         player.openMenu(new MenuProvider() {
             @Override
@@ -40,7 +45,7 @@ public final class OrdersUi {
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                return new RequestMenu(id, inv, eco.getOrders(), eco, player);
+                return new RequestMenu(id, inv, eco.getOrders(), eco, player, page);
             }
         });
     }
@@ -54,13 +59,17 @@ public final class OrdersUi {
     }
 
     public static void openClaims(ServerPlayer player, EconomyManager eco) {
+        openClaims(player, eco, 0);
+    }
+
+    private static void openClaims(ServerPlayer player, EconomyManager eco, int page) {
         player.openMenu(new MenuProvider() {
             @Override
             public Component getDisplayName() { return Component.literal("Deliveries"); }
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                return new ClaimMenu(id, inv, eco, player.getUUID());
+                return new ClaimMenu(id, inv, eco, player.getUUID(), page);
             }
         });
     }
@@ -75,11 +84,12 @@ public final class OrdersUi {
         private final int navRowStart = 45;
         private final Runnable listener = this::updatePage;
 
-        RequestMenu(int id, Inventory inv, OrderManager orders, EconomyManager eco, ServerPlayer viewer) {
+        RequestMenu(int id, Inventory inv, OrderManager orders, EconomyManager eco, ServerPlayer viewer, int page) {
             super(MenuType.GENERIC_9x6, id);
             this.orders = orders;
             this.eco = eco;
             this.viewer = viewer;
+            this.page = page;
             updatePage();
             orders.addListener(listener);
             for (Slot slot : MenuUiSupport.readOnlyGridSlots(container, 54)) {
@@ -108,12 +118,15 @@ public final class OrdersUi {
                 String reqName = MenuUiSupport.resolvePlayerName(server, r.requester);
 
                 long tax = Math.round(r.price * EconomyConfig.get().taxRate);
-                display.set(DataComponents.LORE,
-                        new ItemLore(List.of(
-                                createRewardLore(r.price, tax),
-                                MenuUiSupport.labeledValue("Amount", String.valueOf(r.amount), MenuUiSupport.LABEL_PRIMARY_COLOR),
-                                MenuUiSupport.labeledValue("Requester", reqName, MenuUiSupport.LABEL_SECONDARY_COLOR)
-                        )));
+                List<Component> lore = new ArrayList<>(List.of(
+                        createRewardLore(r.price, tax),
+                        MenuUiSupport.labeledValue("Amount", String.valueOf(r.amount), MenuUiSupport.LABEL_PRIMARY_COLOR),
+                        MenuUiSupport.labeledValue("Requester", reqName, MenuUiSupport.LABEL_SECONDARY_COLOR)
+                ));
+                if (MenuUiSupport.hasContainerContents(r.item)) {
+                    lore.add(MenuUiSupport.labeledValue("Ctrl+Q", "Preview contents", MenuUiSupport.LABEL_SECONDARY_COLOR));
+                }
+                display.set(DataComponents.LORE, new ItemLore(lore));
                 display.setCount(1);
                 container.setItem(i, display);
             }
@@ -141,8 +154,15 @@ public final class OrdersUi {
 
         @Override
         public void clicked(int slot, int dragType, ClickType type, Player player) {
+            if (type == ClickType.THROW && slot >= 0 && slot < 45) {
+                int index = page * 45 + slot;
+                if (index < requests.size() && MenuUiSupport.hasContainerContents(requests.get(index).item)) {
+                    ContainerPreviewUi.open((ServerPlayer) player, requests.get(index).item, () -> OrdersUi.open((ServerPlayer) player, eco, page));
+                }
+                return;
+            }
             if (type == ClickType.PICKUP) {
-                if (slot < 45) {
+                if (slot >= 0 && slot < 45) {
                     int index = page * 45 + slot;
                     if (index < requests.size()) {
                         OrderRequest req = requests.get(index);
@@ -227,11 +247,14 @@ public final class OrdersUi {
             String requesterName = MenuUiSupport.resolvePlayerName(server, req.requester);
             long tax = Math.round(req.price * EconomyConfig.get().taxRate);
             item.setCount(1);
-            item.set(DataComponents.LORE,
-                    new ItemLore(List.of(
-                            createRewardLore(req.price, tax),
-                            MenuUiSupport.labeledValue("Amount", String.valueOf(req.amount), MenuUiSupport.LABEL_PRIMARY_COLOR),
-                            MenuUiSupport.labeledValue("Requester", requesterName, MenuUiSupport.LABEL_SECONDARY_COLOR))));
+            List<Component> itemLore = new ArrayList<>(List.of(
+                    createRewardLore(req.price, tax),
+                    MenuUiSupport.labeledValue("Amount", String.valueOf(req.amount), MenuUiSupport.LABEL_PRIMARY_COLOR),
+                    MenuUiSupport.labeledValue("Requester", requesterName, MenuUiSupport.LABEL_SECONDARY_COLOR)));
+            if (MenuUiSupport.hasContainerContents(req.item)) {
+                itemLore.add(MenuUiSupport.labeledValue("Ctrl+Q", "Preview contents", MenuUiSupport.LABEL_SECONDARY_COLOR));
+            }
+            item.set(DataComponents.LORE, new ItemLore(itemLore));
             container.setItem(4, item);
 
             ItemStack cancel = new ItemStack(ItemsCompat.redStainedGlassPane());
@@ -249,6 +272,10 @@ public final class OrdersUi {
 
         @Override
         public void clicked(int slot, int drag, ClickType type, Player player) {
+            if (type == ClickType.THROW && slot == 4 && MenuUiSupport.hasContainerContents(request.item)) {
+                ContainerPreviewUi.open((ServerPlayer) player, request.item, () -> parent.openConfirm((ServerPlayer) player, request));
+                return;
+            }
             if (type == ClickType.PICKUP) {
                 if (slot == 2) {
                     ServerPlayer serverPlayer = (ServerPlayer) player;
@@ -363,19 +390,16 @@ public final class OrdersUi {
     private static class ClaimMenu extends AbstractContainerMenu {
         private final EconomyManager eco;
         private final UUID owner;
-        private final List<ItemStack> orderItems;
-        private final List<ItemStack> shopItems;
         private final SimpleContainer container = new SimpleContainer(54);
         private final List<ItemStack> items = new ArrayList<>();
         private int page;
         private final int navRowStart = 45;
 
-        ClaimMenu(int id, Inventory inv, EconomyManager eco, UUID owner) {
+        ClaimMenu(int id, Inventory inv, EconomyManager eco, UUID owner, int page) {
             super(MenuType.GENERIC_9x6, id);
             this.eco = eco;
             this.owner = owner;
-            this.orderItems = eco.getOrders().getDeliveries(owner);
-            this.shopItems = eco.getShop().getDeliveries(owner);
+            this.page = page;
             updatePage();
             for (int i = 0; i < 54; i++) {
                 int r = i / 9;
@@ -393,8 +417,7 @@ public final class OrdersUi {
 
         private void updatePage() {
             items.clear();
-            items.addAll(orderItems);
-            items.addAll(shopItems);
+            items.addAll(eco.getDeliveries().getDeliveries(owner));
             container.clearContent();
             int start = page * 45;
             int totalPages = (int)Math.ceil(items.size() / 45.0);
@@ -427,29 +450,43 @@ public final class OrdersUi {
         }
 
         private void removeStack(ItemStack stack) {
-            eco.getOrders().removeDelivery(owner, stack);
-            eco.getShop().removeDelivery(owner, stack);
+            eco.getDeliveries().removeDelivery(owner, stack);
         }
 
         @Override public boolean stillValid(Player player) { return true; }
 
         @Override
         public void clicked(int slot, int dragType, ClickType type, Player player) {
-            if (type == ClickType.PICKUP) {
-                if (slot < 45) {
+            if (slot >= 0 && slot < 54) {
+                if (type == ClickType.THROW && slot < 45) {
                     Slot s = this.slots.get(slot);
-                    if (s.hasItem()) {
-                        ItemStack stack = s.getItem();
-                        ItemStack copy = stack.copy();
-                        if (player.getInventory().add(copy)) {
-                            removeStack(stack);
-                            updatePage();
-                        }
+                    if (s.hasItem() && MenuUiSupport.hasContainerContents(s.getItem())) {
+                        ServerPlayer sp = (ServerPlayer) player;
+                        ContainerPreviewUi.open(sp, s.getItem(), () -> OrdersUi.openClaims(sp, eco, page));
                     }
                     return;
                 }
-                if (slot == navRowStart + 2 && page > 0) { page--; updatePage(); return; }
-                if (slot == navRowStart + 6 && (page + 1) * 45 < items.size()) { page++; updatePage(); return; }
+                if (type == ClickType.PICKUP) {
+                    if (slot < 45) {
+                        Slot s = this.slots.get(slot);
+                        if (s.hasItem()) {
+                            ItemStack stack = s.getItem();
+                            ItemStack copy = stack.copy();
+                            if (player.getInventory().add(copy)) {
+                                removeStack(stack);
+                                updatePage();
+                            }
+                        }
+                        return;
+                    }
+                    if (slot == navRowStart + 2 && page > 0) { page--; updatePage(); return; }
+                    if (slot == navRowStart + 6 && (page + 1) * 45 < items.size()) { page++; updatePage(); return; }
+                    return;
+                }
+                if (type == ClickType.QUICK_MOVE) {
+                    super.clicked(slot, dragType, type, player);
+                }
+                return;
             }
             super.clicked(slot, dragType, type, player);
         }

@@ -5,16 +5,19 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import com.mojang.logging.LogUtils;
 import com.reazip.economycraft.util.IdentityCompat;
-import com.reazip.economycraft.util.IdentifierCompat;
+import com.reazip.economycraft.util.ItemArgumentCompat;
 import com.reazip.economycraft.util.PermissionCompat;
 import net.minecraft.ChatFormatting;
+import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.arguments.GameProfileArgument;
-import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.commands.arguments.item.ItemArgument;
+import net.minecraft.commands.arguments.item.ItemInput;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import org.slf4j.Logger;
@@ -40,8 +43,9 @@ import org.jetbrains.annotations.Nullable;
 public final class EconomyCommands {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final int MAIN_INVENTORY_SLOTS = 36;
-    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext buildContext) {
         dispatcher.register(buildRoot(
+                buildContext,
                 buildAddMoney(),
                 buildSetMoney(),
                 buildRemoveMoney(),
@@ -53,7 +57,7 @@ public final class EconomyCommands {
         dispatcher.register(buildPay().requires(s -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(SellCommand.register().requires(s -> EconomyConfig.get().standaloneCommands && EconomyConfig.get().sellEnabled));
         dispatcher.register(buildShop().requires(s -> EconomyConfig.get().standaloneCommands));
-        dispatcher.register(buildOrders().requires(s -> EconomyConfig.get().standaloneCommands));
+        dispatcher.register(buildOrders(buildContext).requires(s -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(buildDaily().requires(s -> EconomyConfig.get().standaloneCommands));
 
         dispatcher.register(
@@ -100,6 +104,7 @@ public final class EconomyCommands {
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildRoot(
+            CommandBuildContext buildContext,
             LiteralArgumentBuilder<CommandSourceStack> addMoney,
             LiteralArgumentBuilder<CommandSourceStack> setMoney,
             LiteralArgumentBuilder<CommandSourceStack> removeMoney,
@@ -112,7 +117,7 @@ public final class EconomyCommands {
         root.then(buildPay());
         root.then(SellCommand.register().requires(s -> EconomyConfig.get().sellEnabled));
         root.then(buildShop());
-        root.then(buildOrders());
+        root.then(buildOrders(buildContext));
         root.then(buildDaily());
 
         root.then(addMoney);
@@ -651,19 +656,19 @@ public final class EconomyCommands {
 
     // ---- Orders commands ----
 
-    private static LiteralArgumentBuilder<CommandSourceStack> buildOrders() {
+    private static LiteralArgumentBuilder<CommandSourceStack> buildOrders(CommandBuildContext buildContext) {
         String requestUsage = "/orders request <item> <amount> <price>";
         return literal("orders")
                 .executes(ctx -> openOrders(ctx.getSource().getPlayerOrException(), ctx.getSource()))
                 .then(literal("request")
                         .executes(ctx -> usage(ctx.getSource(), requestUsage))
-                        .then(argument("item", StringArgumentType.word())
+                        .then(argument("item", ItemArgument.item(buildContext))
                                 .executes(ctx -> usage(ctx.getSource(), requestUsage))
                                 .then(argument("amount", LongArgumentType.longArg(1, EconomyManager.MAX))
                                         .executes(ctx -> usage(ctx.getSource(), requestUsage))
                                         .then(argument("price", LongArgumentType.longArg(1, EconomyManager.MAX))
                                                 .executes(ctx -> requestItem(ctx.getSource().getPlayerOrException(),
-                                                        StringArgumentType.getString(ctx, "item"),
+                                                        ItemArgument.getItem(ctx, "item"),
                                                         (int) Math.min(LongArgumentType.getLong(ctx, "amount"), EconomyManager.MAX),
                                                         LongArgumentType.getLong(ctx, "price"),
                                                         ctx.getSource()))))))
@@ -681,10 +686,11 @@ public final class EconomyCommands {
         }
     }
 
-    private static int requestItem(ServerPlayer player, String itemId, int amount, long price, CommandSourceStack source) {
-        IdentifierCompat.Id item = IdentifierCompat.tryParse(itemId);
-        var holder = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, item);
-        if (holder.isEmpty()) {
+    private static int requestItem(ServerPlayer player, ItemInput input, int amount, long price, CommandSourceStack source) {
+        ItemStack item;
+        try {
+            item = ItemArgumentCompat.createItemStack(input, 1);
+        } catch (CommandSyntaxException e) {
             source.sendFailure(Component.literal("Invalid item").withStyle(ChatFormatting.RED));
             return 0;
         }
@@ -692,7 +698,7 @@ public final class EconomyCommands {
         OrderRequest r = new OrderRequest();
         r.requester = player.getUUID();
         r.price = price;
-        r.item = new ItemStack(holder.get());
+        r.item = item;
         int maxAmount = MAIN_INVENTORY_SLOTS * r.item.getMaxStackSize();
         if (amount > maxAmount) {
             source.sendFailure(Component.literal("Amount exceeds " + MAIN_INVENTORY_SLOTS + " stacks (max " + maxAmount + ")").withStyle(ChatFormatting.RED));

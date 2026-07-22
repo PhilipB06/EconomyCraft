@@ -3,40 +3,48 @@ package com.reazip.economycraft.shop;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.mojang.logging.LogUtils;
+import com.reazip.economycraft.DeliveryManager;
 import com.reazip.economycraft.EconomyCraft;
-import com.reazip.economycraft.util.DeliveryLedger;
 import com.reazip.economycraft.util.IdentityCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
+import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 
-/** Manages shop listings and deliveries. */
+/** Manages shop listings. Deliveries are owned by the shared {@link DeliveryManager}. */
 public class ShopManager {
+    private static final Logger LOGGER = LogUtils.getLogger();
     private static final Gson GSON = new Gson();
     private final MinecraftServer server;
     private final Path file;
     private final Map<Integer, ShopListing> listings = new HashMap<>();
-    private final DeliveryLedger deliveries = new DeliveryLedger();
+    private final DeliveryManager deliveries;
+    private final List<Runnable> listeners = new ArrayList<>();
     private int nextId = 1;
 
-    public ShopManager(MinecraftServer server) {
+    public ShopManager(MinecraftServer server, DeliveryManager deliveries) {
         this.server = server;
         Path dir = server.getFile("config/economycraft");
         Path dataDir = dir.resolve("data");
         try { Files.createDirectories(dataDir); } catch (IOException ignored) {}
         this.file = dataDir.resolve("shop.json");
+        this.deliveries = deliveries;
         load();
     }
 
-    public Collection<ShopListing> getListings() {
-        return listings.values();
+    /** Listings, newest first. */
+    public List<ShopListing> getListings() {
+        List<ShopListing> out = new ArrayList<>(listings.values());
+        out.sort((a, b) -> Integer.compare(b.id, a.id));
+        return out;
     }
 
     public ShopListing getListing(int id) {
@@ -46,14 +54,14 @@ public class ShopManager {
     public void addListing(ShopListing listing) {
         listing.id = nextId++;
         listings.put(listing.id, listing);
-        deliveries.notifyListeners();
+        notifyListeners();
         save();
     }
 
     public ShopListing removeListing(int id) {
         ShopListing l = listings.remove(id);
         if (l != null) {
-            deliveries.notifyListeners();
+            notifyListeners();
             save();
         }
         return l;
@@ -87,21 +95,20 @@ public class ShopManager {
     }
 
     public void addDelivery(UUID player, ItemStack stack) {
-        deliveries.add(player, stack);
-        save();
+        deliveries.addDelivery(player, stack);
     }
 
     /** Returns deliveries for the player without removing them. */
     public List<ItemStack> getDeliveries(UUID player) {
-        return deliveries.get(player);
+        return deliveries.getDeliveries(player);
     }
 
     public void removeDelivery(UUID player, ItemStack stack) {
-        if (deliveries.remove(player, stack)) save();
+        deliveries.removeDelivery(player, stack);
     }
 
     public boolean hasDeliveries(UUID player) {
-        return deliveries.has(player);
+        return deliveries.hasDeliveries(player);
     }
 
     public void load() {
@@ -111,11 +118,20 @@ public class ShopManager {
                 JsonObject root = GSON.fromJson(json, JsonObject.class);
                 nextId = root.get("nextId").getAsInt();
                 for (var el : root.getAsJsonArray("listings")) {
-                    ShopListing l = ShopListing.load(el.getAsJsonObject(), server.registryAccess());
-                    listings.put(l.id, l);
+                    try {
+                        ShopListing l = ShopListing.load(el.getAsJsonObject(), server.registryAccess());
+                        if (l.item == null || l.item.isEmpty()) {
+                            LOGGER.error("[EconomyCraft] Dropping shop listing {} with an unreadable item in {}", l.id, file);
+                            continue;
+                        }
+                        listings.put(l.id, l);
+                    } catch (Exception ex) {
+                        LOGGER.error("[EconomyCraft] Dropping an unreadable shop listing in {}", file, ex);
+                    }
                 }
-                deliveries.load(root.getAsJsonObject("deliveries"), server.registryAccess());
-            } catch (Exception ignored) {}
+            } catch (Exception ex) {
+                LOGGER.error("[EconomyCraft] Failed to load {}", file, ex);
+            }
         }
     }
 
@@ -127,17 +143,24 @@ public class ShopManager {
             listArr.add(l.save(server.registryAccess()));
         }
         root.add("listings", listArr);
-        root.add("deliveries", deliveries.save(server.registryAccess()));
         try {
             Files.writeString(file, GSON.toJson(root));
-        } catch (IOException ignored) {}
+        } catch (IOException ex) {
+            LOGGER.error("[EconomyCraft] Failed to save {}", file, ex);
+        }
     }
 
     public void addListener(Runnable run) {
-        deliveries.addListener(run);
+        listeners.add(run);
     }
 
     public void removeListener(Runnable run) {
-        deliveries.removeListener(run);
+        listeners.remove(run);
+    }
+
+    private void notifyListeners() {
+        for (Runnable r : new ArrayList<>(listeners)) {
+            r.run();
+        }
     }
 }

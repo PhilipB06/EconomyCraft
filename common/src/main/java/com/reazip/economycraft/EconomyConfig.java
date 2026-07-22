@@ -35,6 +35,8 @@ public class EconomyConfig {
     public boolean serverShopEnabled = true;
     @SerializedName("sell_enabled")
     public boolean sellEnabled = true;
+    @SerializedName("balance_separator")
+    public String balanceSeparator = ".";
 
     private static EconomyConfig INSTANCE = new EconomyConfig();
     private static Path file;
@@ -65,6 +67,10 @@ public class EconomyConfig {
             if (parsed.dailyAmount < 0) {
                 LOGGER.warn("[EconomyCraft] dailyAmount ({}) is negative; clamping to 0.", parsed.dailyAmount);
                 parsed.dailyAmount = 0;
+            }
+            if (parsed.balanceSeparator == null || parsed.balanceSeparator.isEmpty()) {
+                LOGGER.warn("[EconomyCraft] balance_separator is empty; defaulting to \".\".");
+                parsed.balanceSeparator = ".";
             }
             INSTANCE = parsed;
         } catch (Exception e) {

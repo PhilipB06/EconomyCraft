@@ -4,6 +4,7 @@ import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyManager;
 import com.reazip.economycraft.util.ChatCompat;
+import com.reazip.economycraft.util.ContainerPreviewUi;
 import com.reazip.economycraft.util.ItemsCompat;
 import com.reazip.economycraft.util.MenuUiSupport;
 import net.minecraft.ChatFormatting;
@@ -30,6 +31,10 @@ public final class ShopUi {
     private ShopUi() {}
 
     public static void open(ServerPlayer player, ShopManager shop) {
+        open(player, shop, 0);
+    }
+
+    static void open(ServerPlayer player, ShopManager shop, int page) {
         Component title = Component.literal("Shop");
 
         player.openMenu(new MenuProvider() {
@@ -40,7 +45,7 @@ public final class ShopUi {
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                return new ShopMenu(id, inv, shop, player);
+                return new ShopMenu(id, inv, shop, player, page);
             }
         });
     }
@@ -96,10 +101,11 @@ public final class ShopUi {
         private final int navRowStart = 45;
         private final Runnable listener = this::updatePage;
 
-        ShopMenu(int id, Inventory inv, ShopManager shop, ServerPlayer viewer) {
+        ShopMenu(int id, Inventory inv, ShopManager shop, ServerPlayer viewer, int page) {
             super(MenuType.GENERIC_9x6, id);
             this.shop = shop;
             this.viewer = viewer;
+            this.page = page;
             updatePage();
             shop.addListener(listener);
             for (Slot slot : MenuUiSupport.readOnlyGridSlots(container, 54)) {
@@ -126,9 +132,13 @@ public final class ShopUi {
                 String sellerName = MenuUiSupport.resolvePlayerName(viewer.level().getServer(), l.seller);
 
                 long tax = Math.round(l.price * EconomyConfig.get().taxRate);
-                display.set(DataComponents.LORE, new ItemLore(List.of(
-                        createPriceLore(l.price, tax),
-                        MenuUiSupport.labeledValue("Seller", sellerName, MenuUiSupport.LABEL_SECONDARY_COLOR))));
+                List<Component> lore = new ArrayList<>();
+                lore.add(createPriceLore(l.price, tax));
+                lore.add(MenuUiSupport.labeledValue("Seller", sellerName, MenuUiSupport.LABEL_SECONDARY_COLOR));
+                if (MenuUiSupport.hasContainerContents(l.item)) {
+                    lore.add(MenuUiSupport.labeledValue("Ctrl+Q", "Preview contents", MenuUiSupport.LABEL_SECONDARY_COLOR));
+                }
+                display.set(DataComponents.LORE, new ItemLore(lore));
                 container.setItem(i, display);
             }
 
@@ -154,8 +164,15 @@ public final class ShopUi {
 
         @Override
         public void clicked(int slot, int dragType, ClickType type, Player player) {
+            if (type == ClickType.THROW && slot >= 0 && slot < 45) {
+                int index = page * 45 + slot;
+                if (index < listings.size() && MenuUiSupport.hasContainerContents(listings.get(index).item)) {
+                    ContainerPreviewUi.open((ServerPlayer) player, listings.get(index).item, () -> ShopUi.open((ServerPlayer) player, shop, page));
+                }
+                return;
+            }
             if (type == ClickType.PICKUP) {
-                if (slot < 45) {
+                if (slot >= 0 && slot < 45) {
                     int index = page * 45 + slot;
                     if (index < listings.size()) {
                         ShopListing listing = listings.get(index);
@@ -210,9 +227,13 @@ public final class ShopUi {
 
             ItemStack item = listing.item.copy();
             long tax = Math.round(listing.price * EconomyConfig.get().taxRate);
-            item.set(DataComponents.LORE, new ItemLore(List.of(
-                    createPriceLore(listing.price, tax),
-                    MenuUiSupport.labeledValue("Seller", sellerName, MenuUiSupport.LABEL_SECONDARY_COLOR))));
+            List<Component> lore = new ArrayList<>();
+            lore.add(createPriceLore(listing.price, tax));
+            lore.add(MenuUiSupport.labeledValue("Seller", sellerName, MenuUiSupport.LABEL_SECONDARY_COLOR));
+            if (MenuUiSupport.hasContainerContents(listing.item)) {
+                lore.add(MenuUiSupport.labeledValue("Ctrl+Q", "Preview contents", MenuUiSupport.LABEL_SECONDARY_COLOR));
+            }
+            item.set(DataComponents.LORE, new ItemLore(lore));
             container.setItem(4, item);
 
             ItemStack cancel = new ItemStack(ItemsCompat.redStainedGlassPane());
@@ -230,6 +251,10 @@ public final class ShopUi {
 
         @Override
         public void clicked(int slot, int dragType, ClickType type, Player player) {
+            if (type == ClickType.THROW && slot == 4 && MenuUiSupport.hasContainerContents(listing.item)) {
+                ContainerPreviewUi.open((ServerPlayer) player, listing.item, () -> ShopUi.openConfirm((ServerPlayer) player, shop, listing));
+                return;
+            }
             if (type == ClickType.PICKUP) {
                 if (slot == 2) {
                     ShopListing current = shop.getListing(listing.id);

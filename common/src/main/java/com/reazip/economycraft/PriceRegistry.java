@@ -5,12 +5,17 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
+import com.mojang.serialization.JsonOps;
 import net.minecraft.core.registries.BuiltInRegistries;
 import com.reazip.economycraft.util.IdentifierCompat;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.resources.RegistryOps;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.core.Holder;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.core.component.DataComponentPatch;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.BundleContents;
@@ -20,6 +25,7 @@ import net.minecraft.world.item.alchemy.PotionContents;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -37,7 +43,8 @@ public final class PriceRegistry {
             .setPrettyPrinting()
             .create();
     private final Path file;
-    private final Map<IdentifierCompat.Id, PriceEntry> prices = new LinkedHashMap<>();
+    private final HolderLookup.Provider registryAccess;
+    private final Map<IdentifierCompat.Id, List<PriceEntry>> prices = new LinkedHashMap<>();
 
     public record ResolvedPrice(IdentifierCompat.Id key, PriceEntry entry) {}
 
@@ -50,6 +57,7 @@ public final class PriceRegistry {
         }
 
         this.file = dir.resolve("prices.json");
+        this.registryAccess = server.registryAccess();
 
         if (Files.notExists(this.file)) {
             createFromBundledDefault();
@@ -76,20 +84,25 @@ public final class PriceRegistry {
                 return;
             }
 
+            int entryCount = 0;
             int missingItemCount = 0;
+            int invalidCustomItemCount = 0;
             for (Map.Entry<String, JsonElement> e : root.entrySet()) {
                 String key = e.getKey();
-                IdentifierCompat.Id id = IdentifierCompat.tryParse(key);
-                if (id == null) {
-                    LOGGER.warn("[EconomyCraft] Invalid item id in prices.json: {}", key);
-                    continue;
+
+                // An optional "#label" suffix (e.g. "minecraft:shulker_box#loot2") lets multiple
+                // components variants of the same base item coexist as distinct JSON object keys -
+                // plain duplicate keys would otherwise silently collapse to just the last one. It's
+                // stripped before resolving the item and never stored anywhere else.
+                String baseKeyStr = key;
+                int hashIdx = key.indexOf('#');
+                if (hashIdx >= 0) {
+                    baseKeyStr = key.substring(0, hashIdx);
                 }
 
-                boolean isRealItem = IdentifierCompat.registryContainsKey(BuiltInRegistries.ITEM, id);
-                boolean isVirtual = isVirtualPriceId(id);
-
-                if (!isRealItem && !isVirtual) {
-                    missingItemCount++;
+                IdentifierCompat.Id id = IdentifierCompat.tryParse(baseKeyStr);
+                if (id == null) {
+                    LOGGER.warn("[EconomyCraft] Invalid item id in prices.json: {}", key);
                     continue;
                 }
 
@@ -98,22 +111,49 @@ public final class PriceRegistry {
                     LOGGER.warn("[EconomyCraft] Invalid entry for {} (expected object).", key);
                     continue;
                 }
-
                 JsonObject obj = el.getAsJsonObject();
+
+                boolean isRealItem = IdentifierCompat.registryContainsKey(BuiltInRegistries.ITEM, id);
+                boolean isVirtual = isVirtualPriceId(id);
+                if (!isRealItem && !isVirtual) {
+                    missingItemCount++;
+                    continue;
+                }
+
+                // "components" overlays onto a fresh stack of the key's own item, so it needs a real
+                // base item to build from - a virtual id (e.g. a synthetic enchanted-book key) has none.
+                ItemStack customItem = null;
+                if (obj.has("components")) {
+                    if (!isRealItem) {
+                        LOGGER.warn("[EconomyCraft] Price entry '{}' has 'components' but '{}' is not a real item; skipping.", key, id.asString());
+                        invalidCustomItemCount++;
+                        continue;
+                    }
+                    customItem = decodeComponents(key, id, obj.get("components"));
+                    if (customItem == null || customItem.isEmpty()) {
+                        invalidCustomItemCount++;
+                        continue;
+                    }
+                }
+
                 String category = getString(obj, "category", "misc");
                 int stack = getInt(obj, "stack", 1);
                 long unitBuy = getLong(obj, "unit_buy", 0L);
                 long unitSell = getLong(obj, "unit_sell", 0L);
 
-                PriceEntry entry = new PriceEntry(id, category, stack, unitBuy, unitSell);
-                prices.put(id, entry);
+                PriceEntry entry = new PriceEntry(id, category, stack, unitBuy, unitSell, customItem);
+                prices.computeIfAbsent(id, k -> new ArrayList<>()).add(entry);
+                entryCount++;
             }
 
             if (missingItemCount > 0) {
                 LOGGER.warn("[EconomyCraft] Skipped {} price entries for items not present in this server version.", missingItemCount);
             }
+            if (invalidCustomItemCount > 0) {
+                LOGGER.warn("[EconomyCraft] Skipped {} price entries with an invalid 'components' payload.", invalidCustomItemCount);
+            }
 
-            LOGGER.info("[EconomyCraft] Loaded {} price entries from {}", prices.size(), file);
+            LOGGER.info("[EconomyCraft] Loaded {} price entries from {}", entryCount, file);
         } catch (Exception ex) {
             LOGGER.error("[EconomyCraft] Failed to load prices.json from {}", file, ex);
         }
@@ -128,10 +168,69 @@ public final class PriceRegistry {
         if (stack == null || stack.isEmpty()) return null;
 
         for (IdentifierCompat.Id key : resolvePriceKeys(stack)) {
-            PriceEntry p = prices.get(key);
-            if (p != null) return new ResolvedPrice(key, p);
+            List<PriceEntry> candidates = prices.get(key);
+            if (candidates == null) continue;
+
+            // A "components" entry lives at its own item's key, so only a stack of that same item
+            // can match it, and only if its components are an exact match. Exact matches always
+            // win over a generic (no-"components") entry for the same key, regardless of which one
+            // appears first in prices.json - only fall back to a generic entry if nothing more
+            // specific matched.
+            PriceEntry custom = findCustomMatch(candidates, stack);
+            if (custom != null) return new ResolvedPrice(key, custom);
+            for (PriceEntry p : candidates) {
+                if (p.customItem() == null) return new ResolvedPrice(key, p);
+            }
         }
         return null;
+    }
+
+    /**
+     * True if {@code stack} qualifies as an instance of the specific {@code expected} entry -
+     * for a caller that already knows which listing it means (e.g. a shop button was clicked),
+     * rather than asking {@link #resolve} to pick a single canonical entry for the stack. Unlike
+     * {@link #resolve}, this doesn't collapse multiple generic (no-"components") entries sharing a
+     * key down to just one of them - any of them accepts a plain stack that isn't claimed by a more
+     * specific "components" entry under the same key.
+     */
+    public boolean matches(ItemStack stack, PriceEntry expected) {
+        if (stack == null || stack.isEmpty() || expected == null) return false;
+        if (expected.customItem() != null) {
+            return ItemStack.isSameItemSameComponents(stack, expected.customItem());
+        }
+        for (IdentifierCompat.Id key : resolvePriceKeys(stack)) {
+            if (!key.equals(expected.id())) continue;
+            List<PriceEntry> candidates = prices.get(key);
+            return candidates != null && findCustomMatch(candidates, stack) == null;
+        }
+        return false;
+    }
+
+    @Nullable
+    private static PriceEntry findCustomMatch(List<PriceEntry> candidates, ItemStack stack) {
+        for (PriceEntry p : candidates) {
+            if (p.customItem() != null && ItemStack.isSameItemSameComponents(stack, p.customItem())) return p;
+        }
+        return null;
+    }
+
+    private ItemStack decodeComponents(String key, IdentifierCompat.Id id, JsonElement el) {
+        Optional<Item> item = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, id);
+        if (item.isEmpty()) return null;
+
+        try {
+            DataComponentPatch patch = DataComponentPatch.CODEC.parse(RegistryOps.create(JsonOps.INSTANCE, registryAccess), el)
+                    .resultOrPartial(err -> LOGGER.warn("[EconomyCraft] Could not decode 'components' for price entry '{}': {}", key, err))
+                    .orElse(null);
+            if (patch == null) return null;
+
+            ItemStack stack = new ItemStack(item.get(), 1);
+            stack.applyComponents(patch);
+            return stack;
+        } catch (Exception ex) {
+            LOGGER.warn("[EconomyCraft] Could not decode 'components' for price entry '{}': {}", key, ex.toString());
+            return null;
+        }
     }
 
     public Long getUnitBuy(ItemStack stack) {
@@ -158,9 +257,11 @@ public final class PriceRegistry {
 
     public Set<String> buyCategories() {
         Set<String> out = new LinkedHashSet<>();
-        for (PriceEntry p : prices.values()) {
-            if (p.unitBuy() > 0) {
-                out.add(p.category());
+        for (List<PriceEntry> list : prices.values()) {
+            for (PriceEntry p : list) {
+                if (p.unitBuy() > 0) {
+                    out.add(p.category());
+                }
             }
         }
         return out;
@@ -171,10 +272,12 @@ public final class PriceRegistry {
         String c = category.trim().toLowerCase(Locale.ROOT);
 
         List<PriceEntry> out = new ArrayList<>();
-        for (PriceEntry p : prices.values()) {
-            if (p.unitBuy() <= 0) continue;
-            if (p.category() != null && p.category().trim().toLowerCase(Locale.ROOT).equals(c)) {
-                out.add(p);
+        for (List<PriceEntry> list : prices.values()) {
+            for (PriceEntry p : list) {
+                if (p.unitBuy() <= 0) continue;
+                if (p.category() != null && p.category().trim().toLowerCase(Locale.ROOT).equals(c)) {
+                    out.add(p);
+                }
             }
         }
         return out;
@@ -182,14 +285,16 @@ public final class PriceRegistry {
 
     public List<String> buyTopCategories() {
         LinkedHashSet<String> out = new LinkedHashSet<>();
-        for (PriceEntry p : prices.values()) {
-            if (p.unitBuy() <= 0 || p.category() == null) continue;
-            String cat = p.category();
-            int dot = cat.indexOf('.');
-            if (dot > 0) {
-                out.add(cat.substring(0, dot));
-            } else {
-                out.add(cat);
+        for (List<PriceEntry> list : prices.values()) {
+            for (PriceEntry p : list) {
+                if (p.unitBuy() <= 0 || p.category() == null) continue;
+                String cat = p.category();
+                int dot = cat.indexOf('.');
+                if (dot > 0) {
+                    out.add(cat.substring(0, dot));
+                } else {
+                    out.add(cat);
+                }
             }
         }
         return new ArrayList<>(out);
@@ -199,15 +304,17 @@ public final class PriceRegistry {
         if (topCategory == null || topCategory.isBlank()) return List.of();
         String root = topCategory.trim().toLowerCase(Locale.ROOT);
         LinkedHashSet<String> out = new LinkedHashSet<>();
-        for (PriceEntry p : prices.values()) {
-            if (p.unitBuy() <= 0 || p.category() == null) continue;
-            String cat = p.category().trim();
-            int dot = cat.indexOf('.');
-            if (dot <= 0 || dot >= cat.length() - 1) continue;
-            String base = cat.substring(0, dot).toLowerCase(Locale.ROOT);
-            String sub = cat.substring(dot + 1);
-            if (base.equals(root)) {
-                out.add(sub);
+        for (List<PriceEntry> list : prices.values()) {
+            for (PriceEntry p : list) {
+                if (p.unitBuy() <= 0 || p.category() == null) continue;
+                String cat = p.category().trim();
+                int dot = cat.indexOf('.');
+                if (dot <= 0 || dot >= cat.length() - 1) continue;
+                String base = cat.substring(0, dot).toLowerCase(Locale.ROOT);
+                String sub = cat.substring(dot + 1);
+                if (base.equals(root)) {
+                    out.add(sub);
+                }
             }
         }
         return new ArrayList<>(out);
@@ -511,6 +618,7 @@ public final class PriceRegistry {
             String category,
             int stack,
             long unitBuy,
-            long unitSell
+            long unitSell,
+            ItemStack customItem
     ) { }
 }

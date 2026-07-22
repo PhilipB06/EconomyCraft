@@ -7,6 +7,7 @@ import com.reazip.economycraft.EconomyManager;
 import com.reazip.economycraft.PriceRegistry;
 import com.reazip.economycraft.SellService;
 import com.reazip.economycraft.util.ChatCompat;
+import com.reazip.economycraft.util.ContainerPreviewUi;
 import com.reazip.economycraft.util.ItemsCompat;
 import com.reazip.economycraft.util.MenuUiSupport;
 import net.minecraft.ChatFormatting;
@@ -115,10 +116,14 @@ public final class ServerShopUi {
     }
 
     private static void openItems(ServerPlayer player, EconomyManager eco, String category) {
-        openItems(player, eco, category, null);
+        openItems(player, eco, category, null, 0);
     }
 
     private static void openItems(ServerPlayer player, EconomyManager eco, String category, @Nullable String displayTitle) {
+        openItems(player, eco, category, displayTitle, 0);
+    }
+
+    private static void openItems(ServerPlayer player, EconomyManager eco, String category, @Nullable String displayTitle, int page) {
         Component title;
         if (displayTitle != null) {
             title = Component.literal(formatCategoryTitle(displayTitle));
@@ -134,7 +139,7 @@ public final class ServerShopUi {
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                return new ItemMenu(id, inv, eco, category, player);
+                return new ItemMenu(id, inv, eco, category, displayTitle, page, player);
             }
         });
     }
@@ -236,7 +241,7 @@ public final class ServerShopUi {
         @Override
         public void clicked(int slot, int dragType, ClickType type, Player player) {
             if (type == ClickType.PICKUP || type == ClickType.QUICK_MOVE) {
-                if (slot < navRowStart) {
+                if (slot >= 0 && slot < navRowStart) {
                     int index = slotToIndex[slot];
                     if (index >= 0 && index < categories.size()) {
                         String cat = categories.get(index);
@@ -350,7 +355,7 @@ public final class ServerShopUi {
         @Override
         public void clicked(int slot, int dragType, ClickType type, Player player) {
             if (type == ClickType.PICKUP || type == ClickType.QUICK_MOVE) {
-                if (slot < navRowStart) {
+                if (slot >= 0 && slot < navRowStart) {
                     int index = page * itemsPerPage + slot;
                     if (index < subcategories.size()) {
                         String sub = subcategories.get(index);
@@ -374,6 +379,7 @@ public final class ServerShopUi {
         private final PriceRegistry prices;
         private final ServerPlayer viewer;
         private final String category;
+        @Nullable private final String displayTitle;
         private List<PriceRegistry.PriceEntry> entries = new ArrayList<>();
         private final SimpleContainer container;
         private final int rows;
@@ -381,17 +387,19 @@ public final class ServerShopUi {
         private final int navRowStart;
         private int page;
 
-        ItemMenu(int id, Inventory inv, EconomyManager eco, String category, ServerPlayer viewer) {
+        ItemMenu(int id, Inventory inv, EconomyManager eco, String category, @Nullable String displayTitle, int page, ServerPlayer viewer) {
             super(getMenuType(requiredRows(eco.getPrices().buyableByCategory(category).size())), id);
             this.eco = eco;
             this.viewer = viewer;
             this.category = category;
+            this.displayTitle = displayTitle;
             this.prices = eco.getPrices();
 
             refreshEntries();
             this.rows = requiredRows(entries.size());
             this.itemsPerPage = (rows - 1) * 9;
             this.navRowStart = itemsPerPage;
+            this.page = page;
             this.container = new SimpleContainer(rows * 9);
             setupSlots(inv);
             updatePage();
@@ -425,6 +433,7 @@ public final class ServerShopUi {
 
                 int stackSize = Math.max(1, entry.stack());
                 boolean canSell = entry.unitSell() > 0 && EconomyConfig.get().sellEnabled;
+                boolean hasContents = MenuUiSupport.hasContainerContents(display);
 
                 List<Component> lore = new ArrayList<>();
                 Component buyLore = MenuUiSupport.labeledValue("Buy", EconomyCraft.formatMoney(entry.unitBuy()), MenuUiSupport.LABEL_PRIMARY_COLOR);
@@ -455,6 +464,9 @@ public final class ServerShopUi {
                 }
                 if (stackSize > 1) {
                     lore.add(MenuUiSupport.labeledValue("Shift-click", (canSell ? "Buy/Sell " : "Buy ") + stackSize + "x", MenuUiSupport.LABEL_SECONDARY_COLOR));
+                }
+                if (hasContents) {
+                    lore.add(MenuUiSupport.labeledValue("Ctrl+Q", "Preview contents", MenuUiSupport.LABEL_SECONDARY_COLOR));
                 }
 
                 display.set(DataComponents.LORE, new ItemLore(lore));
@@ -488,8 +500,18 @@ public final class ServerShopUi {
 
         @Override
         public void clicked(int slot, int dragType, ClickType type, Player player) {
+            if (type == ClickType.THROW && slot >= 0 && slot < navRowStart) {
+                int index = page * itemsPerPage + slot;
+                if (index < entries.size()) {
+                    ItemStack display = createDisplayStack(entries.get(index), viewer);
+                    if (MenuUiSupport.hasContainerContents(display)) {
+                        ContainerPreviewUi.open(viewer, display, () -> openItems(viewer, eco, category, displayTitle, page));
+                    }
+                }
+                return;
+            }
             if (type == ClickType.PICKUP || type == ClickType.QUICK_MOVE) {
-                if (slot < navRowStart) {
+                if (slot >= 0 && slot < navRowStart) {
                     int index = page * itemsPerPage + slot;
                     if (index < entries.size()) {
                         PriceRegistry.PriceEntry entry = entries.get(index);
@@ -573,8 +595,10 @@ public final class ServerShopUi {
             }
 
             // Enchanted items are excluded here (they resell at base price and have no confirm step
-            // in the GUI); sell those via "/sell", which asks for confirmation.
-            int have = SellService.countMatching(viewer, prices, entry.id(), true);
+            // in the GUI); sell those via "/sell", which asks for confirmation. Doesn't apply to a
+            // "components" entry - its price was set for this exact item, enchantments included.
+            boolean excludeEnchanted = entry.customItem() == null;
+            int have = SellService.countMatching(viewer, prices, entry, excludeEnchanted);
             if (have <= 0) {
                 viewer.sendSystemMessage(Component.literal("You have none to sell.").withStyle(ChatFormatting.RED));
                 return;
@@ -597,7 +621,7 @@ public final class ServerShopUi {
 
             ItemStack disp = createDisplayStack(entry, viewer);
             String name = disp.isEmpty() ? entry.id().path() : disp.getHoverName().getString();
-            SellService.removeMatching(viewer, prices, entry.id(), toSell, true);
+            SellService.removeMatching(viewer, prices, entry, toSell, excludeEnchanted);
             eco.addMoney(viewer.getUUID(), total);
 
             viewer.sendSystemMessage(Component.literal("Sold " + toSell + "x " + name + " for " + EconomyCraft.formatMoney(total))
@@ -823,6 +847,9 @@ public final class ServerShopUi {
     }
 
     private static ItemStack buildDisplayStack(PriceRegistry.PriceEntry entry, ServerPlayer viewer) {
+        if (entry.customItem() != null) {
+            return entry.customItem().copy();
+        }
         try {
             IdentifierCompat.Id id = entry.id();
 

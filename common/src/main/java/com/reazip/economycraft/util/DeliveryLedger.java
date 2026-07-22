@@ -1,31 +1,30 @@
 package com.reazip.economycraft.util;
 
 import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.mojang.logging.LogUtils;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.core.HolderLookup;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.RegistryOps;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Per-player pending item stacks plus change-listener bookkeeping.
- * Shared by {@code OrderManager} and {@code ShopManager}.
+ * Per-player pending item stacks, persisted by a single {@code DeliveryManager} shared between
+ * {@code ShopManager} and {@code OrderManager}.
  */
 public final class DeliveryLedger {
+    private static final Logger LOGGER = LogUtils.getLogger();
     private final Map<UUID, List<ItemStack>> deliveries = new HashMap<>();
-    private final List<Runnable> listeners = new ArrayList<>();
 
     public void add(UUID player, ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return;
         deliveries.computeIfAbsent(player, k -> new ArrayList<>()).add(stack);
     }
 
@@ -34,32 +33,18 @@ public final class DeliveryLedger {
         return deliveries.computeIfAbsent(player, k -> new ArrayList<>());
     }
 
-    /** Returns whether a delivery list existed for the player (and was mutated). */
+    /** Returns whether {@code stack} was actually found and removed from the player's list. */
     public boolean remove(UUID player, ItemStack stack) {
         List<ItemStack> list = deliveries.get(player);
         if (list == null) return false;
-        list.remove(stack);
+        boolean removed = list.remove(stack);
         if (list.isEmpty()) deliveries.remove(player);
-        return true;
+        return removed;
     }
 
     public boolean has(UUID player) {
         List<ItemStack> list = deliveries.get(player);
         return list != null && !list.isEmpty();
-    }
-
-    public void addListener(Runnable run) {
-        listeners.add(run);
-    }
-
-    public void removeListener(Runnable run) {
-        listeners.remove(run);
-    }
-
-    public void notifyListeners() {
-        for (Runnable r : new ArrayList<>(listeners)) {
-            r.run();
-        }
     }
 
     public JsonObject save(HolderLookup.Provider provider) {
@@ -68,10 +53,7 @@ public final class DeliveryLedger {
             JsonArray arr = new JsonArray();
             for (ItemStack s : e.getValue()) {
                 JsonObject o = new JsonObject();
-                o.addProperty("item", BuiltInRegistries.ITEM.getKey(s.getItem()).toString());
-                o.addProperty("count", s.getCount());
-                JsonElement stackEl = ItemStack.CODEC.encodeStart(RegistryOps.create(JsonOps.INSTANCE, provider), s).result().orElse(new JsonObject());
-                o.add("stack", stackEl);
+                o.add("stack", ItemStack.CODEC.encodeStart(RegistryOps.create(JsonOps.INSTANCE, provider), s).result().orElse(new JsonObject()));
                 arr.add(o);
             }
             dObj.add(e.getKey().toString(), arr);
@@ -81,28 +63,43 @@ public final class DeliveryLedger {
 
     public void load(JsonObject dObj, HolderLookup.Provider provider) {
         deliveries.clear();
+        mergeFrom(dObj, provider);
+    }
+
+    /** Merges another ledger's saved JSON into this one without clearing existing entries first. */
+    public void mergeFrom(JsonObject dObj, HolderLookup.Provider provider) {
+        if (dObj == null) return;
         for (String key : dObj.keySet()) {
-            UUID id = UUID.fromString(key);
-            List<ItemStack> list = new ArrayList<>();
-            for (var sEl : dObj.getAsJsonArray(key)) {
-                JsonObject o = sEl.getAsJsonObject();
-                ItemStack stack = ItemStack.EMPTY;
-                if (o.has("stack")) {
-                    stack = ItemStack.CODEC.parse(RegistryOps.create(JsonOps.INSTANCE, provider), o.get("stack")).result().orElse(ItemStack.EMPTY);
-                } else {
-                    String itemId = o.get("item").getAsString();
-                    int count = o.get("count").getAsInt();
-                    IdentifierCompat.Id rl = IdentifierCompat.tryParse(itemId);
-                    if (rl != null) {
-                        Optional<Item> opt = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, rl);
-                        if (opt.isPresent()) {
-                            stack = new ItemStack(opt.get(), count);
+            UUID id;
+            try {
+                id = UUID.fromString(key);
+            } catch (IllegalArgumentException ex) {
+                LOGGER.error("[EconomyCraft] Dropping deliveries for invalid player id '{}'", key);
+                continue;
+            }
+
+            List<ItemStack> list = deliveries.computeIfAbsent(id, k -> new ArrayList<>());
+            try {
+                for (var sEl : dObj.getAsJsonArray(key)) {
+                    try {
+                        JsonObject o = sEl.getAsJsonObject();
+                        if (!o.has("stack")) {
+                            LOGGER.error("[EconomyCraft] Dropping a delivery for {} with no 'stack' field", key);
+                            continue;
                         }
+                        ItemStack stack = ItemStack.CODEC.parse(RegistryOps.create(JsonOps.INSTANCE, provider), o.get("stack")).result().orElse(ItemStack.EMPTY);
+                        if (stack.isEmpty()) {
+                            LOGGER.error("[EconomyCraft] Dropping a delivery for {} with an unreadable item", key);
+                            continue;
+                        }
+                        list.add(stack);
+                    } catch (Exception ex) {
+                        LOGGER.error("[EconomyCraft] Dropping an unreadable delivery entry for {}", key, ex);
                     }
                 }
-                if (!stack.isEmpty()) list.add(stack);
+            } catch (Exception ex) {
+                LOGGER.error("[EconomyCraft] Failed to read deliveries for {}", key, ex);
             }
-            deliveries.put(id, list);
         }
     }
 }

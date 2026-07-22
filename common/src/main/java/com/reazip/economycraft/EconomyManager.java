@@ -42,6 +42,7 @@ public class EconomyManager {
     private final PriceRegistry prices;
 
     private Objective objective;
+    private final DeliveryManager deliveries;
     private final ShopManager shop;
     private final OrderManager orders;
     private final Map<UUID, String> displayed = new HashMap<>();
@@ -62,8 +63,9 @@ public class EconomyManager {
         loadDaily();
         loadDailySells();
 
-        this.shop = new ShopManager(server);
-        this.orders = new OrderManager(server);
+        this.deliveries = new DeliveryManager(server);
+        this.shop = new ShopManager(server, deliveries);
+        this.orders = new OrderManager(server, deliveries);
 
         applyScoreboardSettingOnStartup();
         this.prices = new PriceRegistry(server);
@@ -290,6 +292,25 @@ public class EconomyManager {
 
         ensureObjective(board);
 
+        Map<UUID, String> updated = new HashMap<>();
+        for (LeaderboardEntry e : computeLeaderboard(LEADERBOARD_SIZE)) {
+            board.getOrCreatePlayerScore(
+                    ScoreHolder.forNameOnly(e.name()),
+                    objective
+            ).set((int) e.balance());
+            updated.put(e.id(), e.name());
+        }
+
+        for (var e : displayed.entrySet()) {
+            if (!updated.containsKey(e.getKey())) {
+                board.resetSinglePlayerScore(ScoreHolder.forNameOnly(e.getValue()), objective);
+            }
+        }
+        displayed.clear();
+        displayed.putAll(updated);
+    }
+
+    private List<LeaderboardEntry> computeLeaderboard(int limit) {
         List<Map.Entry<UUID, Long>> sorted = new ArrayList<>(balances.entrySet());
         sorted.sort((a, b) -> {
             int c = Long.compare(b.getValue(), a.getValue());
@@ -303,25 +324,21 @@ public class EconomyManager {
             return a.getKey().compareTo(b.getKey());
         });
 
-        Map<UUID, String> updated = new HashMap<>();
-        for (var e : sorted.stream().limit(LEADERBOARD_SIZE).toList()) {
-            UUID id = e.getKey();
-            String name = resolveName(server, id);
-            board.getOrCreatePlayerScore(
-                    ScoreHolder.forNameOnly(name),
-                    objective
-            ).set(e.getValue().intValue());
-            updated.put(id, name);
+        List<LeaderboardEntry> result = new ArrayList<>();
+        for (var e : sorted.stream().limit(limit).toList()) {
+            result.add(new LeaderboardEntry(e.getKey(), resolveName(server, e.getKey()), e.getValue()));
         }
-
-        for (var e : displayed.entrySet()) {
-            if (!updated.containsKey(e.getKey())) {
-                board.resetSinglePlayerScore(ScoreHolder.forNameOnly(e.getValue()), objective);
-            }
-        }
-        displayed.clear();
-        displayed.putAll(updated);
+        return result;
     }
+
+    /** Returns the Nth-highest balance (1-based rank), or null if fewer than {@code rank} players exist. */
+    public @Nullable LeaderboardEntry getLeaderboardEntry(int rank) {
+        if (rank < 1) return null;
+        List<LeaderboardEntry> top = computeLeaderboard(rank);
+        return top.size() < rank ? null : top.get(rank - 1);
+    }
+
+    public record LeaderboardEntry(UUID id, String name, long balance) {}
 
     public boolean toggleScoreboard() {
         EconomyConfig.get().scoreboardEnabled = !EconomyConfig.get().scoreboardEnabled;
@@ -344,6 +361,10 @@ public class EconomyManager {
 
     public OrderManager getOrders() {
         return orders;
+    }
+
+    public DeliveryManager getDeliveries() {
+        return deliveries;
     }
 
     public PriceRegistry getPrices() {

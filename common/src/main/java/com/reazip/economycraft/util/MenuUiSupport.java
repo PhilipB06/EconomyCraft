@@ -3,6 +3,7 @@ package com.reazip.economycraft.util;
 import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyManager;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -14,6 +15,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.item.component.ItemLore;
 import org.jetbrains.annotations.Nullable;
 
@@ -137,5 +139,22 @@ public final class MenuUiSupport {
             slots.add(new Slot(inv, c, GRID_LEFT + c * SLOT_SIZE, y + 58));
         }
         return slots;
+    }
+
+    /** True if the stack carries a filled container (e.g. a shulker box with items) worth previewing. */
+    public static boolean hasContainerContents(ItemStack stack) {
+        ItemContainerContents contents = stack.get(DataComponents.CONTAINER);
+        return contents != null && contents.nonEmptyItems().iterator().hasNext();
+    }
+
+    /** Copies a stack's container contents (e.g. a shulker box) into the first {@code slots} slots of {@code target}. */
+    public static void copyContainerContents(ItemStack stack, Container target, int slots) {
+        ItemContainerContents contents = stack.get(DataComponents.CONTAINER);
+        if (contents == null) return;
+        NonNullList<ItemStack> list = NonNullList.withSize(slots, ItemStack.EMPTY);
+        contents.copyInto(list);
+        for (int i = 0; i < slots; i++) {
+            target.setItem(i, list.get(i));
+        }
     }
 }

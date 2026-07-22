@@ -11,20 +11,20 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 
-import java.text.NumberFormat;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.util.Locale;
 
 public final class EconomyCraft {
     public static final String MOD_ID = "economycraft";
     private static EconomyManager manager;
     private static MinecraftServer lastServer;
-    private static final NumberFormat FORMAT = NumberFormat.getInstance(Locale.GERMANY);
 
     public static void registerEvents() {
         LifecycleEvent.SERVER_STARTING.register(EconomyConfig::load);
 
         CommandRegistrationEvent.EVENT.register((dispatcher, registry, selection) -> {
-            EconomyCommands.register(dispatcher);
+            EconomyCommands.register(dispatcher, registry);
         });
 
         LifecycleEvent.SERVER_STARTED.register(EconomyCraft::getManager);
@@ -42,7 +42,7 @@ public final class EconomyCraft {
         EconomyManager eco = getManager(player.level().getServer());
         eco.getBalance(player.getUUID(), true);
 
-        if (eco.getOrders().hasDeliveries(player.getUUID()) || eco.getShop().hasDeliveries(player.getUUID())) {
+        if (eco.getDeliveries().hasDeliveries(player.getUUID())) {
             ClickEvent ev = ChatCompat.runCommandEvent("/eco orders claim");
 
             if (ev != null) {
@@ -84,6 +84,8 @@ public final class EconomyCraft {
     }
 
     public static String formatMoney(long amount) {
-        return "$" + FORMAT.format(amount);
+        DecimalFormatSymbols symbols = DecimalFormatSymbols.getInstance(Locale.ROOT);
+        symbols.setGroupingSeparator(EconomyConfig.get().balanceSeparator.charAt(0));
+        return "$" + new DecimalFormat("#,##0", symbols).format(amount);
     }
 }

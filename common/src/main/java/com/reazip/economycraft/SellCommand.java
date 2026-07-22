@@ -3,12 +3,11 @@ package com.reazip.economycraft;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
+import com.reazip.economycraft.PriceRegistry.PriceEntry;
 import com.reazip.economycraft.PriceRegistry.ResolvedPrice;
 import com.reazip.economycraft.util.ChatCompat;
-import com.reazip.economycraft.util.IdentifierCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -18,6 +17,9 @@ import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.UUID;
 
@@ -73,14 +75,19 @@ public final class SellCommand {
             return null;
         }
 
-        if (prices.isSellBlockedByDamage(hand)) {
-            source.sendFailure(Component.literal("Damaged items cannot be sold.").withStyle(ChatFormatting.RED));
-            return null;
-        }
+        // A "components" entry only ever matches a stack whose full state (damage, contents,
+        // everything) is an exact match, so the generic guards below - meant for entries that
+        // don't know the item's exact state - don't apply to it.
+        if (resolved.entry().customItem() == null) {
+            if (prices.isSellBlockedByDamage(hand)) {
+                source.sendFailure(Component.literal("Damaged items cannot be sold.").withStyle(ChatFormatting.RED));
+                return null;
+            }
 
-        if (prices.isSellBlockedByContents(hand)) {
-            source.sendFailure(Component.literal("Items with contents cannot be sold.").withStyle(ChatFormatting.RED));
-            return null;
+            if (prices.isSellBlockedByContents(hand)) {
+                source.sendFailure(Component.literal("Items with contents cannot be sold.").withStyle(ChatFormatting.RED));
+                return null;
+            }
         }
 
         return new SellContext(source, player, hand, manager, prices, resolved, unitSell);
@@ -107,8 +114,9 @@ public final class SellCommand {
         }
 
         // Enchanted gear resells at its base price only; require a confirmation so players don't
-        // dump valuable items by accident.
-        if (hand.isEnchanted()) {
+        // dump valuable items by accident. Doesn't apply to a "components" entry - its price was
+        // set for this exact enchanted item, so enchantments already ARE reflected in unitSell.
+        if (hand.isEnchanted() && sc.resolved().entry().customItem() == null) {
             PENDING_HAND.put(player.getUUID(), new PendingHand(toSell, System.currentTimeMillis() + CONFIRM_EXPIRY_MS));
             MutableComponent base = Component.literal("Enchantments do not increase the sell value. Sell anyway for " +
                             EconomyCraft.formatMoney(total) +
@@ -125,7 +133,7 @@ public final class SellCommand {
             return 0;
         }
 
-        return doSellHand(source, player, sc.manager(), hand, toSell, total);
+        return doSellHand(source, player, sc.manager(), hand, toSell, sc.unitSell());
     }
 
     private static int confirmSellHand(CommandContext<CommandSourceStack> ctx) {
@@ -154,26 +162,61 @@ public final class SellCommand {
             return 0;
         }
 
-        return doSellHand(source, player, sc.manager(), hand, pending.amount(), total);
+        return doSellHand(source, player, sc.manager(), hand, pending.amount(), sc.unitSell());
     }
 
+    /**
+     * Routes to better-paying orders first, then sells the rest to the server (daily-limit
+     * gated). Order routing consumes only from {@code hand} itself - plain /sell only ever means
+     * "sell what's in my hand," not other matching stacks elsewhere in the inventory.
+     */
     private static int doSellHand(CommandSourceStack source, ServerPlayer player, EconomyManager manager,
-                                  ItemStack hand, int toSell, long total) {
-        if (EconomyConfig.get().dailySellLimit > 0 && manager.tryRecordDailySell(player.getUUID(), total)) {
-            return handleDailyLimitFailure(manager, player, source);
+                                  ItemStack hand, int toSell, long unitSell) {
+        String itemName = hand.getHoverName().getString();
+        SellService.SaleSplit split = SellService.sellHandWithRouting(manager, player, hand, toSell, unitSell);
+
+        int serverSold = 0;
+        long serverTotal = 0;
+        boolean limitBlocked = false;
+        if (split.serverRemaining() > 0) {
+            long potential = unitSell * split.serverRemaining();
+            if (EconomyConfig.get().dailySellLimit > 0 && manager.tryRecordDailySell(player.getUUID(), potential)) {
+                limitBlocked = true;
+            } else {
+                serverSold = split.serverRemaining();
+                serverTotal = potential;
+                hand.shrink(serverSold);
+                manager.addMoney(player.getUUID(), serverTotal);
+            }
         }
 
-        String itemName = hand.getHoverName().getString();
-        hand.shrink(toSell);
         if (hand.isEmpty()) {
             player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
         }
 
-        manager.addMoney(player.getUUID(), total);
-        player.sendSystemMessage(Component.literal("Successfully sold " + toSell + "x " + itemName +
-                        " for " + EconomyCraft.formatMoney(total) + ".")
+        int totalSold = split.orderGiven() + serverSold;
+        if (totalSold <= 0) {
+            return handleDailyLimitFailure(manager, player, source);
+        }
+
+        long totalPayout = split.orderPayout() + serverTotal;
+        player.sendSystemMessage(Component.literal("Successfully sold " + totalSold + "x " + itemName +
+                        " for " + EconomyCraft.formatMoney(totalPayout) +
+                        (split.orderGiven() > 0 ? " (" + split.orderGiven() + "x to an open order for a better price)" : "") + ".")
                 .withStyle(ChatFormatting.GREEN));
-        return toSell;
+
+        if (limitBlocked) {
+            player.sendSystemMessage(dailyLimitRemainderMessage(manager, player, split.serverRemaining()));
+        }
+
+        return totalSold;
+    }
+
+    private static Component dailyLimitRemainderMessage(EconomyManager manager, ServerPlayer player, int unsoldCount) {
+        long remaining = manager.getDailySellRemaining(player.getUUID());
+        return Component.literal(unsoldCount + "x was not sold to the server: daily sell limit reached" +
+                        (remaining > 0 ? " (" + EconomyCraft.formatMoney(remaining) + " left today)." : "."))
+                .withStyle(ChatFormatting.RED);
     }
 
     private static int previewSellAll(CommandContext<CommandSourceStack> ctx) {
@@ -184,7 +227,7 @@ public final class SellCommand {
         ItemStack hand = sc.hand();
         PriceRegistry prices = sc.prices();
 
-        int totalCount = SellService.countMatching(player, prices, sc.resolved().key(), false);
+        int totalCount = SellService.countMatching(player, prices, sc.resolved().entry(), false);
         if (totalCount <= 0) {
             source.sendFailure(Component.literal("This item cannot be sold.").withStyle(ChatFormatting.RED));
             return 0;
@@ -196,9 +239,8 @@ public final class SellCommand {
             return 0;
         }
 
-        IdentifierCompat.Id heldItemId = IdentifierCompat.wrap(BuiltInRegistries.ITEM.getKey(hand.getItem()));
-        PENDING.put(player.getUUID(), new PendingSale(sc.resolved().key(), totalCount, total,
-                System.currentTimeMillis() + CONFIRM_EXPIRY_MS, heldItemId));
+        PENDING.put(player.getUUID(), new PendingSale(sc.resolved().entry(), totalCount, total,
+                System.currentTimeMillis() + CONFIRM_EXPIRY_MS));
 
         String itemName = hand.getHoverName().getString();
         MutableComponent base = Component.literal("This will sell " + totalCount + "x " + itemName +
@@ -234,52 +276,73 @@ public final class SellCommand {
 
         ItemStack hand = player.getMainHandItem();
         ResolvedPrice current = prices.resolve(hand);
-        if (current == null || !pending.key().equals(current.key())) {
+        if (current == null || current.entry() != pending.entry()) {
             source.sendFailure(Component.literal("Held item changed. Run /sell all again.").withStyle(ChatFormatting.RED));
             PENDING.remove(player.getUUID());
             return 0;
         }
 
-        IdentifierCompat.Id currentItemId = IdentifierCompat.wrap(BuiltInRegistries.ITEM.getKey(hand.getItem()));
-        if (!currentItemId.equals(pending.heldItemId())) {
-            source.sendFailure(Component.literal("Held item changed. Run /sell all again.").withStyle(ChatFormatting.RED));
-            PENDING.remove(player.getUUID());
-            return 0;
+        if (current.entry().customItem() == null) {
+            if (prices.isSellBlockedByDamage(hand)) {
+                source.sendFailure(Component.literal("Damaged items cannot be sold.").withStyle(ChatFormatting.RED));
+                PENDING.remove(player.getUUID());
+                return 0;
+            }
+
+            if (prices.isSellBlockedByContents(hand)) {
+                source.sendFailure(Component.literal("Items with contents cannot be sold.").withStyle(ChatFormatting.RED));
+                PENDING.remove(player.getUUID());
+                return 0;
+            }
         }
 
-        if (prices.isSellBlockedByDamage(hand)) {
-            source.sendFailure(Component.literal("Damaged items cannot be sold.").withStyle(ChatFormatting.RED));
-            PENDING.remove(player.getUUID());
-            return 0;
-        }
-
-        if (prices.isSellBlockedByContents(hand)) {
-            source.sendFailure(Component.literal("Items with contents cannot be sold.").withStyle(ChatFormatting.RED));
-            PENDING.remove(player.getUUID());
-            return 0;
-        }
-
-        int available = SellService.countMatching(player, prices, pending.key(), false);
+        int available = SellService.countMatching(player, prices, pending.entry(), false);
         if (available < pending.count()) {
             source.sendFailure(Component.literal("Items changed. Run /sell all again.").withStyle(ChatFormatting.RED));
             PENDING.remove(player.getUUID());
             return 0;
         }
 
-        if (EconomyConfig.get().dailySellLimit > 0 && manager.tryRecordDailySell(player.getUUID(), pending.total())) {
+        // Exact: total was unitSell * count at preview time, so this honors the previewed price.
+        long unitSell = pending.total() / pending.count();
+
+        String itemName = hand.getHoverName().getString();
+        SellService.SaleSplit split = SellService.sellWithRouting(manager, player, hand, pending.count(), unitSell);
+
+        int serverSold = 0;
+        long serverTotal = 0;
+        boolean limitBlocked = false;
+        if (split.serverRemaining() > 0) {
+            long potential = unitSell * split.serverRemaining();
+            if (EconomyConfig.get().dailySellLimit > 0 && manager.tryRecordDailySell(player.getUUID(), potential)) {
+                limitBlocked = true;
+            } else {
+                serverSold = split.serverRemaining();
+                serverTotal = potential;
+                SellService.removeMatching(player, prices, pending.entry(), serverSold, false);
+                manager.addMoney(player.getUUID(), serverTotal);
+            }
+        }
+
+        PENDING.remove(player.getUUID());
+
+        int totalSold = split.orderGiven() + serverSold;
+        if (totalSold <= 0) {
             return handleDailyLimitFailure(manager, player, source);
         }
 
-        String itemName = hand.getHoverName().getString();
-        SellService.removeMatching(player, prices, pending.key(), pending.count(), false);
-        manager.addMoney(player.getUUID(), pending.total());
-
-        Component msg = Component.literal("Successfully sold " + pending.count() + "x " +
-                        itemName + " for " + EconomyCraft.formatMoney(pending.total()) + ".")
+        long totalPayout = split.orderPayout() + serverTotal;
+        Component msg = Component.literal("Successfully sold " + totalSold + "x " +
+                        itemName + " for " + EconomyCraft.formatMoney(totalPayout) +
+                        (split.orderGiven() > 0 ? " (" + split.orderGiven() + "x to an open order for a better price)" : "") + ".")
                 .withStyle(ChatFormatting.GREEN);
         player.sendSystemMessage(msg);
-        PENDING.remove(player.getUUID());
-        return pending.count();
+
+        if (limitBlocked) {
+            player.sendSystemMessage(dailyLimitRemainderMessage(manager, player, split.serverRemaining()));
+        }
+
+        return totalSold;
     }
 
     private static int previewSellEverything(CommandContext<CommandSourceStack> ctx) {
@@ -352,20 +415,94 @@ public final class SellCommand {
             return 0;
         }
 
-        if (EconomyConfig.get().dailySellLimit > 0 && manager.tryRecordDailySell(player.getUUID(), totals.total())) {
+        PENDING_EVERYTHING.remove(player.getUUID());
+
+        EverythingSaleResult result = sellEverythingWithRouting(player, manager, prices);
+        int totalSold = result.orderGiven() + result.serverSold();
+        if (totalSold <= 0) {
             return handleDailyLimitFailure(manager, player, source);
         }
 
-        removeAllSellable(player, prices);
-        manager.addMoney(player.getUUID(), totals.total());
-
-        Component msg = Component.literal("Successfully sold your entire inventory (" + totals.count() + " item" +
-                        (totals.count() == 1 ? "" : "s") + ") for " + EconomyCraft.formatMoney(totals.total()) + ".")
+        long totalPayout = result.orderPayout() + result.serverTotal();
+        Component msg = Component.literal("Successfully sold " + totalSold + " item" + (totalSold == 1 ? "" : "s") +
+                        " for " + EconomyCraft.formatMoney(totalPayout) +
+                        (result.orderGiven() > 0 ? " (" + result.orderGiven() + " to open orders for a better price)" : "") + ".")
                 .withStyle(ChatFormatting.GREEN);
         player.sendSystemMessage(msg);
-        PENDING_EVERYTHING.remove(player.getUUID());
-        return totals.count();
+
+        if (result.limitBlockedCount() > 0) {
+            player.sendSystemMessage(dailyLimitRemainderMessage(manager, player, result.limitBlockedCount()));
+        }
+
+        return totalSold;
     }
+
+    /**
+     * Routes each item group to better-paying orders first, then sells the rest to the server
+     * as one all-or-nothing daily-limit check.
+     */
+    private static EverythingSaleResult sellEverythingWithRouting(ServerPlayer player, EconomyManager manager, PriceRegistry prices) {
+        Map<PriceEntry, EverythingGroup> groups = groupSellableByEntry(player, prices);
+
+        int orderGiven = 0;
+        long orderPayout = 0;
+        List<ServerRemainder> remainders = new ArrayList<>();
+        long serverTotal = 0;
+        int remainderCount = 0;
+
+        for (EverythingGroup g : groups.values()) {
+            Long unitSell = prices.getUnitSell(g.proto());
+            if (unitSell == null) continue;
+
+            SellService.SaleSplit split = SellService.sellWithRouting(manager, player, g.proto(), g.count(), unitSell);
+            orderGiven += split.orderGiven();
+            orderPayout += split.orderPayout();
+
+            if (split.serverRemaining() > 0) {
+                remainders.add(new ServerRemainder(g.entry(), split.serverRemaining()));
+                serverTotal += unitSell * split.serverRemaining(); // safe: bounded by the already-validated sweep total
+                remainderCount += split.serverRemaining();
+            }
+        }
+
+        if (remainders.isEmpty()) {
+            return new EverythingSaleResult(orderGiven, orderPayout, 0, 0, 0);
+        }
+
+        if (EconomyConfig.get().dailySellLimit > 0 && manager.tryRecordDailySell(player.getUUID(), serverTotal)) {
+            return new EverythingSaleResult(orderGiven, orderPayout, 0, 0, remainderCount);
+        }
+
+        for (ServerRemainder r : remainders) {
+            SellService.removeMatching(player, prices, r.entry(), r.count(), false);
+        }
+        manager.addMoney(player.getUUID(), serverTotal);
+
+        return new EverythingSaleResult(orderGiven, orderPayout, remainderCount, serverTotal, 0);
+    }
+
+    private static Map<PriceEntry, EverythingGroup> groupSellableByEntry(ServerPlayer player, PriceRegistry prices) {
+        Map<PriceEntry, EverythingGroup> groups = new LinkedHashMap<>();
+        var inv = player.getInventory();
+        for (int i = 0; i < SellService.MAIN_INVENTORY_SLOTS; i++) {
+            accumulateSellable(groups, prices, inv.getItem(i));
+        }
+        accumulateSellable(groups, prices, player.getOffhandItem());
+        return groups;
+    }
+
+    private static void accumulateSellable(Map<PriceEntry, EverythingGroup> groups, PriceRegistry prices, ItemStack stack) {
+        ResolvedPrice rp = SellService.sellableResolved(prices, stack);
+        if (rp == null) return;
+        groups.merge(rp.entry(), new EverythingGroup(rp.entry(), stack.copy(), stack.getCount()),
+                (a, b) -> new EverythingGroup(a.entry(), a.proto(), a.count() + b.count()));
+    }
+
+    private record EverythingGroup(PriceEntry entry, ItemStack proto, int count) {}
+
+    private record ServerRemainder(PriceEntry entry, int count) {}
+
+    private record EverythingSaleResult(int orderGiven, long orderPayout, int serverSold, long serverTotal, int limitBlockedCount) {}
 
     /** Sums the value and count of every sellable stack in the swept inventory region. */
     private static EverythingTotals computeEverythingTotals(ServerPlayer player, PriceRegistry prices) {
@@ -396,18 +533,6 @@ public final class SellCommand {
         return new EverythingTotals(count, total, false);
     }
 
-    private static void removeAllSellable(ServerPlayer player, PriceRegistry prices) {
-        var inv = player.getInventory();
-        for (int i = 0; i < SellService.MAIN_INVENTORY_SLOTS; i++) {
-            if (SellService.sellableResolved(prices, inv.getItem(i)) != null) {
-                inv.setItem(i, ItemStack.EMPTY);
-            }
-        }
-        if (SellService.sellableResolved(prices, player.getOffhandItem()) != null) {
-            player.setItemInHand(InteractionHand.OFF_HAND, ItemStack.EMPTY);
-        }
-    }
-
     private static Long safeMultiply(long value, int count) {
         try {
             return Math.multiplyExact(value, count);
@@ -433,8 +558,7 @@ public final class SellCommand {
         }
     }
 
-    private record PendingSale(IdentifierCompat.Id key, int count, long total, long expiresAt,
-                               IdentifierCompat.Id heldItemId) {}
+    private record PendingSale(PriceEntry entry, int count, long total, long expiresAt) {}
 
     private record PendingEverything(int count, long total, long expiresAt) {}
 

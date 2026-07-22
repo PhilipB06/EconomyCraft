@@ -11,3 +11,4 @@
 /local_servers/
 **/bin/
 /.vscode/
+/.claude/
