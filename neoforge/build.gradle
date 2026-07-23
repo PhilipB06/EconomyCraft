@@ -29,8 +29,9 @@ def mcCoord = (rootProject.findProperty("minecraft_version") ?: rootProject.mine
 def tgt     = rootProject.ext.resolveMcTarget(mcCoord)
 
 // The placeholder-api-neoforge library did a major API redesign between the 1.21.11-era release
-// (Placeholders.register) and the 26.x-era release (Placeholders.registerServer); only the
-// placeholder integration entrypoint lives here, forked per era.
+// (Placeholders.register) and the 26.x-era release (Placeholders.registerServer), so the
+// placeholder-api-neoforge integration entrypoint is forked per era below. The TAB bridge doesn't
+// touch placeholder-api-neoforge at all, so it lives in src/main/java and is shared by both.
 sourceSets {
     main {
         java {
@@ -64,11 +65,11 @@ dependencies {
     }
     shadowBundle project(path: ":common", configuration: "transformProductionNeoForge")
 
-    // placeholder-api-neoforge was never published for the 1.21.x line (only 26.x+), so there's
-    // no artifact to compile against on the obfuscated target.
-    if (!tgt.obfuscated) {
-        compileOnly "eu.pb4:placeholder-api-neoforge:${rootProject.findProperty('placeholder_api_neoforge_version') ?: tgt.placeholderApiNeoForge}"
-    }
+    compileOnly "eu.pb4:placeholder-api-neoforge:${rootProject.findProperty('placeholder_api_neoforge_version') ?: tgt.placeholderApiNeoForge}"
+
+    // Deliberately no TAB dependency: TAB's API isn't published anywhere this build can reliably
+    // resolve (no publish step in its own CI, and its multi-module JitPack coordinates don't
+    // resolve), so EconomyCraftNeoForgeTab talks to it via reflection instead.
 }
 
 processResources {
