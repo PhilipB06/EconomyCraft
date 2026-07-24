@@ -3,18 +3,29 @@ name: Release to Modrinth & CurseForge
 on:
   workflow_dispatch:
     inputs:
-      release_version:
-        description: "Mod version"
-        required: true
-        type: string
-      release_track:
-        description: "Which Minecraft line to release"
-        required: true
-        type: choice
-        options:
-          - "26.x"
-          - "1.21.11"
-        default: "1.21.11"
+      release_1_21_11:
+        description: "Release 1.21.11"
+        required: false
+        type: boolean
+        default: false
+      release_26_1_x:
+        description: "Release 26.1.x"
+        required: false
+        type: boolean
+        default: false
+      release_26_2:
+        description: "Release 26.2"
+        required: false
+        type: boolean
+        default: false
+      dry_run:
+        description: "Dry run - build only, skip publishing to Modrinth/CurseForge"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
 
 jobs:
   setup:
@@ -22,15 +33,59 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       mc_games: ${{ steps.set.outputs.mc_games }}
+      release_matrix: ${{ steps.set.outputs.release_matrix }}
+      mod_version: ${{ steps.version.outputs.mod_version }}
     steps:
-      - id: set
+      - uses: actions/checkout@v4
+        with:
+          fetch-tags: true
+
+      - name: Show version info
+        id: version
         shell: bash
         run: |
-          if [ "${{ inputs.release_track }}" = "26.x" ]; then
-            echo 'mc_games=["26.1.2","26.2"]' >> "$GITHUB_OUTPUT"
-          else
-            echo 'mc_games=["1.21.11"]' >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          GRADLE_VERSION=$(grep -E '^mod_version' gradle.properties | sed -E 's/^mod_version\s*=\s*//' | tr -d '[:space:]')
+          TAG_VERSION=$(git tag --points-at HEAD | head -n1)
+          TAG_VERSION="${TAG_VERSION:-(none)}"
+          {
+            echo "### Version check"
+            echo ""
+            echo "| Source | Version |"
+            echo "|---|---|"
+            echo "| \`gradle.properties\` (\`mod_version\`) | \`$GRADLE_VERSION\` |"
+            echo "| Git tag on this commit | \`$TAG_VERSION\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "mod_version=$GRADLE_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve selected Minecraft versions
+        id: set
+        shell: bash
+        run: |
+          set -euo pipefail
+          games="[]"
+          release_matrix="[]"
+
+          if [ "${{ inputs.release_1_21_11 }}" = "true" ]; then
+            games=$(jq -c '. + ["1.21.11"]' <<< "$games")
+            release_matrix=$(jq -c '. + [{"mc_game":"1.21.11","game_versions":"1.21.11"}]' <<< "$release_matrix")
           fi
+          if [ "${{ inputs.release_26_1_x }}" = "true" ]; then
+            games=$(jq -c '. + ["26.1.2"]' <<< "$games")
+            release_matrix=$(jq -c '. + [{"mc_game":"26.1.2","game_versions":"[26.1,26.2)"}]' <<< "$release_matrix")
+          fi
+          if [ "${{ inputs.release_26_2 }}" = "true" ]; then
+            games=$(jq -c '. + ["26.2"]' <<< "$games")
+            release_matrix=$(jq -c '. + [{"mc_game":"26.2","game_versions":"[26.2,26.3)"}]' <<< "$release_matrix")
+          fi
+
+          if [ "$games" = "[]" ]; then
+            echo "::error::Select at least one Minecraft version to release (1.21.11 / 26.1.x / 26.2)."
+            exit 1
+          fi
+
+          echo "mc_games=$games" >> "$GITHUB_OUTPUT"
+          echo "release_matrix=$release_matrix" >> "$GITHUB_OUTPUT"
 
   build:
     name: Build (${{ matrix.platform }} ${{ matrix.mc_game }})
@@ -83,145 +138,42 @@ jobs:
           name: ${{ matrix.platform }}-${{ matrix.mc_game }}
           path: out/*.jar
           if-no-files-found: error
+          retention-days: 1
 
-  release-26x:
-    name: Release 26.x to Modrinth & CurseForge
+  release:
+    name: Publish (${{ matrix.platform.label }} ${{ matrix.game.mc_game }})
     runs-on: ubuntu-latest
-    needs: build
-    if: inputs.release_track == '26.x'
+    needs: [setup, build]
+    if: inputs.dry_run == false
+    strategy:
+      fail-fast: true
+      matrix:
+        platform:
+          - { id: fabric, label: Fabric }
+          - { id: neoforge, label: NeoForge }
+        game: ${{ fromJSON(needs.setup.outputs.release_matrix) }}
 
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Download all artifacts
+      - name: Download artifact
         uses: actions/download-artifact@v4
         with:
+          name: ${{ matrix.platform.id }}-${{ matrix.game.mc_game }}
           path: artifacts
 
-      # -------------------------
-      #     NEOFORGE BUILDS
-      # -------------------------
-      - name: Publish NeoForge 26.1.2
+      - name: Publish ${{ matrix.platform.label }} ${{ matrix.game.mc_game }}
         uses: Kir-Antipov/mc-publish@v3.3
         with:
           modrinth-id: H4o5bO7g
           curseforge-id: 1321557
           modrinth-token: ${{ secrets.MODRINTH_PERSONAL_ACCESS_TOKEN }}
           curseforge-token: ${{ secrets.CURSEFORGE_PERSONAL_ACCESS_TOKEN }}
-          version: ${{ inputs.release_version }}
-          name: EconomyCraft ${{ inputs.release_version }} - NeoForge - 26.1.2
+          version: ${{ needs.setup.outputs.mod_version }}
+          name: EconomyCraft ${{ needs.setup.outputs.mod_version }} - ${{ matrix.platform.label }} - ${{ matrix.game.mc_game }}
           version-type: release
           changelog-file: CHANGELOG.md
           game-versions: |
-            [26.1,26.2)
+            ${{ matrix.game.game_versions }}
           dependencies: |
             architectury-api | depends
           files: |
-            artifacts/neoforge-26.1.2/*.jar
-
-      - name: Publish NeoForge 26.2
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: H4o5bO7g
-          curseforge-id: 1321557
-          modrinth-token: ${{ secrets.MODRINTH_PERSONAL_ACCESS_TOKEN }}
-          curseforge-token: ${{ secrets.CURSEFORGE_PERSONAL_ACCESS_TOKEN }}
-          version: ${{ inputs.release_version }}
-          name: EconomyCraft ${{ inputs.release_version }} - NeoForge - 26.2
-          version-type: release
-          changelog-file: CHANGELOG.md
-          game-versions: |
-            [26.2,26.3)
-          dependencies: |
-            architectury-api | depends
-          files: |
-            artifacts/neoforge-26.2/*.jar
-
-      # -------------------------
-      #     FABRIC BUILDS
-      # -------------------------
-      - name: Publish Fabric 26.1.2
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: H4o5bO7g
-          curseforge-id: 1321557
-          modrinth-token: ${{ secrets.MODRINTH_PERSONAL_ACCESS_TOKEN }}
-          curseforge-token: ${{ secrets.CURSEFORGE_PERSONAL_ACCESS_TOKEN }}
-          version: ${{ inputs.release_version }}
-          name: EconomyCraft ${{ inputs.release_version }} - Fabric - 26.1.2
-          version-type: release
-          changelog-file: CHANGELOG.md
-          game-versions: |
-            [26.1,26.2)
-          dependencies: |
-            architectury-api | depends
-          files: |
-            artifacts/fabric-26.1.2/*.jar
-
-      - name: Publish Fabric 26.2
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: H4o5bO7g
-          curseforge-id: 1321557
-          modrinth-token: ${{ secrets.MODRINTH_PERSONAL_ACCESS_TOKEN }}
-          curseforge-token: ${{ secrets.CURSEFORGE_PERSONAL_ACCESS_TOKEN }}
-          version: ${{ inputs.release_version }}
-          name: EconomyCraft ${{ inputs.release_version }} - Fabric - 26.2
-          version-type: release
-          changelog-file: CHANGELOG.md
-          game-versions: |
-            [26.2,26.3)
-          dependencies: |
-            architectury-api | depends
-          files: |
-            artifacts/fabric-26.2/*.jar
-
-  release-1211:
-    name: Release 1.21.11 to Modrinth & CurseForge
-    runs-on: ubuntu-latest
-    needs: build
-    if: inputs.release_track == '1.21.11'
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Publish NeoForge 1.21.11
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: H4o5bO7g
-          curseforge-id: 1321557
-          modrinth-token: ${{ secrets.MODRINTH_PERSONAL_ACCESS_TOKEN }}
-          curseforge-token: ${{ secrets.CURSEFORGE_PERSONAL_ACCESS_TOKEN }}
-          version: ${{ inputs.release_version }}
-          name: EconomyCraft ${{ inputs.release_version }} - NeoForge - 1.21.11
-          version-type: release
-          changelog-file: CHANGELOG.md
-          game-versions: |
-            1.21.11
-          dependencies: |
-            architectury-api | depends
-          files: |
-            artifacts/neoforge-1.21.11/*.jar
-
-      - name: Publish Fabric 1.21.11
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: H4o5bO7g
-          curseforge-id: 1321557
-          modrinth-token: ${{ secrets.MODRINTH_PERSONAL_ACCESS_TOKEN }}
-          curseforge-token: ${{ secrets.CURSEFORGE_PERSONAL_ACCESS_TOKEN }}
-          version: ${{ inputs.release_version }}
-          name: EconomyCraft ${{ inputs.release_version }} - Fabric - 1.21.11
-          version-type: release
-          changelog-file: CHANGELOG.md
-          game-versions: |
-            1.21.11
-          dependencies: |
-            architectury-api | depends
-          files: |
-            artifacts/fabric-1.21.11/*.jar
+            artifacts/*.jar
