@@ -171,6 +171,7 @@ jobs:
           name: EconomyCraft ${{ needs.setup.outputs.mod_version }} - ${{ matrix.platform.label }} - ${{ matrix.game.mc_game }}
           version-type: release
           changelog-file: CHANGELOG.md
+          environment: server
           game-versions: |
             ${{ matrix.game.game_versions }}
           dependencies: |
