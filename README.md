@@ -1,45 +1,44 @@
 # EconomyCraft
 
-EconomyCraft provides a simple server-side economy system for Fabric and NeoForge servers.  
-The mod requires Architectury API.
+A simple server-side economy mod for Fabric and NeoForge. Requires Architectury API.
 
 ---
 
 ## Commands
-### Player Commands
-- `/bal [<player|selector>|top]` - Check balances or view the top balances.
-- `/pay <player> <amount>` - Transfer money to another player.
-- `/daily` - Claim a daily login bonus.
-- `/shop` - Player-driven marketplace where players list items for sale.
-  - `list <price> [<amount>]` - List the item in your hand. Omit `<amount>` to list up to a full stack.
-  - `search <query>` - Search listings by item name, enchantment, or container contents.
-- `/servershop` - Server-managed shop with unlimited supply. Prices can be edited in `config/economycraft/prices.json`.
-  - `search <query>` - Search every category by item name, enchantment, or container contents.
-- `/sell [<amount>|all|everything]` - Sell the item in your hand. Use `all` to sell all matching items from your inventory, or `everything` to sell your entire inventory. If an open `/orders` request pays more per item than the server would, the sale goes there first (best-paying order first), falling back to the server price for any remainder.
-- `/orders` - Request-based trading system. Click a request to fulfill it fully/partially.
-  - `request <item> <amount> <price>` - Create an item request.
-  - `claim` - Claim items bought or requested while offline.
-  - `search <query>` - Search requests by item name, enchantment, or container contents.
 
-### Admin Commands
-- `/eco addmoney <player|selector> <amount>` - Add money to a player.
-- `/eco setmoney <player|selector> <amount>` - Set a player’s balance.
-- `/eco removemoney <player|selector> [amount]` - Remove money from a player.
-- `/eco removeplayer <player|selector>` - Remove a player from the economy system.
-- `/eco toggleScoreboard` - Toggle the balance sidebar for all players.
+### Player commands
+- `/bal [<player|selector>|top]` - check a balance, or see the top balances.
+- `/pay <player> <amount>` - send money to another player.
+- `/daily` - claim your daily bonus.
+- `/shop` - a player-run marketplace where anyone can list items for sale.
+  - `list <price> [<amount>]` - list the item in your hand.
+  - `search <query>` - search listings by name or property.
+- `/servershop` - the server's own shop, with unlimited stock. Prices set in `config/economycraft/prices.json`.
+  - `search <query>` - search listings by name or property.
+- `/sell [<amount>|all|everything]` - sell the item in your hand. `all` sells every matching item in your inventory, `everything` sells your whole inventory. If a `/orders` request is paying more than the server would, your items go there first.
+- `/worth [<item> [<amount>]]` - check what an item buys/sells for. Defaults to hand-held item.
+- `/orders` - a request board: post what you want, other players fulfill it.
+  - `request <item> <amount> <price>` - post a request.
+  - `claim` - collect anything you've bought or been paid while offline.
+  - `search <query>` - search listings by name or property.
 
-**Notes:**
-- Non-admin commands such as `/pay` or `/daily` are standalone by default and also work under `/eco` (e.g., `/eco pay`).  
-  Set `standalone_commands` to `false` in `config.json` to require the `/eco` prefix.
-- Admin commands use `/eco` unless `standalone_admin_commands` is enabled.
+### Admin commands
+- `/eco addmoney <player|selector> <amount>` - add money to a player's balance.
+- `/eco setmoney <player|selector> <amount>` - set a player's balance.
+- `/eco removemoney <player|selector> [amount]` - remove money from a player's balance.
+- `/eco removeplayer <player|selector>` - remove a player from the economy.
+- `/eco toggleScoreboard` - toggle the balance sidebar for all players.
+
+
+Player commands like `/pay` and `/daily` work on their own by default, but also under `/eco` (e.g. `/eco pay`). Set `standalone_commands` to `false` in `config.json` if you'd rather require the `/eco` prefix. Admin commands are the other way around: they need the `/eco` prefix unless you turn on `standalone_admin_commands`.
 
 ---
 
 ## Configuration
 
-Configuration and player data are stored in `config/economycraft/`.
+Config and player data are stored in `config/economycraft/`.
 
-### Default `config.json`
+### `config.json`
 
 ```json
 {
@@ -57,21 +56,21 @@ Configuration and player data are stored in `config/economycraft/`.
 }
 ```
 
-- `startingBalance` - initial money for new players. Default: `1000`.
-- `dailyAmount` - money given by `/daily`. Default: `100`.
-- `dailySellLimit` - maximum money a player can earn per day via selling. `0` disables the limit. Default: `10000`.
-- `taxRate` - percentage tax applied to trades and orders (**decimal factor**, e.g. `0.1` = 10%). Default: `0.1`.
-- `pvp_balance_loss_percentage` - percentage of a player’s balance lost on PvP death and transferred to the killer (**decimal factor**, e.g. `0.1` = 10%). `0` disables this feature. Default: `0`.
-- `standalone_commands` - enable standalone `/pay`, `/daily`, etc. Default: `true`.
-- `standalone_admin_commands` - enable standalone `/addmoney`, `/setmoney`, etc. Default: `false`.
-- `scoreboard_enabled` - show the balance sidebar by default. Can be toggled with `/eco toggleScoreboard`. Default: `true`.
-- `server_shop_enabled` - enables the server shop (`/servershop` and `/eco servershop`). Default: `true`.
-- `sell_enabled` - enables the `/sell` command (selling farmed items directly to the server). Set to `false` to steer players toward supply-driven trading via `/shop` and `/orders`. Default: `true`.
-- `balance_separator` - thousands-separator character used wherever a balance is displayed (commands, menus, `%economycraft:balance_formatted%`). Only the first character is used, e.g. `","` for `$1,000`. Default: `"."`.
+- `startingBalance` - money new players start with. Default `1000`.
+- `dailyAmount` - money given by `/daily`. Default `100`.
+- `dailySellLimit` - most a player can earn per day from selling. `0` turns the limit off. Default `10000`.
+- `taxRate` - tax on trades and orders, as a decimal (`0.1` = 10%). Default `0.1`.
+- `pvp_balance_loss_percentage` - share of a player's balance the killer takes on a PvP death, as a decimal. `0` turns it off. Default `0`.
+- `standalone_commands` - let `/pay`, `/daily`, etc. work without the `/eco` prefix. Default `true`.
+- `standalone_admin_commands` - let `/addmoney`, `/setmoney`, etc. work without the `/eco` prefix. Default `false`.
+- `scoreboard_enabled` - show the balance sidebar. Default `true`.
+- `server_shop_enabled` - enables/disables the server shop. Default `true`.
+- `sell_enabled` - enables/disables `/sell`. Default `true`.
+- `balance_separator` - the thousands separator used. Only the first character counts, e.g. `","` gives `$1,000`. Default `"."`.
 
-### Server Shop Prices (`prices.json`)
+### Server shop prices (`prices.json`)
 
-Each entry is keyed by an item id (vanilla or modded):
+Each entry is keyed by an item id:
 
 ```json
 {
@@ -89,13 +88,12 @@ Each entry is keyed by an item id (vanilla or modded):
 }
 ```
 
-- `category` - groups the entry in the shop menu. Use `top.sub` (e.g. `blocks.wood`) for a subcategory.
-- `stack` - item's stack size
-- `unit_buy` / `unit_sell` - price per single item; `0` disables that direction.
-- `components` - optional, only needed for an item with specific NBT (custom name, enchantments, a shulker box with contents, etc.).
-  - Tip: create the item as a `/shop` listing first, then copy its `components` object out of `config/economycraft/data/shop.json`.
+- `category` - which section of the shop menu it shows up in. Use `top.sub` (e.g. `blocks.wood`) for a subcategory.
+- `stack` - item's stack size.
+- `unit_buy` / `unit_sell` - price for one item. Set either to `0` to disable that direction.
+- `components` - only needed if the item has specific NBT (a custom name, enchantments...). 
 
-A JSON key can only be used once, so normally you can only have one entry per item id. If you want to sell several versions of the **same** item (e.g. two different loot shulkers, swords with different enchantments, etc.), add a `#label` after the id to keep the JSON keys distinct; the label is discarded once the entry is read and **never** shown to players:
+JSON keys have to be unique, so you normally get one entry per item id. To sell more than one version of the same item (different loot shulkers, different enchants, etc.), add a `#label` to the id to keep the keys distinct - it's stripped out on load and never shown to players:
 
 ```json
 {
@@ -127,21 +125,21 @@ A JSON key can only be used once, so normally you can only have one entry per it
 
 ## Placeholders
 
-EconomyCraft can expose economy data to other mods through [Text Placeholder API](https://modrinth.com/mod/placeholder-api) on Fabric, or its unofficial [Placeholder API NeoForge](https://modrinth.com/mod/placeholder-api-neoforge) port on NeoForge.
+EconomyCraft can share economy data with other mods through [Text Placeholder API](https://modrinth.com/mod/placeholder-api) on Fabric, or the unofficial [Placeholder API NeoForge](https://modrinth.com/mod/placeholder-api-neoforge) port on NeoForge.
 
-Both are **optional and not bundled with EconomyCraft**, the mod runs fine without them, but you must download the jar matching your Minecraft version/loader and drop it into your server's `mods` folder yourself before any placeholder below will resolve:
+Both are **optional and not bundled with EconomyCraft**, the mod works fine without them, but you'll need to grab the jar for your version/loader and drop it into your server's `mods` folder before these placeholders will resolve:
 - Fabric: [Text Placeholder API on Modrinth](https://modrinth.com/mod/placeholder-api)
 - NeoForge: [Placeholder API NeoForge on Modrinth](https://modrinth.com/mod/placeholder-api-neoforge)
 
 | Placeholder | Description                                                                                                                  |
 | --- |------------------------------------------------------------------------------------------------------------------------------|
-| `%economycraft:balance%` | Raw numeric balance of the viewed player (e.g. `1000`).                                                                      |
-| `%economycraft:balance_formatted%` | Balance formatted with currency symbol and thousands separator (e.g. `$1.000`).                                              |
+| `%economycraft:balance%` | Raw balance of the viewed player, e.g. `1000`.                                                                               |
+| `%economycraft:balance_formatted%` | Balance with currency symbol and thousands separator, e.g. `$1.000`.                                                         |
 | `%economycraft:daily_sell_remaining%` | Remaining amount the player can earn from `/sell` today before hitting `dailySellLimit`. Shows `∞` if the limit is disabled. |
 | `%economycraft:top_name 1%` | Name of the player ranked `1` on the balance leaderboard (`1` = richest).                                                    |
-| `%economycraft:top_balance 1%` | Raw numeric balance of the player ranked `1`.                                                                                |
+| `%economycraft:top_balance 1%` | Raw balance of the player ranked `1`.                                                                                        |
 | `%economycraft:top_balance_formatted 1%` | Formatted balance of the player ranked `1`.                                                                                  |
 
-The `top_*` placeholders take the rank as an argument, separated from the placeholder name by a space (e.g. `%economycraft:top_name 3%` for 3rd place). If fewer players exist than the requested rank, the placeholder resolves as invalid.
+The `top_*` placeholders take the rank as an argument after the name, e.g. `%economycraft:top_name 3%` for 3rd place. If there aren't enough players to fill that rank, it just resolves as invalid.
 
 ---
