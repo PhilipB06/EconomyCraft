@@ -7,6 +7,7 @@ import com.reazip.economycraft.util.ContainerPreviewUi;
 import com.reazip.economycraft.util.IdentityCompat;
 import com.reazip.economycraft.util.ItemsCompat;
 import com.reazip.economycraft.util.MenuUiSupport;
+import com.reazip.economycraft.util.SearchInputUi;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.core.component.DataComponents;
@@ -32,10 +33,14 @@ public final class OrdersUi {
     private OrdersUi() {}
 
     public static void open(ServerPlayer player, EconomyManager eco) {
-        open(player, eco, 0);
+        open(player, eco, 0, null);
     }
 
-    private static void open(ServerPlayer player, EconomyManager eco, int page) {
+    public static void openSearch(ServerPlayer player, EconomyManager eco, String query) {
+        open(player, eco, 0, query);
+    }
+
+    private static void open(ServerPlayer player, EconomyManager eco, int page, @Nullable String query) {
         Component title = Component.literal("Orders");
         player.openMenu(new MenuProvider() {
             @Override
@@ -45,7 +50,7 @@ public final class OrdersUi {
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                return new RequestMenu(id, inv, eco.getOrders(), eco, player, page);
+                return new RequestMenu(id, inv, eco.getOrders(), eco, player, page, query);
             }
         });
     }
@@ -74,41 +79,73 @@ public final class OrdersUi {
         });
     }
 
+    private static MenuType<?> getMenuType(int rows) {
+        return switch (rows) {
+            case 1 -> MenuType.GENERIC_9x1;
+            case 2 -> MenuType.GENERIC_9x2;
+            case 3 -> MenuType.GENERIC_9x3;
+            case 4 -> MenuType.GENERIC_9x4;
+            case 5 -> MenuType.GENERIC_9x5;
+            default -> MenuType.GENERIC_9x6;
+        };
+    }
+
+    private static int requiredRows(int itemCount) {
+        int contentRows = (int) Math.ceil(Math.max(1, itemCount) / 9.0);
+        return Math.clamp(contentRows + 1, 2, 6);
+    }
+
     private static class RequestMenu extends AbstractContainerMenu {
         private final OrderManager orders;
         private final EconomyManager eco;
         private final ServerPlayer viewer;
+        @Nullable private final String query;
         private List<OrderRequest> requests = new ArrayList<>();
-        private final SimpleContainer container = new SimpleContainer(54);
+        private final SimpleContainer container;
+        private final int rows;
+        private final int itemsPerPage;
+        private final int navRowStart;
         private int page;
-        private final int navRowStart = 45;
         private final Runnable listener = this::updatePage;
 
-        RequestMenu(int id, Inventory inv, OrderManager orders, EconomyManager eco, ServerPlayer viewer, int page) {
-            super(MenuType.GENERIC_9x6, id);
+        RequestMenu(int id, Inventory inv, OrderManager orders, EconomyManager eco, ServerPlayer viewer, int page, @Nullable String query) {
+            super(getMenuType(requiredRows(resolveRequests(orders, query).size())), id);
             this.orders = orders;
             this.eco = eco;
             this.viewer = viewer;
             this.page = page;
+            this.query = query;
+            this.rows = requiredRows(resolveRequests(orders, query).size());
+            this.itemsPerPage = (rows - 1) * 9;
+            this.navRowStart = itemsPerPage;
+            this.container = new SimpleContainer(rows * 9);
             updatePage();
             orders.addListener(listener);
-            for (Slot slot : MenuUiSupport.readOnlyGridSlots(container, 54)) {
+            for (Slot slot : MenuUiSupport.readOnlyGridSlots(container, rows * 9)) {
                 this.addSlot(slot);
             }
-            for (Slot slot : MenuUiSupport.playerInventorySlots(inv, 18 + 6 * 18 + 14)) {
+            for (Slot slot : MenuUiSupport.playerInventorySlots(inv, 18 + rows * 18 + 14)) {
                 this.addSlot(slot);
             }
         }
 
+        private static List<OrderRequest> resolveRequests(OrderManager orders, @Nullable String query) {
+            List<OrderRequest> list = new ArrayList<>(orders.getRequests());
+            if (query != null && !query.isBlank()) {
+                list.removeIf(r -> !MenuUiSupport.matchesSearch(r.item, query));
+            }
+            return list;
+        }
+
         private void updatePage() {
-            requests = new ArrayList<>(orders.getRequests());
+            requests = resolveRequests(orders, query);
             container.clearContent();
-            int start = page * 45;
-            int totalPages = (int) Math.ceil(requests.size() / 45.0);
+            int start = page * itemsPerPage;
+            int totalPages = (int) Math.ceil(requests.size() / (double) itemsPerPage);
 
             var server = viewer.level().getServer();
 
-            for (int i = 0; i < 45; i++) {
+            for (int i = 0; i < itemsPerPage; i++) {
                 int index = start + i;
                 if (index >= requests.size()) break;
 
@@ -137,7 +174,7 @@ public final class OrdersUi {
                 container.setItem(navRowStart + 2, prev);
             }
 
-            if (start + 45 < requests.size()) {
+            if (start + itemsPerPage < requests.size()) {
                 ItemStack next = new ItemStack(Items.ARROW);
                 next.set(DataComponents.CUSTOM_NAME, Component.literal("Next page").withStyle(s -> s.withItalic(false)));
                 container.setItem(navRowStart + 6, next);
@@ -150,20 +187,27 @@ public final class OrdersUi {
             paper.set(DataComponents.CUSTOM_NAME,
                     Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
             container.setItem(navRowStart + 4, paper);
+
+            boolean searching = query != null && !query.isBlank();
+            ItemStack search = new ItemStack(searching ? Items.BARRIER : Items.COMPASS);
+            search.set(DataComponents.CUSTOM_NAME, searching
+                    ? Component.literal("Back").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.DARK_RED))
+                    : Component.literal("Search").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.GREEN)));
+            container.setItem(navRowStart + 8, search);
         }
 
         @Override
         public void clicked(int slot, int dragType, ContainerInput type, Player player) {
-            if (type == ContainerInput.THROW && slot >= 0 && slot < 45) {
-                int index = page * 45 + slot;
+            if (type == ContainerInput.THROW && slot >= 0 && slot < navRowStart) {
+                int index = page * itemsPerPage + slot;
                 if (index < requests.size() && MenuUiSupport.hasContainerContents(requests.get(index).item)) {
-                    ContainerPreviewUi.open((ServerPlayer) player, requests.get(index).item, () -> OrdersUi.open((ServerPlayer) player, eco, page));
+                    ContainerPreviewUi.open((ServerPlayer) player, requests.get(index).item, () -> OrdersUi.open((ServerPlayer) player, eco, page, query));
                 }
                 return;
             }
             if (type == ContainerInput.PICKUP) {
-                if (slot >= 0 && slot < 45) {
-                    int index = page * 45 + slot;
+                if (slot >= 0 && slot < navRowStart) {
+                    int index = page * itemsPerPage + slot;
                     if (index < requests.size()) {
                         OrderRequest req = requests.get(index);
                         ServerPlayer sp = (ServerPlayer) player;
@@ -179,7 +223,16 @@ public final class OrdersUi {
                     }
                 }
                 if (slot == navRowStart + 2 && page > 0) { page--; updatePage(); return; }
-                if (slot == navRowStart + 6 && (page + 1) * 45 < requests.size()) { page++; updatePage(); return; }
+                if (slot == navRowStart + 6 && (page + 1) * itemsPerPage < requests.size()) { page++; updatePage(); return; }
+                if (slot == navRowStart + 8) {
+                    ServerPlayer sp = (ServerPlayer) player;
+                    if (query != null && !query.isBlank()) {
+                        OrdersUi.open(sp, eco, 0, null);
+                    } else {
+                        SearchInputUi.open(sp, "Search Orders", (p, q) -> OrdersUi.open(p, eco, 0, q));
+                    }
+                    return;
+                }
             }
             super.clicked(slot, dragType, type, player);
         }
@@ -307,13 +360,13 @@ public final class OrdersUi {
 
                     parent.updatePage();
                     player.closeContainer();
-                    OrdersUi.open(serverPlayer, parent.eco);
+                    OrdersUi.open(serverPlayer, parent.eco, 0, parent.query);
                     return;
                 }
 
                 if (slot == 6) {
                     player.closeContainer();
-                    OrdersUi.open((ServerPlayer) player, parent.eco);
+                    OrdersUi.open((ServerPlayer) player, parent.eco, 0, parent.query);
                     return;
                 }
             }
@@ -371,12 +424,12 @@ public final class OrdersUi {
                         ((ServerPlayer) player).sendSystemMessage(Component.literal("Request no longer available").withStyle(ChatFormatting.RED));
                     }
                     player.closeContainer();
-                    OrdersUi.open((ServerPlayer) player, parent.eco);
+                    OrdersUi.open((ServerPlayer) player, parent.eco, 0, parent.query);
                     return;
                 }
                 if (slot == 6) {
                     player.closeContainer();
-                    OrdersUi.open((ServerPlayer) player, parent.eco);
+                    OrdersUi.open((ServerPlayer) player, parent.eco, 0, parent.query);
                     return;
                 }
             }

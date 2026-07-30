@@ -2,7 +2,9 @@ package com.reazip.economycraft.util;
 
 import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyManager;
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.Holder;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
@@ -17,10 +19,13 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.item.component.ItemLore;
+import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.item.enchantment.ItemEnchantments;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 /**
@@ -145,6 +150,45 @@ public final class MenuUiSupport {
     public static boolean hasContainerContents(ItemStack stack) {
         ItemContainerContents contents = stack.get(DataComponents.CONTAINER);
         return contents != null && contents.nonEmptyItems().iterator().hasNext();
+    }
+
+    /**
+     * Case-insensitive substring match of {@code query} against the stack's display name or
+     * enchantments, or the same for anything stored inside it (e.g. a shulker box's contents);
+     * no query matches everything.
+     */
+    public static boolean matchesSearch(ItemStack stack, @Nullable String query) {
+        if (query == null || query.isBlank()) return true;
+        String q = query.trim().toLowerCase(Locale.ROOT);
+        if (stackMatches(stack, q)) return true;
+        ItemContainerContents contents = stack.get(DataComponents.CONTAINER);
+        if (contents != null) {
+            // nonEmptyItems()'s element type differs between Minecraft versions (real ItemStack vs.
+            // a lighter template type), but copyInto(NonNullList<ItemStack>) is stable across both,
+            // so that's used here instead. 256 mirrors ItemContainerContents' own (private) cap.
+            NonNullList<ItemStack> items = NonNullList.withSize(256, ItemStack.EMPTY);
+            contents.copyInto(items);
+            for (ItemStack inner : items) {
+                if (!inner.isEmpty() && stackMatches(inner, q)) return true;
+            }
+        }
+        return false;
+    }
+
+    /** Matches a single stack's own display name and any enchantments it carries or stores (query already lowercased). */
+    private static boolean stackMatches(ItemStack stack, String lowerQuery) {
+        if (stack.getHoverName().getString().toLowerCase(Locale.ROOT).contains(lowerQuery)) return true;
+        return enchantmentsMatch(stack.get(DataComponents.ENCHANTMENTS), lowerQuery)
+                || enchantmentsMatch(stack.get(DataComponents.STORED_ENCHANTMENTS), lowerQuery);
+    }
+
+    /** True if any enchantment's own display name (e.g. "Mending") contains the query, e.g. for an enchanted book. */
+    private static boolean enchantmentsMatch(@Nullable ItemEnchantments enchantments, String lowerQuery) {
+        if (enchantments == null) return false;
+        for (Object2IntMap.Entry<Holder<Enchantment>> e : enchantments.entrySet()) {
+            if (e.getKey().value().description().getString().toLowerCase(Locale.ROOT).contains(lowerQuery)) return true;
+        }
+        return false;
     }
 
     /** Copies a stack's container contents (e.g. a shulker box) into the first {@code slots} slots of {@code target}. */

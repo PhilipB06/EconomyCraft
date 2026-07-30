@@ -1,6 +1,6 @@
 # EconomyCraft
 
-EconomyCraft provides a simple server-side cross-platform economy system for Fabric and NeoForge servers.  
+EconomyCraft provides a simple server-side economy system for Fabric and NeoForge servers.  
 The mod requires Architectury API.
 
 ---
@@ -12,13 +12,14 @@ The mod requires Architectury API.
 - `/daily` - Claim a daily login bonus.
 - `/shop` - Player-driven marketplace where players list items for sale.
   - `list <price> [<amount>]` - List the item in your hand. Omit `<amount>` to list up to a full stack.
+  - `search <query>` - Search listings by item name, enchantment, or container contents.
 - `/servershop` - Server-managed shop with unlimited supply. Prices can be edited in `config/economycraft/prices.json`.
+  - `search <query>` - Search every category by item name, enchantment, or container contents.
 - `/sell [<amount>|all|everything]` - Sell the item in your hand. Use `all` to sell all matching items from your inventory, or `everything` to sell your entire inventory. If an open `/orders` request pays more per item than the server would, the sale goes there first (best-paying order first), falling back to the server price for any remainder.
 - `/orders` - Request-based trading system. Click a request to fulfill it fully/partially.
   - `request <item> <amount> <price>` - Create an item request.
   - `claim` - Claim items bought or requested while offline.
-
-*Hover a filled shulker box and press Ctrl+Q to preview its contents before buying, selling, or fulfilling.*
+  - `search <query>` - Search requests by item name, enchantment, or container contents.
 
 ### Admin Commands
 - `/eco addmoney <player|selector> <amount>` - Add money to a player.
@@ -134,10 +135,10 @@ Both are **optional and not bundled with EconomyCraft**, the mod runs fine witho
 
 | Placeholder | Description                                                                                                                  |
 | --- |------------------------------------------------------------------------------------------------------------------------------|
-| `%economycraft:balance%` | Raw numeric balance of the viewed player (e.g. `1000`).                                                                        |
+| `%economycraft:balance%` | Raw numeric balance of the viewed player (e.g. `1000`).                                                                      |
 | `%economycraft:balance_formatted%` | Balance formatted with currency symbol and thousands separator (e.g. `$1.000`).                                              |
 | `%economycraft:daily_sell_remaining%` | Remaining amount the player can earn from `/sell` today before hitting `dailySellLimit`. Shows `∞` if the limit is disabled. |
-| `%economycraft:top_name 1%` | Name of the player ranked `1` on the balance leaderboard (`1` = richest). Not tied to the viewed player.                     |
+| `%economycraft:top_name 1%` | Name of the player ranked `1` on the balance leaderboard (`1` = richest).                                                    |
 | `%economycraft:top_balance 1%` | Raw numeric balance of the player ranked `1`.                                                                                |
 | `%economycraft:top_balance_formatted 1%` | Formatted balance of the player ranked `1`.                                                                                  |
 

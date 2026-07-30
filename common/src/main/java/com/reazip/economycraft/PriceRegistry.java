@@ -8,6 +8,7 @@ import com.mojang.logging.LogUtils;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.core.registries.BuiltInRegistries;
 import com.reazip.economycraft.util.IdentifierCompat;
+import com.reazip.economycraft.util.MenuUiSupport;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.server.MinecraftServer;
@@ -276,6 +277,33 @@ public final class PriceRegistry {
             for (PriceEntry p : list) {
                 if (p.unitBuy() <= 0) continue;
                 if (p.category() != null && p.category().trim().toLowerCase(Locale.ROOT).equals(c)) {
+                    out.add(p);
+                }
+            }
+        }
+        return out;
+    }
+
+    /** Buyable entries anywhere whose item id or category contains {@code query} (case-insensitive); empty query returns nothing. */
+    public List<PriceEntry> search(String query) {
+        return search(query, null);
+    }
+
+    /** Same as {@link #search(String)}, restricted to entries whose category exactly matches {@code category} (no restriction if null). */
+    public List<PriceEntry> search(String query, @Nullable String category) {
+        if (query == null || query.isBlank()) return List.of();
+        String q = query.trim().toLowerCase(Locale.ROOT);
+        String c = category != null ? category.trim().toLowerCase(Locale.ROOT) : null;
+
+        List<PriceEntry> out = new ArrayList<>();
+        for (List<PriceEntry> list : prices.values()) {
+            for (PriceEntry p : list) {
+                if (p.unitBuy() <= 0) continue;
+                if (c != null && (p.category() == null || !p.category().trim().toLowerCase(Locale.ROOT).equals(c))) continue;
+                String name = p.id().path().replace('_', ' ').toLowerCase(Locale.ROOT);
+                if (name.contains(q)
+                        || (p.category() != null && p.category().toLowerCase(Locale.ROOT).contains(q))
+                        || (p.customItem() != null && MenuUiSupport.matchesSearch(p.customItem(), query))) {
                     out.add(p);
                 }
             }

@@ -578,7 +578,13 @@ public final class EconomyCommands {
                                         .executes(ctx -> listItem(ctx.getSource().getPlayerOrException(),
                                                 LongArgumentType.getLong(ctx, "price"),
                                                 IntegerArgumentType.getInteger(ctx, "amount"),
-                                                ctx.getSource())))));
+                                                ctx.getSource())))))
+                .then(literal("search")
+                        .executes(ctx -> usage(ctx.getSource(), "/shop search <query>"))
+                        .then(argument("query", StringArgumentType.greedyString())
+                                .executes(ctx -> searchShop(ctx.getSource().getPlayerOrException(),
+                                        StringArgumentType.getString(ctx, "query"),
+                                        ctx.getSource()))));
     }
 
     private static int openShop(ServerPlayer player, CommandSourceStack source) {
@@ -587,6 +593,17 @@ public final class EconomyCommands {
             return 1;
         } catch (Exception e) {
             LOGGER.error("[EconomyCraft] Failed to open /shop for {}", player.getDisplayName().getString(), e);
+            source.sendFailure(Component.literal("Failed to open shop. Check server logs."));
+            return 0;
+        }
+    }
+
+    private static int searchShop(ServerPlayer player, String query, CommandSourceStack source) {
+        try {
+            ShopUi.openSearch(player, EconomyCraft.getManager(source.getServer()).getShop(), query);
+            return 1;
+        } catch (Exception e) {
+            LOGGER.error("[EconomyCraft] Failed to search /shop for {}", player.getDisplayName().getString(), e);
             source.sendFailure(Component.literal("Failed to open shop. Check server logs."));
             return 0;
         }
@@ -634,7 +651,13 @@ public final class EconomyCommands {
                                 ctx.getSource().getPlayerOrException(),
                                 ctx.getSource(),
                                 StringArgumentType.getString(ctx, "category")
-                        )));
+                        )))
+                .then(literal("search")
+                        .executes(ctx -> usage(ctx.getSource(), "/servershop search <query>"))
+                        .then(argument("query", StringArgumentType.greedyString())
+                                .executes(ctx -> searchServerShop(ctx.getSource().getPlayerOrException(),
+                                        StringArgumentType.getString(ctx, "query"),
+                                        ctx.getSource()))));
     }
 
     private static int openServerShop(ServerPlayer player, CommandSourceStack source, @Nullable String category) {
@@ -649,6 +672,21 @@ public final class EconomyCommands {
         } catch (Exception e) {
             LOGGER.error("[EconomyCraft] Failed to open /servershop for {} (category={})",
                     player.getDisplayName().getString(), category, e);
+            source.sendFailure(Component.literal("Failed to open server shop. Check server logs."));
+            return 0;
+        }
+    }
+
+    private static int searchServerShop(ServerPlayer player, String query, CommandSourceStack source) {
+        if (!EconomyConfig.get().serverShopEnabled) {
+            source.sendFailure(Component.literal("Server shop is disabled.").withStyle(ChatFormatting.RED));
+            return 0;
+        }
+        try {
+            ServerShopUi.openSearch(player, EconomyCraft.getManager(source.getServer()), query);
+            return 1;
+        } catch (Exception e) {
+            LOGGER.error("[EconomyCraft] Failed to search /servershop for {}", player.getDisplayName().getString(), e);
             source.sendFailure(Component.literal("Failed to open server shop. Check server logs."));
             return 0;
         }
@@ -672,7 +710,13 @@ public final class EconomyCommands {
                                                         (int) Math.min(LongArgumentType.getLong(ctx, "amount"), EconomyManager.MAX),
                                                         LongArgumentType.getLong(ctx, "price"),
                                                         ctx.getSource()))))))
-                .then(literal("claim").executes(ctx -> claimOrders(ctx.getSource().getPlayerOrException(), ctx.getSource())));
+                .then(literal("claim").executes(ctx -> claimOrders(ctx.getSource().getPlayerOrException(), ctx.getSource())))
+                .then(literal("search")
+                        .executes(ctx -> usage(ctx.getSource(), "/orders search <query>"))
+                        .then(argument("query", StringArgumentType.greedyString())
+                                .executes(ctx -> searchOrders(ctx.getSource().getPlayerOrException(),
+                                        StringArgumentType.getString(ctx, "query"),
+                                        ctx.getSource()))));
     }
 
     private static int openOrders(ServerPlayer player, CommandSourceStack source) {
@@ -719,6 +763,17 @@ public final class EconomyCommands {
     private static int claimOrders(ServerPlayer player, CommandSourceStack source) {
         OrdersUi.openClaims(player, EconomyCraft.getManager(source.getServer()));
         return 1;
+    }
+
+    private static int searchOrders(ServerPlayer player, String query, CommandSourceStack source) {
+        try {
+            OrdersUi.openSearch(player, EconomyCraft.getManager(source.getServer()), query);
+            return 1;
+        } catch (Exception e) {
+            LOGGER.error("[EconomyCraft] Failed to search /orders for {}", player.getDisplayName().getString(), e);
+            source.sendFailure(Component.literal("Failed to open orders. Check server logs."));
+            return 0;
+        }
     }
 
     // ---- Daily reward ----

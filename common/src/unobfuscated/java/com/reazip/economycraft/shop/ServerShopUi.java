@@ -10,6 +10,7 @@ import com.reazip.economycraft.util.ChatCompat;
 import com.reazip.economycraft.util.ContainerPreviewUi;
 import com.reazip.economycraft.util.ItemsCompat;
 import com.reazip.economycraft.util.MenuUiSupport;
+import com.reazip.economycraft.util.SearchInputUi;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
@@ -84,6 +85,27 @@ public final class ServerShopUi {
         openItems(player, eco, cat);
     }
 
+    /** Searches every category, regardless of where it's invoked from (the /servershop search command). */
+    public static void openSearch(ServerPlayer player, EconomyManager eco, String query) {
+        openSearchResults(player, eco, null, query, 0);
+    }
+
+    private static void openSearchResults(ServerPlayer player, EconomyManager eco, @Nullable String category, String query, int page) {
+        Component title = Component.literal("Search: " + query);
+
+        player.openMenu(new MenuProvider() {
+            @Override
+            public Component getDisplayName() {
+                return title;
+            }
+
+            @Override
+            public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
+                return new ItemMenu(id, inv, eco, category, null, query, page, player);
+            }
+        });
+    }
+
     private static void openRoot(ServerPlayer player, EconomyManager eco) {
         Component title = Component.literal("Server Shop");
         player.openMenu(new MenuProvider() {
@@ -139,7 +161,7 @@ public final class ServerShopUi {
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                return new ItemMenu(id, inv, eco, category, displayTitle, page, player);
+                return new ItemMenu(id, inv, eco, category, displayTitle, null, page, player);
             }
         });
     }
@@ -236,6 +258,10 @@ public final class ServerShopUi {
             ItemStack paper = new ItemStack(Items.PAPER);
             paper.set(DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
             container.setItem(navRowStart + 4, paper);
+
+            ItemStack search = new ItemStack(Items.COMPASS);
+            search.set(DataComponents.CUSTOM_NAME, Component.literal("Search").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.GREEN)));
+            container.setItem(navRowStart + 8, search);
         }
 
         @Override
@@ -256,6 +282,10 @@ public final class ServerShopUi {
                 }
                 if (slot == navRowStart + 3 && page > 0) { page--; updatePage(); return; }
                 if (slot == navRowStart + 5 && (page + 1) * itemsPerPage < categories.size()) { page++; updatePage(); return; }
+                if (slot == navRowStart + 8) {
+                    SearchInputUi.open(viewer, "Search Server Shop", (p, q) -> ServerShopUi.openSearch(p, eco, q));
+                    return;
+                }
             }
             super.clicked(slot, dragType, type, player);
         }
@@ -378,8 +408,9 @@ public final class ServerShopUi {
         private final EconomyManager eco;
         private final PriceRegistry prices;
         private final ServerPlayer viewer;
-        private final String category;
+        @Nullable private final String category;
         @Nullable private final String displayTitle;
+        @Nullable private final String searchQuery;
         private List<PriceRegistry.PriceEntry> entries = new ArrayList<>();
         private final SimpleContainer container;
         private final int rows;
@@ -387,12 +418,14 @@ public final class ServerShopUi {
         private final int navRowStart;
         private int page;
 
-        ItemMenu(int id, Inventory inv, EconomyManager eco, String category, @Nullable String displayTitle, int page, ServerPlayer viewer) {
-            super(getMenuType(requiredRows(eco.getPrices().buyableByCategory(category).size())), id);
+        ItemMenu(int id, Inventory inv, EconomyManager eco, @Nullable String category, @Nullable String displayTitle,
+                  @Nullable String searchQuery, int page, ServerPlayer viewer) {
+            super(getMenuType(requiredRows(resolveEntries(eco, category, searchQuery).size())), id);
             this.eco = eco;
             this.viewer = viewer;
             this.category = category;
             this.displayTitle = displayTitle;
+            this.searchQuery = searchQuery;
             this.prices = eco.getPrices();
 
             refreshEntries();
@@ -405,8 +438,12 @@ public final class ServerShopUi {
             updatePage();
         }
 
+        private static List<PriceRegistry.PriceEntry> resolveEntries(EconomyManager eco, @Nullable String category, @Nullable String searchQuery) {
+            return searchQuery != null ? eco.getPrices().search(searchQuery, category) : eco.getPrices().buyableByCategory(category);
+        }
+
         private void refreshEntries() {
-            entries = new ArrayList<>(prices.buyableByCategory(category));
+            entries = new ArrayList<>(resolveEntries(eco, category, searchQuery));
         }
 
         private void setupSlots(Inventory inv) {
@@ -490,6 +527,14 @@ public final class ServerShopUi {
             back.set(DataComponents.CUSTOM_NAME, Component.literal("Back").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.DARK_RED).withBold(true)));
             container.setItem(navRowStart + 8, back);
 
+            // Only shown outside search mode: while searching, "Back" already exits to root, so a
+            // second barrier here would just duplicate it.
+            if (!searching()) {
+                ItemStack search = new ItemStack(Items.COMPASS);
+                search.set(DataComponents.CUSTOM_NAME, Component.literal("Search").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.GREEN)));
+                container.setItem(navRowStart + 7, search);
+            }
+
             ItemStack balance = MenuUiSupport.createBalanceItem(viewer);
             container.setItem(navRowStart, balance);
 
@@ -505,7 +550,13 @@ public final class ServerShopUi {
                 if (index < entries.size()) {
                     ItemStack display = createDisplayStack(entries.get(index), viewer);
                     if (MenuUiSupport.hasContainerContents(display)) {
-                        ContainerPreviewUi.open(viewer, display, () -> openItems(viewer, eco, category, displayTitle, page));
+                        ContainerPreviewUi.open(viewer, display, () -> {
+                            if (searchQuery != null) {
+                                openSearchResults(viewer, eco, category, searchQuery, page);
+                            } else {
+                                openItems(viewer, eco, category, displayTitle, page);
+                            }
+                        });
                     }
                 }
                 return;
@@ -526,8 +577,12 @@ public final class ServerShopUi {
                 }
                 if (slot == navRowStart + 3 && page > 0) { page--; updatePage(); return; }
                 if (slot == navRowStart + 5 && (page + 1) * itemsPerPage < entries.size()) { page++; updatePage(); return; }
+                if (slot == navRowStart + 7 && !searching()) {
+                    SearchInputUi.open(viewer, "Search Server Shop", (p, q) -> ServerShopUi.openSearchResults(p, eco, category, q, 0));
+                    return;
+                }
                 if (slot == navRowStart + 8) {
-                    if (category.contains(".")) {
+                    if (category != null && category.contains(".")) {
                         String topCategory = category.substring(0, category.indexOf('.'));
                         openSubcategories(viewer, eco, topCategory);
                     } else {
@@ -537,6 +592,10 @@ public final class ServerShopUi {
                 }
             }
             super.clicked(slot, dragType, type, player);
+        }
+
+        private boolean searching() {
+            return searchQuery != null && !searchQuery.isBlank();
         }
 
         private void handlePurchase(PriceRegistry.PriceEntry entry, int amount) {
