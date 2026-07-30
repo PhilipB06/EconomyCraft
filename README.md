@@ -15,7 +15,7 @@ A simple server-side economy mod for Fabric and NeoForge. Requires Architectury 
   - `search <query>` - search listings by name or property.
 - `/servershop` - the server's own shop, with unlimited stock. Prices set in `config/economycraft/prices.json`.
   - `search <query>` - search listings by name or property.
-- `/sell [<amount>|all|everything]` - sell the item in your hand. `all` sells every matching item in your inventory, `everything` sells your whole inventory. If a `/orders` request is paying more than the server would, your items go there first.
+- `/sell` - opens a GUI: drop in items, then confirm or close the GUI to sell.
 - `/worth [<item> [<amount>]]` - check what an item buys/sells for. Defaults to hand-held item.
 - `/orders` - a request board: post what you want, other players fulfill it.
   - `request <item> <amount> <price>` - post a request.

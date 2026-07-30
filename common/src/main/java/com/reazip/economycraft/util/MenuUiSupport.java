@@ -134,10 +134,30 @@ public final class MenuUiSupport {
     }
 
     public static List<Slot> confirmRowSlots(Container container) {
+        return lockedRowSlots(container, CONFIRM_ROW_Y);
+    }
+
+    public static List<Slot> lockedRowSlots(Container container, int y) {
         List<Slot> slots = new ArrayList<>(9);
         for (int i = 0; i < 9; i++) {
-            slots.add(new Slot(container, i, GRID_LEFT + i * SLOT_SIZE, CONFIRM_ROW_Y) {
+            slots.add(new Slot(container, i, GRID_LEFT + i * SLOT_SIZE, y) {
                 @Override public boolean mayPickup(@NonNull Player player) { return false; }
+            });
+        }
+        return slots;
+    }
+
+    public static List<Slot> openGridSlots(Container container, int slotCount) {
+        return openGridSlots(container, slotCount, stack -> true);
+    }
+
+    public static List<Slot> openGridSlots(Container container, int slotCount, java.util.function.Predicate<ItemStack> mayPlace) {
+        List<Slot> slots = new ArrayList<>(slotCount);
+        for (int i = 0; i < slotCount; i++) {
+            int r = i / 9;
+            int c = i % 9;
+            slots.add(new Slot(container, i, GRID_LEFT + c * SLOT_SIZE, GRID_TOP + r * SLOT_SIZE) {
+                @Override public boolean mayPlace(@NonNull ItemStack stack) { return mayPlace.test(stack); }
             });
         }
         return slots;
