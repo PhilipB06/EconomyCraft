@@ -4,7 +4,6 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.reazip.economycraft.PriceRegistry.PriceEntry;
-import com.reazip.economycraft.PriceRegistry.ResolvedPrice;
 import com.reazip.economycraft.util.ChatCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
@@ -48,10 +47,9 @@ public final class SellCommand {
                 .executes(ctx -> sellMainHand(ctx, -1));
     }
 
-    /** Holding item + price validation shared by sellMainHand and previewSellAll. */
     private record SellContext(CommandSourceStack source, ServerPlayer player, ItemStack hand,
                                 EconomyManager manager, PriceRegistry prices,
-                                ResolvedPrice resolved, long unitSell) {}
+                                PriceEntry resolved, long unitSell) {}
 
     @Nullable
     private static SellContext validateSellable(CommandContext<CommandSourceStack> ctx) {
@@ -68,17 +66,14 @@ public final class SellCommand {
         EconomyManager manager = EconomyCraft.getManager(source.getServer());
         PriceRegistry prices = manager.getPrices();
 
-        ResolvedPrice resolved = prices.resolve(hand);
+        PriceEntry resolved = prices.resolve(hand);
         Long unitSell = prices.getUnitSell(hand);
         if (resolved == null || unitSell == null) {
             source.sendFailure(Component.literal("This item cannot be sold.").withStyle(ChatFormatting.RED));
             return null;
         }
 
-        // A "components" entry only ever matches a stack whose full state (damage, contents,
-        // everything) is an exact match, so the generic guards below - meant for entries that
-        // don't know the item's exact state - don't apply to it.
-        if (resolved.entry().customItem() == null) {
+        if (resolved.customItem() == null) {
             if (prices.isSellBlockedByDamage(hand)) {
                 source.sendFailure(Component.literal("Damaged items cannot be sold.").withStyle(ChatFormatting.RED));
                 return null;
@@ -113,10 +108,7 @@ public final class SellCommand {
             return 0;
         }
 
-        // Enchanted gear resells at its base price only; require a confirmation so players don't
-        // dump valuable items by accident. Doesn't apply to a "components" entry - its price was
-        // set for this exact enchanted item, so enchantments already ARE reflected in unitSell.
-        if (hand.isEnchanted() && sc.resolved().entry().customItem() == null) {
+        if (hand.isEnchanted() && sc.resolved().customItem() == null) {
             PENDING_HAND.put(player.getUUID(), new PendingHand(toSell, System.currentTimeMillis() + CONFIRM_EXPIRY_MS));
             MutableComponent base = Component.literal("Enchantments do not increase the sell value. Sell anyway for " +
                             EconomyCraft.formatMoney(total) +
@@ -165,11 +157,6 @@ public final class SellCommand {
         return doSellHand(source, player, sc.manager(), hand, pending.amount(), sc.unitSell());
     }
 
-    /**
-     * Routes to better-paying orders first, then sells the rest to the server (daily-limit
-     * gated). Order routing consumes only from {@code hand} itself - plain /sell only ever means
-     * "sell what's in my hand," not other matching stacks elsewhere in the inventory.
-     */
     private static int doSellHand(CommandSourceStack source, ServerPlayer player, EconomyManager manager,
                                   ItemStack hand, int toSell, long unitSell) {
         String itemName = hand.getHoverName().getString();
@@ -227,7 +214,7 @@ public final class SellCommand {
         ItemStack hand = sc.hand();
         PriceRegistry prices = sc.prices();
 
-        int totalCount = SellService.countMatching(player, prices, sc.resolved().entry(), false);
+        int totalCount = SellService.countMatching(player, prices, sc.resolved(), false);
         if (totalCount <= 0) {
             source.sendFailure(Component.literal("This item cannot be sold.").withStyle(ChatFormatting.RED));
             return 0;
@@ -239,7 +226,7 @@ public final class SellCommand {
             return 0;
         }
 
-        PENDING.put(player.getUUID(), new PendingSale(sc.resolved().entry(), totalCount, total,
+        PENDING.put(player.getUUID(), new PendingSale(sc.resolved(), totalCount, total,
                 System.currentTimeMillis() + CONFIRM_EXPIRY_MS));
 
         String itemName = hand.getHoverName().getString();
@@ -275,14 +262,14 @@ public final class SellCommand {
         PriceRegistry prices = manager.getPrices();
 
         ItemStack hand = player.getMainHandItem();
-        ResolvedPrice current = prices.resolve(hand);
-        if (current == null || current.entry() != pending.entry()) {
+        PriceEntry current = prices.resolve(hand);
+        if (current == null || current != pending.entry()) {
             source.sendFailure(Component.literal("Held item changed. Run /sell all again.").withStyle(ChatFormatting.RED));
             PENDING.remove(player.getUUID());
             return 0;
         }
 
-        if (current.entry().customItem() == null) {
+        if (current.customItem() == null) {
             if (prices.isSellBlockedByDamage(hand)) {
                 source.sendFailure(Component.literal("Damaged items cannot be sold.").withStyle(ChatFormatting.RED));
                 PENDING.remove(player.getUUID());
@@ -303,7 +290,6 @@ public final class SellCommand {
             return 0;
         }
 
-        // Exact: total was unitSell * count at preview time, so this honors the previewed price.
         long unitSell = pending.total() / pending.count();
 
         String itemName = hand.getHoverName().getString();
@@ -437,10 +423,6 @@ public final class SellCommand {
         return totalSold;
     }
 
-    /**
-     * Routes each item group to better-paying orders first, then sells the rest to the server
-     * as one all-or-nothing daily-limit check.
-     */
     private static EverythingSaleResult sellEverythingWithRouting(ServerPlayer player, EconomyManager manager, PriceRegistry prices) {
         Map<PriceEntry, EverythingGroup> groups = groupSellableByEntry(player, prices);
 
@@ -460,7 +442,7 @@ public final class SellCommand {
 
             if (split.serverRemaining() > 0) {
                 remainders.add(new ServerRemainder(g.entry(), split.serverRemaining()));
-                serverTotal += unitSell * split.serverRemaining(); // safe: bounded by the already-validated sweep total
+                serverTotal += unitSell * split.serverRemaining();
                 remainderCount += split.serverRemaining();
             }
         }
@@ -492,9 +474,9 @@ public final class SellCommand {
     }
 
     private static void accumulateSellable(Map<PriceEntry, EverythingGroup> groups, PriceRegistry prices, ItemStack stack) {
-        ResolvedPrice rp = SellService.sellableResolved(prices, stack);
+        PriceEntry rp = SellService.sellableResolved(prices, stack);
         if (rp == null) return;
-        groups.merge(rp.entry(), new EverythingGroup(rp.entry(), stack.copy(), stack.getCount()),
+        groups.merge(rp, new EverythingGroup(rp, stack.copy(), stack.getCount()),
                 (a, b) -> new EverythingGroup(a.entry(), a.proto(), a.count() + b.count()));
     }
 
@@ -504,7 +486,6 @@ public final class SellCommand {
 
     private record EverythingSaleResult(int orderGiven, long orderPayout, int serverSold, long serverTotal, int limitBlockedCount) {}
 
-    /** Sums the value and count of every sellable stack in the swept inventory region. */
     private static EverythingTotals computeEverythingTotals(ServerPlayer player, PriceRegistry prices) {
         var inv = player.getInventory();
         long total = 0;

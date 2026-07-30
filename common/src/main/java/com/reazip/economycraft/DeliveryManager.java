@@ -16,10 +16,6 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Owns the single delivery ledger shared by {@code ShopManager} and {@code OrderManager}, backed
- * by its own {@code deliveries.json} instead of being duplicated inside each manager's file.
- */
 public final class DeliveryManager {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -46,7 +42,6 @@ public final class DeliveryManager {
         save();
     }
 
-    /** Returns deliveries for the player without removing them. */
     public List<ItemStack> getDeliveries(UUID player) {
         return ledger.get(player);
     }
@@ -71,11 +66,7 @@ public final class DeliveryManager {
             return;
         }
 
-        // First boot after upgrading from per-manager deliveries: pull any pending deliveries out
-        // of shop.json/orders.json before those files get resaved without their old "deliveries"
-        // section, so nothing a player is still owed gets silently dropped.
-        boolean migrated = false;
-        if (mergeLegacyDeliveries(dataDir.resolve("shop.json"))) migrated = true;
+        boolean migrated = mergeLegacyDeliveries(dataDir.resolve("shop.json"));
         if (mergeLegacyDeliveries(dataDir.resolve("orders.json"))) migrated = true;
         if (migrated) {
             LOGGER.info("[EconomyCraft] Migrated legacy deliveries from shop.json/orders.json into {}", file);
@@ -90,7 +81,7 @@ public final class DeliveryManager {
             JsonObject root = GSON.fromJson(json, JsonObject.class);
             if (root == null || !root.has("deliveries")) return false;
             JsonObject legacy = root.getAsJsonObject("deliveries");
-            if (legacy.size() == 0) return false;
+            if (legacy.isEmpty()) return false;
             ledger.mergeFrom(legacy, server.registryAccess());
             return true;
         } catch (Exception ex) {

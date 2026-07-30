@@ -4,17 +4,13 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import com.reazip.economycraft.util.PermissionCompat;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
-/**
- * ClickEvent helper for 1.21.x (Fabric/NeoForge).
- * Creates RUN_COMMAND ClickEvents across mapping/API changes.
- */
 public final class ChatCompat {
     private static final Logger LOGGER = LogUtils.getLogger();
 
@@ -22,22 +18,17 @@ public final class ChatCompat {
 
     private static volatile boolean scanned = false;
 
-    private static volatile Method factoryMethod;                 // (String) -> ClickEvent
-    private static volatile Class<?> actionEnumType;              // ClickEvent.Action (or obfuscated)
-    private static volatile Object runCommandEnum;                // RUN_COMMAND constant
-    private static volatile Constructor<?> enumCtorString;        // ClickEvent(Action, String)
-    private static volatile Constructor<?> enumCtorComponent;     // ClickEvent(Action, Component)
-    private static volatile Constructor<?> nestedCtorString;      // ClickEvent$RunCommand(String) or similar
-    private static volatile Constructor<?> nestedCtorComponent;   // ClickEvent$RunCommand(Component) or similar
+    private static volatile Method factoryMethod;
+    private static volatile Class<?> actionEnumType;
+    private static volatile Object runCommandEnum;
+    private static volatile Constructor<?> enumCtorString;
+    private static volatile Constructor<?> enumCtorComponent;
+    private static volatile Constructor<?> nestedCtorString;
+    private static volatile Constructor<?> nestedCtorComponent;
 
-    /**
-     * Build a RUN_COMMAND ClickEvent for the given command string.
-     * Returns null if no compatible shape exists.
-     */
     public static ClickEvent runCommandEvent(String cmd) {
         ensureScanned();
 
-        // A) Preferred: static factory (String) -> ClickEvent
         try {
             if (factoryMethod != null) {
                 Object ev = factoryMethod.invoke(null, cmd);
@@ -49,7 +40,6 @@ public final class ChatCompat {
             LOGGER.debug("[ChatCompat] Static factory ClickEvent strategy failed", t);
         }
 
-        // B) Ctor with Action enum
         try {
             if (runCommandEnum != null) {
                 if (enumCtorString != null) {
@@ -69,7 +59,6 @@ public final class ChatCompat {
             LOGGER.debug("[ChatCompat] Action-enum constructor ClickEvent strategy failed", t);
         }
 
-        // C) Nested-class fallback
         try {
             if (nestedCtorString != null) {
                 Object ev = nestedCtorString.newInstance(cmd);
@@ -90,41 +79,34 @@ public final class ChatCompat {
         return null;
     }
 
-    // ---- Guaranteed fallback ----
-
-    /**
-     * Guaranteed clickable RUN_COMMAND via /tellraw.
-     * Use when runCommandEvent(...) returns null.
-     */
     public static void sendRunCommandTellraw(ServerPlayer target, String prefixText, String labelText, String cmd) {
         try {
-            String escCmd = cmd.replace("\\", "\\\\").replace("\"", "\\\"");
-            String escPrefix = prefixText.replace("\\", "\\\\").replace("\"", "\\\"");
-            String escLabel = labelText.replace("\\", "\\\\").replace("\"", "\\\"");
-            String json = "{\"text\":\"" + escPrefix + "\",\"color\":\"yellow\",\"extra\":[{\"text\":\"" + escLabel +
-                    "\",\"underlined\":true,\"color\":\"green\",\"clickEvent\":{\"action\":\"run_command\",\"value\":\"" +
-                    escCmd + "\"}}]}";
+            String json = getJson(prefixText, labelText, cmd);
 
-            String selector = target.getScoreboardName(); // restricted charset, safe to inline unescaped
+            String selector = target.getScoreboardName();
             String line = "tellraw " + selector + " " + json;
 
             var srv = target.level().getServer();
-            srv.getCommands().performPrefixedCommand(
-                    PermissionCompat.withOwnerPermission(srv.createCommandSourceStack()),
-                    line);
+            srv.getCommands().performPrefixedCommand(srv.createCommandSourceStack(), line);
         } catch (Throwable t) {
             LOGGER.debug("[ChatCompat] Tellraw fallback failed", t);
         }
     }
 
-    // ---- Scan & helpers ----
+    private static @NonNull String getJson(String prefixText, String labelText, String cmd) {
+        String escCmd = cmd.replace("\\", "\\\\").replace("\"", "\\\"");
+        String escPrefix = prefixText.replace("\\", "\\\\").replace("\"", "\\\"");
+        String escLabel = labelText.replace("\\", "\\\\").replace("\"", "\\\"");
+        return "{\"text\":\"" + escPrefix + "\",\"color\":\"yellow\",\"extra\":[{\"text\":\"" + escLabel +
+                "\",\"underlined\":true,\"color\":\"green\",\"clickEvent\":{\"action\":\"run_command\",\"value\":\"" +
+                escCmd + "\"}}]}";
+    }
 
     private static void ensureScanned() {
         if (scanned) return;
         synchronized (ChatCompat.class) {
             if (scanned) return;
             try {
-                // A) Find public static factory: (String) -> ClickEvent
                 for (Method m : ClickEvent.class.getDeclaredMethods()) {
                     int mod = m.getModifiers();
                     if (Modifier.isPublic(mod) && Modifier.isStatic(mod)
@@ -136,10 +118,9 @@ public final class ChatCompat {
                     }
                 }
 
-                // B) Find Action enum + RUN_COMMAND & match constructors
                 for (Class<?> nested : ClickEvent.class.getDeclaredClasses()) {
                     if (nested.isEnum()) {
-                        Object rc = enumConstantIgnoreCase(nested, "RUN_COMMAND");
+                        Object rc = enumConstantIgnoreCase(nested);
                         if (rc != null) {
                             actionEnumType = nested;
                             runCommandEnum = rc;
@@ -156,17 +137,15 @@ public final class ChatCompat {
                     }
                 }
 
-                // C) Find nested ClickEvent subclasses that accept (String) / (Component)
                 for (Class<?> nested : ClickEvent.class.getDeclaredClasses()) {
                     if (!ClickEvent.class.isAssignableFrom(nested)) continue;
                     try {
                         Constructor<?> sCtor = nested.getConstructor(String.class);
-                        // Keep only if it actually represents RUN_COMMAND (cheap probe)
                         Object probe = sCtor.newInstance("/ec probe");
                         if (probe instanceof ClickEvent ce && isRunCommand(ce)) {
                             nestedCtorString = sCtor;
                         }
-                    } catch (NoSuchMethodException ignored) {} catch (Throwable ignored) {}
+                    } catch (Throwable ignored) {}
 
                     try {
                         Constructor<?> cCtor = nested.getConstructor(Component.class);
@@ -174,7 +153,7 @@ public final class ChatCompat {
                         if (probe instanceof ClickEvent ce && isRunCommand(ce)) {
                             nestedCtorComponent = cCtor;
                         }
-                    } catch (NoSuchMethodException ignored) {} catch (Throwable ignored) {}
+                    } catch (Throwable ignored) {}
                 }
             } catch (Throwable t) {
                 LOGGER.debug("[ChatCompat] Reflective scan for ClickEvent shape failed", t);
@@ -184,13 +163,13 @@ public final class ChatCompat {
         }
     }
 
-    private static Object enumConstantIgnoreCase(Class<?> enumType, String name) {
+    private static Object enumConstantIgnoreCase(Class<?> enumType) {
         try {
             if (!enumType.isEnum()) return null;
             Object[] constants = enumType.getEnumConstants();
             if (constants == null) return null;
             for (Object c : constants) {
-                if (name.equalsIgnoreCase(String.valueOf(c))) return c;
+                if ("RUN_COMMAND".equalsIgnoreCase(String.valueOf(c))) return c;
             }
         } catch (Throwable t) {
             LOGGER.debug("[ChatCompat] Enum constant lookup failed", t);
@@ -198,10 +177,6 @@ public final class ChatCompat {
         return null;
     }
 
-    /**
-     * Try to detect RUN_COMMAND action from a ClickEvent instance.
-     * Avoids mapping names; prefers enum-like access, falls back to toString().
-     */
     private static boolean isRunCommand(ClickEvent ce) {
         try {
             for (Method m : ce.getClass().getMethods()) {

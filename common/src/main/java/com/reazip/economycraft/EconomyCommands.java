@@ -133,8 +133,6 @@ public final class EconomyCommands {
         return root;
     }
 
-    // ---- Balance & payments ----
-
     private static LiteralArgumentBuilder<CommandSourceStack> buildBalance() {
         return literal("bal")
                 .then(literal("top")
@@ -164,7 +162,6 @@ public final class EconomyCommands {
                                         LongArgumentType.getLong(ctx, "amount"), ctx.getSource()))));
     }
 
-    /** Sends a short usage hint instead of Brigadier's default argument-missing error. */
     private static int usage(CommandSourceStack source, String usage) {
         source.sendFailure(Component.literal("Usage: " + usage).withStyle(ChatFormatting.RED));
         return 0;
@@ -304,8 +301,6 @@ public final class EconomyCommands {
         }
         return 1;
     }
-
-    // ---- Admin commands ----
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildAddMoney() {
         return literal("addmoney").requires(PermissionCompat.gamemaster())
@@ -490,15 +485,14 @@ public final class EconomyCommands {
         }
 
         if (success > 0) {
-            int finalSuccess = success;
             Component msg;
             if (amount == null) {
                 msg = Component.literal(
-                                "Removed all money from " + finalSuccess + " player" + (finalSuccess > 1 ? "s" : "") + ".")
+                                "Removed all money from " + success + " player" + (success > 1 ? "s" : "") + ".")
                         .withStyle(ChatFormatting.GREEN);
             } else {
                 msg = Component.literal(
-                                "Successfully removed " + EconomyCraft.formatMoney(amount) + " from " + finalSuccess + " player" + (finalSuccess > 1 ? "s" : "") + ".")
+                                "Successfully removed " + EconomyCraft.formatMoney(amount) + " from " + success + " player" + (success > 1 ? "s" : "") + ".")
                         .withStyle(ChatFormatting.GREEN);
             }
             reply(source, executor, msg, true);
@@ -543,8 +537,6 @@ public final class EconomyCommands {
         return count;
     }
 
-    // ---- Scoreboard toggle ----
-
     private static LiteralArgumentBuilder<CommandSourceStack> buildToggleScoreboard() {
         return literal("toggleScoreboard").requires(PermissionCompat.gamemaster())
                 .executes(ctx -> toggleScoreboard(ctx.getSource()));
@@ -562,8 +554,6 @@ public final class EconomyCommands {
 
         return 1;
     }
-
-    // ---- Shop commands ----
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildShop() {
         return literal("shop")
@@ -692,8 +682,6 @@ public final class EconomyCommands {
         }
     }
 
-    // ---- Orders commands ----
-
     private static LiteralArgumentBuilder<CommandSourceStack> buildOrders(CommandBuildContext buildContext) {
         String requestUsage = "/orders request <item> <amount> <price>";
         return literal("orders")
@@ -776,8 +764,6 @@ public final class EconomyCommands {
         }
     }
 
-    // ---- Daily reward ----
-
     private static LiteralArgumentBuilder<CommandSourceStack> buildDaily() {
         return literal("daily")
                 .executes(ctx -> daily(ctx.getSource().getPlayerOrException(), ctx.getSource()));
@@ -794,8 +780,6 @@ public final class EconomyCommands {
         }
         return 1;
     }
-
-    // ---- Helpers ----
 
     @Nullable
     private static ServerPlayer tryGetPlayer(CommandSourceStack source) {

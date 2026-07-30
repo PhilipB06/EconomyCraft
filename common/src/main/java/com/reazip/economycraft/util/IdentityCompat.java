@@ -27,11 +27,11 @@ public final class IdentityCompat {
 
     private static UUID getGameProfileId(GameProfile gp) {
         try {
-            Method m = gp.getClass().getMethod("id"); // record-style
+            Method m = gp.getClass().getMethod("id");
             return (UUID) m.invoke(gp);
         } catch (Exception e1) {
             try {
-                Method m = gp.getClass().getMethod("getId"); // getter-style
+                Method m = gp.getClass().getMethod("getId");
                 return (UUID) m.invoke(gp);
             } catch (Exception e2) {
                 throw new IllegalStateException("Cannot access GameProfile ID", e2);
@@ -132,8 +132,8 @@ public final class IdentityCompat {
         UUID id;
         String name;
 
-        id = invokeUuidIfExists(any, "id", "getId", "uuid", "getUuid");
-        name = invokeStringIfExists(any, "name", "getName");
+        id = invokeUuidIfExists(any);
+        name = invokeStringIfExists(any);
 
         for (Method m : any.getClass().getMethods()) {
             if (m.getParameterCount() != 0) continue;
@@ -168,8 +168,8 @@ public final class IdentityCompat {
     }
 
     @Nullable
-    private static UUID invokeUuidIfExists(Object any, String... names) {
-        for (String n : names) {
+    private static UUID invokeUuidIfExists(Object any) {
+        for (String n : new String[]{"id", "getId", "uuid", "getUuid"}) {
             try {
                 Method m = any.getClass().getMethod(n);
                 Object val = m.invoke(any);
@@ -181,8 +181,8 @@ public final class IdentityCompat {
     }
 
     @Nullable
-    private static String invokeStringIfExists(Object any, String... names) {
-        for (String n : names) {
+    private static String invokeStringIfExists(Object any) {
+        for (String n : new String[]{"name", "getName"}) {
             try {
                 Method m = any.getClass().getMethod(n);
                 Object val = m.invoke(any);

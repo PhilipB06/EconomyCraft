@@ -7,7 +7,6 @@ import eu.pb4.placeholders.api.PlaceholderResult;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 
-/** Kept separate from the entrypoint so it's only classloaded once placeholder-api is confirmed present. */
 final class EconomyCraftFabricPlaceholders {
     private EconomyCraftFabricPlaceholders() {}
 
@@ -49,7 +48,6 @@ final class EconomyCraftFabricPlaceholders {
         });
     }
 
-    /** Parses {@code arg} as a 1-based leaderboard rank (e.g. "1" in "%economycraft:top_name 1%"). */
     private static EconomyManager.LeaderboardEntry topEntry(MinecraftServer server, String arg) {
         if (arg == null) return null;
         try {

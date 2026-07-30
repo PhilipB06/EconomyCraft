@@ -15,7 +15,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.core.Holder;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.core.component.DataComponentPatch;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.Items;
@@ -46,8 +45,6 @@ public final class PriceRegistry {
     private final Path file;
     private final HolderLookup.Provider registryAccess;
     private final Map<IdentifierCompat.Id, List<PriceEntry>> prices = new LinkedHashMap<>();
-
-    public record ResolvedPrice(IdentifierCompat.Id key, PriceEntry entry) {}
 
     public PriceRegistry(MinecraftServer server) {
         Path dir = server.getFile("config/economycraft");
@@ -90,11 +87,6 @@ public final class PriceRegistry {
             int invalidCustomItemCount = 0;
             for (Map.Entry<String, JsonElement> e : root.entrySet()) {
                 String key = e.getKey();
-
-                // An optional "#label" suffix (e.g. "minecraft:shulker_box#loot2") lets multiple
-                // components variants of the same base item coexist as distinct JSON object keys -
-                // plain duplicate keys would otherwise silently collapse to just the last one. It's
-                // stripped before resolving the item and never stored anywhere else.
                 String baseKeyStr = key;
                 int hashIdx = key.indexOf('#');
                 if (hashIdx >= 0) {
@@ -121,8 +113,6 @@ public final class PriceRegistry {
                     continue;
                 }
 
-                // "components" overlays onto a fresh stack of the key's own item, so it needs a real
-                // base item to build from - a virtual id (e.g. a synthetic enchanted-book key) has none.
                 ItemStack customItem = null;
                 if (obj.has("components")) {
                     if (!isRealItem) {
@@ -137,10 +127,10 @@ public final class PriceRegistry {
                     }
                 }
 
-                String category = getString(obj, "category", "misc");
-                int stack = getInt(obj, "stack", 1);
-                long unitBuy = getLong(obj, "unit_buy", 0L);
-                long unitSell = getLong(obj, "unit_sell", 0L);
+                String category = getString(obj);
+                int stack = getInt(obj);
+                long unitBuy = getLong(obj, "unit_buy");
+                long unitSell = getLong(obj, "unit_sell");
 
                 PriceEntry entry = new PriceEntry(id, category, stack, unitBuy, unitSell, customItem);
                 prices.computeIfAbsent(id, k -> new ArrayList<>()).add(entry);
@@ -160,40 +150,22 @@ public final class PriceRegistry {
         }
     }
 
-    public PriceEntry get(ItemStack stack) {
-        ResolvedPrice rp = resolve(stack);
-        return rp != null ? rp.entry() : null;
-    }
-
-    public ResolvedPrice resolve(ItemStack stack) {
+    public PriceEntry resolve(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return null;
 
         for (IdentifierCompat.Id key : resolvePriceKeys(stack)) {
             List<PriceEntry> candidates = prices.get(key);
             if (candidates == null) continue;
 
-            // A "components" entry lives at its own item's key, so only a stack of that same item
-            // can match it, and only if its components are an exact match. Exact matches always
-            // win over a generic (no-"components") entry for the same key, regardless of which one
-            // appears first in prices.json - only fall back to a generic entry if nothing more
-            // specific matched.
             PriceEntry custom = findCustomMatch(candidates, stack);
-            if (custom != null) return new ResolvedPrice(key, custom);
+            if (custom != null) return custom;
             for (PriceEntry p : candidates) {
-                if (p.customItem() == null) return new ResolvedPrice(key, p);
+                if (p.customItem() == null) return p;
             }
         }
         return null;
     }
 
-    /**
-     * True if {@code stack} qualifies as an instance of the specific {@code expected} entry -
-     * for a caller that already knows which listing it means (e.g. a shop button was clicked),
-     * rather than asking {@link #resolve} to pick a single canonical entry for the stack. Unlike
-     * {@link #resolve}, this doesn't collapse multiple generic (no-"components") entries sharing a
-     * key down to just one of them - any of them accepts a plain stack that isn't claimed by a more
-     * specific "components" entry under the same key.
-     */
     public boolean matches(ItemStack stack, PriceEntry expected) {
         if (stack == null || stack.isEmpty() || expected == null) return false;
         if (expected.customItem() != null) {
@@ -234,13 +206,8 @@ public final class PriceRegistry {
         }
     }
 
-    public Long getUnitBuy(ItemStack stack) {
-        PriceEntry p = get(stack);
-        return (p != null && p.unitBuy() > 0) ? p.unitBuy() : null;
-    }
-
     public Long getUnitSell(ItemStack stack) {
-        PriceEntry p = get(stack);
+        PriceEntry p = resolve(stack);
         return (p != null && p.unitSell() > 0) ? p.unitSell() : null;
     }
 
@@ -276,7 +243,7 @@ public final class PriceRegistry {
         for (List<PriceEntry> list : prices.values()) {
             for (PriceEntry p : list) {
                 if (p.unitBuy() <= 0) continue;
-                if (p.category() != null && p.category().trim().toLowerCase(Locale.ROOT).equals(c)) {
+                if (matchesCategory(p, c)) {
                     out.add(p);
                 }
             }
@@ -284,12 +251,6 @@ public final class PriceRegistry {
         return out;
     }
 
-    /** Buyable entries anywhere whose item id or category contains {@code query} (case-insensitive); empty query returns nothing. */
-    public List<PriceEntry> search(String query) {
-        return search(query, null);
-    }
-
-    /** Same as {@link #search(String)}, restricted to entries whose category exactly matches {@code category} (no restriction if null). */
     public List<PriceEntry> search(String query, @Nullable String category) {
         if (query == null || query.isBlank()) return List.of();
         String q = query.trim().toLowerCase(Locale.ROOT);
@@ -299,7 +260,7 @@ public final class PriceRegistry {
         for (List<PriceEntry> list : prices.values()) {
             for (PriceEntry p : list) {
                 if (p.unitBuy() <= 0) continue;
-                if (c != null && (p.category() == null || !p.category().trim().toLowerCase(Locale.ROOT).equals(c))) continue;
+                if (c != null && !matchesCategory(p, c)) continue;
                 String name = p.id().path().replace('_', ' ').toLowerCase(Locale.ROOT);
                 if (name.contains(q)
                         || (p.category() != null && p.category().toLowerCase(Locale.ROOT).contains(q))
@@ -309,6 +270,10 @@ public final class PriceRegistry {
             }
         }
         return out;
+    }
+
+    private static boolean matchesCategory(PriceEntry p, String normalizedCategory) {
+        return p.category() != null && p.category().trim().toLowerCase(Locale.ROOT).equals(normalizedCategory);
     }
 
     public List<String> buyTopCategories() {
@@ -364,10 +329,6 @@ public final class PriceRegistry {
         }
     }
 
-    /**
-     * Price ids not present in the bundled defaults. Stripped from an existing user prices.json
-     * on merge so these never linger as dead, unresolvable entries.
-     */
     private static final Set<String> REMOVED_LEGACY_IDS = Set.of(
             "minecraft:potion_of_wind_charging_1",
             "minecraft:splash_potion_of_wind_charging_1",
@@ -400,8 +361,6 @@ public final class PriceRegistry {
             if (userRoot.remove(legacyId) != null) removed++;
         }
 
-        // Rebuild in the bundled default's key order so entries land in the same category-grouped
-        // position new installs get.
         JsonObject merged = new JsonObject();
         int added = 0;
         for (Map.Entry<String, JsonElement> e : defaults.entrySet()) {
@@ -421,8 +380,6 @@ public final class PriceRegistry {
             }
         }
 
-        // Preserve any entries the user added beyond the bundled defaults (custom items), appended
-        // after the default-ordered block in their existing relative order.
         for (Map.Entry<String, JsonElement> e : userRoot.entrySet()) {
             if (!merged.has(e.getKey())) {
                 merged.add(e.getKey(), e.getValue());
@@ -446,8 +403,7 @@ public final class PriceRegistry {
 
             byte[] bytes = in.readAllBytes();
             String json = new String(bytes, StandardCharsets.UTF_8);
-            JsonObject root = GSON.fromJson(json, JsonObject.class);
-            return root != null ? root : null;
+            return GSON.fromJson(json, JsonObject.class);
 
         } catch (Exception ex) {
             LOGGER.error("[EconomyCraft] Failed to read bundled default prices.json from {}", DEFAULT_RESOURCE_PATH, ex);
@@ -476,18 +432,13 @@ public final class PriceRegistry {
             return false;
         }
 
-        // Potions / Arrows
         if (p.equals("water_bottle") || p.equals("splash_water_bottle") || p.equals("lingering_water_bottle")) return true;
-        if (p.endsWith("_potion")) return true; // awkward_potion, mundane_potion, ...
+        if (p.endsWith("_potion")) return true;
         if (p.startsWith("potion_of_")) return true;
         if (p.startsWith("splash_potion_of_")) return true;
         if (p.startsWith("lingering_potion_of_")) return true;
         if (p.startsWith("arrow_of_")) return true;
-
-        // Enchanted books
-        if (p.startsWith("enchanted_book_") && looksLikeEnchantedBookKey(p)) return true;
-
-        return false;
+        return p.startsWith("enchanted_book_") && looksLikeEnchantedBookKey(p);
     }
 
     private static boolean looksLikeEnchantedBookKey(String path) {
@@ -511,12 +462,9 @@ public final class PriceRegistry {
 
         if (stack.is(Items.POTION) || stack.is(Items.SPLASH_POTION) || stack.is(Items.LINGERING_POTION) || stack.is(Items.TIPPED_ARROW)) {
             IdentifierCompat.Id potionId = readPotionId(stack);
+            if (potionId == null) potionId = IdentifierCompat.withDefaultNamespace("water");
 
-            if (potionId != null) {
-                out.addAll(buildVirtualPotionKeys(stack, potionId));
-            } else {
-                out.addAll(buildVirtualPotionKeys(stack, IdentifierCompat.withDefaultNamespace("water")));
-            }
+            out.addAll(buildVirtualPotionKeys(stack, potionId));
         }
 
         if (stack.is(Items.ENCHANTED_BOOK)) {
@@ -616,29 +564,29 @@ public final class PriceRegistry {
         }
     }
 
-    private static String getString(JsonObject obj, String key, String fallback) {
-        if (obj.has(key) && obj.get(key).isJsonPrimitive() && obj.get(key).getAsJsonPrimitive().isString()) {
-            return obj.get(key).getAsString();
+    private static String getString(JsonObject obj) {
+        if (obj.has("category") && obj.get("category").isJsonPrimitive() && obj.get("category").getAsJsonPrimitive().isString()) {
+            return obj.get("category").getAsString();
         }
-        return fallback;
+        return "misc";
     }
 
-    private static int getInt(JsonObject obj, String key, int fallback) {
-        if (obj.has(key) && obj.get(key).isJsonPrimitive() && obj.get(key).getAsJsonPrimitive().isNumber()) {
+    private static int getInt(JsonObject obj) {
+        if (obj.has("stack") && obj.get("stack").isJsonPrimitive() && obj.get("stack").getAsJsonPrimitive().isNumber()) {
             try {
-                return obj.get(key).getAsInt();
+                return obj.get("stack").getAsInt();
             } catch (Exception ignored) {}
         }
-        return fallback;
+        return 1;
     }
 
-    private static long getLong(JsonObject obj, String key, long fallback) {
+    private static long getLong(JsonObject obj, String key) {
         if (obj.has(key) && obj.get(key).isJsonPrimitive() && obj.get(key).getAsJsonPrimitive().isNumber()) {
             try {
                 return obj.get(key).getAsLong();
             } catch (Exception ignored) {}
         }
-        return fallback;
+        return 0L;
     }
 
     public record PriceEntry(

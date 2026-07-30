@@ -9,7 +9,6 @@ import net.minecraft.world.item.ItemStack;
 
 import java.util.UUID;
 
-/** Listing for one item in the shop. */
 public class ShopListing {
     public int id;
     public UUID seller;

@@ -28,7 +28,7 @@ public final class ProfileComponentCompat {
 
     private ProfileComponentCompat() {}
 
-    public static ResolvableProfile resolved(GameProfile profile) {
+    private static ResolvableProfile resolved(GameProfile profile) {
         if (CREATE_RESOLVED != null) {
             return invokeStatic(CREATE_RESOLVED, profile);
         }
@@ -68,7 +68,7 @@ public final class ProfileComponentCompat {
         }
     }
 
-    public static ResolvableProfile unresolved(String nameOrId) {
+    private static ResolvableProfile unresolved(String nameOrId) {
         String value = nameOrId == null || nameOrId.isBlank() ? "" : nameOrId;
         if (CREATE_UNRESOLVED_STRING != null) {
             return invokeStatic(CREATE_UNRESOLVED_STRING, value);
@@ -76,9 +76,7 @@ public final class ProfileComponentCompat {
         if (CREATE_UNRESOLVED_UUID != null) {
             try {
                 return invokeStatic(CREATE_UNRESOLVED_UUID, UUID.fromString(value));
-            } catch (IllegalArgumentException ignored) {
-                // Fall back to other strategies if the value is not a UUID
-            }
+            } catch (IllegalArgumentException ignored) {}
         }
         if (!IS_ABSTRACT && CTOR_FULL != null) {
             return newInstance(CTOR_FULL,
@@ -107,9 +105,7 @@ public final class ProfileComponentCompat {
                     if (rc != null) {
                         return (String) rc.getAccessor().invoke(profile);
                     }
-                } catch (ReflectiveOperationException ignoredThree) {
-                    // fall through
-                }
+                } catch (ReflectiveOperationException ignoredThree) {}
                 return null;
             }
         }
@@ -133,9 +129,7 @@ public final class ProfileComponentCompat {
                     if (rc != null) {
                         return (UUID) rc.getAccessor().invoke(profile);
                     }
-                } catch (ReflectiveOperationException ignoredThree) {
-                    // fall through
-                }
+                } catch (ReflectiveOperationException ignoredThree) {}
                 return null;
             }
         }
@@ -166,9 +160,7 @@ public final class ProfileComponentCompat {
             if (value instanceof PropertyMap map) {
                 return map;
             }
-        } catch (ReflectiveOperationException ignored) {
-            // fall through
-        }
+        } catch (ReflectiveOperationException ignored) {}
         return newPropertyMap();
     }
 
@@ -216,10 +208,9 @@ public final class ProfileComponentCompat {
         return null;
     }
 
-    @SuppressWarnings("unchecked")
     private static Constructor<ResolvableProfile> findConstructor(Class<?>... params) {
         try {
-            return (Constructor<ResolvableProfile>) ResolvableProfile.class.getConstructor(params);
+            return ResolvableProfile.class.getConstructor(params);
         } catch (NoSuchMethodException e) {
             return null;
         }
@@ -227,9 +218,7 @@ public final class ProfileComponentCompat {
 
     private static Constructor<PropertyMap> findPropertyMapConstructor(Class<?>... params) {
         try {
-            @SuppressWarnings("unchecked")
-            Constructor<PropertyMap> ctor = (Constructor<PropertyMap>) PropertyMap.class.getConstructor(params);
-            return ctor;
+            return PropertyMap.class.getConstructor(params);
         } catch (NoSuchMethodException e) {
             return null;
         }

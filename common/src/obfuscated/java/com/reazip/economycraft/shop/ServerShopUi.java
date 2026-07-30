@@ -85,7 +85,6 @@ public final class ServerShopUi {
         openItems(player, eco, cat);
     }
 
-    /** Searches every category, regardless of where it's invoked from (the /servershop search command). */
     public static void openSearch(ServerPlayer player, EconomyManager eco, String query) {
         openSearchResults(player, eco, null, query, 0);
     }
@@ -307,13 +306,13 @@ public final class ServerShopUi {
         private int page;
 
         SubcategoryMenu(int id, Inventory inv, EconomyManager eco, String topCategory, ServerPlayer viewer) {
-            super(getMenuType(requiredRows(eco.getPrices().buySubcategories(topCategory).size())), id);
+            super(MenuUiSupport.getMenuType(MenuUiSupport.requiredRows(eco.getPrices().buySubcategories(topCategory).size())), id);
             this.eco = eco;
             this.viewer = viewer;
             this.topCategory = topCategory;
             this.prices = eco.getPrices();
             refresh();
-            this.rows = requiredRows(subcategories.size());
+            this.rows = MenuUiSupport.requiredRows(subcategories.size());
             this.itemsPerPage = (rows - 1) * 9;
             this.navRowStart = itemsPerPage;
             this.container = new SimpleContainer(rows * 9);
@@ -420,7 +419,12 @@ public final class ServerShopUi {
 
         ItemMenu(int id, Inventory inv, EconomyManager eco, @Nullable String category, @Nullable String displayTitle,
                   @Nullable String searchQuery, int page, ServerPlayer viewer) {
-            super(getMenuType(requiredRows(resolveEntries(eco, category, searchQuery).size())), id);
+            this(id, inv, eco, category, displayTitle, searchQuery, page, viewer, resolveEntries(eco, category, searchQuery));
+        }
+
+        private ItemMenu(int id, Inventory inv, EconomyManager eco, @Nullable String category, @Nullable String displayTitle,
+                  @Nullable String searchQuery, int page, ServerPlayer viewer, List<PriceRegistry.PriceEntry> resolved) {
+            super(MenuUiSupport.getMenuType(MenuUiSupport.requiredRows(resolved.size())), id);
             this.eco = eco;
             this.viewer = viewer;
             this.category = category;
@@ -428,8 +432,8 @@ public final class ServerShopUi {
             this.searchQuery = searchQuery;
             this.prices = eco.getPrices();
 
-            refreshEntries();
-            this.rows = requiredRows(entries.size());
+            this.entries = resolved;
+            this.rows = MenuUiSupport.requiredRows(resolved.size());
             this.itemsPerPage = (rows - 1) * 9;
             this.navRowStart = itemsPerPage;
             this.page = page;
@@ -440,10 +444,6 @@ public final class ServerShopUi {
 
         private static List<PriceRegistry.PriceEntry> resolveEntries(EconomyManager eco, @Nullable String category, @Nullable String searchQuery) {
             return searchQuery != null ? eco.getPrices().search(searchQuery, category) : eco.getPrices().buyableByCategory(category);
-        }
-
-        private void refreshEntries() {
-            entries = new ArrayList<>(resolveEntries(eco, category, searchQuery));
         }
 
         private void setupSlots(Inventory inv) {
@@ -527,8 +527,6 @@ public final class ServerShopUi {
             back.set(DataComponents.CUSTOM_NAME, Component.literal("Back").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.DARK_RED).withBold(true)));
             container.setItem(navRowStart + 8, back);
 
-            // Only shown outside search mode: while searching, "Back" already exits to root, so a
-            // second barrier here would just duplicate it.
             if (!searching()) {
                 ItemStack search = new ItemStack(Items.COMPASS);
                 search.set(DataComponents.CUSTOM_NAME, Component.literal("Search").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.GREEN)));
@@ -653,9 +651,6 @@ public final class ServerShopUi {
                 return;
             }
 
-            // Enchanted items are excluded here (they resell at base price and have no confirm step
-            // in the GUI); sell those via "/sell", which asks for confirmation. Doesn't apply to a
-            // "components" entry - its price was set for this exact item, enchantments included.
             boolean excludeEnchanted = entry.customItem() == null;
             int have = SellService.countMatching(viewer, prices, entry, excludeEnchanted);
             if (have <= 0) {
@@ -878,26 +873,8 @@ public final class ServerShopUi {
         }
     }
 
-    private static MenuType<?> getMenuType(int rows) {
-        return switch (rows) {
-            case 1 -> MenuType.GENERIC_9x1;
-            case 2 -> MenuType.GENERIC_9x2;
-            case 3 -> MenuType.GENERIC_9x3;
-            case 4 -> MenuType.GENERIC_9x4;
-            case 5 -> MenuType.GENERIC_9x5;
-            default -> MenuType.GENERIC_9x6;
-        };
-    }
-
-    private static int requiredRows(int itemCount) {
-        int contentRows = (int) Math.ceil(Math.max(1, itemCount) / 9.0);
-        return Math.clamp(contentRows + 1, 2, 6);
-    }
-
     private static ItemStack createDisplayStack(PriceRegistry.PriceEntry entry, ServerPlayer viewer) {
         ItemStack stack = buildDisplayStack(entry, viewer);
-        // Log each unbuildable entry once so bad price ids are diagnosable without letting a
-        // spam-clicker flood the log.
         if (stack.isEmpty() && LOGGED_UNAVAILABLE.add(entry.id().asString())) {
             LogUtils.getLogger().warn("[EconomyCraft] Server shop entry '{}' (category '{}') could not be built; it is hidden and shows as unavailable.",
                     entry.id().asString(), entry.category());
@@ -987,8 +964,6 @@ public final class ServerShopUi {
             working = path.substring("arrow_of_".length());
         }
 
-        // Strip a "potion_of_" infix left after the form prefix (e.g. "splash_potion_of_healing_1"),
-        // which also covers the plain "potion_of_x" form.
         if (working.startsWith("potion_of_")) {
             working = working.substring("potion_of_".length());
         }

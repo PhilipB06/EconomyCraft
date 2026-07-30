@@ -19,7 +19,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 
-/** Manages shop listings. Deliveries are owned by the shared {@link DeliveryManager}. */
 public class ShopManager {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Gson GSON = new Gson();
@@ -40,7 +39,6 @@ public class ShopManager {
         load();
     }
 
-    /** Listings, newest first. */
     public List<ShopListing> getListings() {
         List<ShopListing> out = new ArrayList<>(listings.values());
         out.sort((a, b) -> Integer.compare(b.id, a.id));
@@ -96,19 +94,6 @@ public class ShopManager {
 
     public void addDelivery(UUID player, ItemStack stack) {
         deliveries.addDelivery(player, stack);
-    }
-
-    /** Returns deliveries for the player without removing them. */
-    public List<ItemStack> getDeliveries(UUID player) {
-        return deliveries.getDeliveries(player);
-    }
-
-    public void removeDelivery(UUID player, ItemStack stack) {
-        deliveries.removeDelivery(player, stack);
-    }
-
-    public boolean hasDeliveries(UUID player) {
-        return deliveries.hasDeliveries(player);
     }
 
     public void load() {

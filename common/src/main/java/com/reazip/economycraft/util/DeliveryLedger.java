@@ -15,10 +15,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * Per-player pending item stacks, persisted by a single {@code DeliveryManager} shared between
- * {@code ShopManager} and {@code OrderManager}.
- */
 public final class DeliveryLedger {
     private static final Logger LOGGER = LogUtils.getLogger();
     private final Map<UUID, List<ItemStack>> deliveries = new HashMap<>();
@@ -28,12 +24,10 @@ public final class DeliveryLedger {
         deliveries.computeIfAbsent(player, k -> new ArrayList<>()).add(stack);
     }
 
-    /** Returns deliveries for the player without removing them. */
     public List<ItemStack> get(UUID player) {
         return deliveries.computeIfAbsent(player, k -> new ArrayList<>());
     }
 
-    /** Returns whether {@code stack} was actually found and removed from the player's list. */
     public boolean remove(UUID player, ItemStack stack) {
         List<ItemStack> list = deliveries.get(player);
         if (list == null) return false;
@@ -66,7 +60,6 @@ public final class DeliveryLedger {
         mergeFrom(dObj, provider);
     }
 
-    /** Merges another ledger's saved JSON into this one without clearing existing entries first. */
     public void mergeFrom(JsonObject dObj, HolderLookup.Provider provider) {
         if (dObj == null) return;
         for (String key : dObj.keySet()) {

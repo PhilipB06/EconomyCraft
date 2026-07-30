@@ -12,7 +12,6 @@ public final class PermissionCompat {
 
     public static Predicate<CommandSourceStack> gamemaster() {
         return source -> {
-            // Console, command blocks, rcon
             ServerPlayer player;
             try {
                 player = source.getPlayerOrException();
@@ -29,9 +28,5 @@ public final class PermissionCompat {
                     .getPlayerList()
                     .isOp(nameAndId);
         };
-    }
-
-    public static CommandSourceStack withOwnerPermission(CommandSourceStack source) {
-        return source;
     }
 }

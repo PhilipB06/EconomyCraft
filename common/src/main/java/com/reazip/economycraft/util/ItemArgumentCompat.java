@@ -7,10 +7,6 @@ import net.minecraft.world.item.ItemStack;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
-/**
- * Builds an {@link ItemStack} from a parsed {@link ItemInput} across the version where
- * {@code createItemStack} takes a stackable-size validation flag and the version where it doesn't.
- */
 public final class ItemArgumentCompat {
     private static final Method CREATE_ITEM_STACK;
 

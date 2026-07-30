@@ -16,15 +16,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Shared logic for fulfilling an order request, fully or partially. Driven by the orders GUI,
- * whose confirm button fulfills as much of the request as the player currently holds, and by
- * {@code /sell} routing a better-paying sale here.
- *
- * <p>Payment is proportional to the fraction fulfilled and is deducted from the order's
- * remaining amount and price, so a sequence of partial fulfillments pays out exactly the
- * original total and the order is removed once its outstanding amount reaches zero.
- */
 public final class OrderFulfillment {
     private OrderFulfillment() {}
 
@@ -32,28 +23,16 @@ public final class OrderFulfillment {
         OK, ORDER_GONE, OWN_ORDER, INVALID_AMOUNT, NOT_ENOUGH_ITEMS, REQUESTER_CANT_PAY
     }
 
-    /**
-     * @param given     how many items were actually handed over (0 on failure)
-     * @param payout    money paid to the fulfiller, after tax (0 on failure)
-     * @param remaining amount still outstanding on the order after this fulfillment
-     * @param item      a copy of the requested item (for naming); EMPTY when the order is gone
-     * @param requester the requesting player's id, or null when the order is gone
-     */
     public record Result(Status status, int given, long payout, int remaining, ItemStack item, UUID requester) {
         public boolean success() {
             return status == Status.OK;
         }
     }
 
-    /**
-     * Fulfills up to {@code requestedAmount} of order {@code orderId} from {@code fulfiller}'s inventory.
-     * Pass a non-positive {@code requestedAmount} to fulfill the entire outstanding amount.
-     */
     public static Result fulfill(EconomyManager eco, ServerPlayer fulfiller, int orderId, int requestedAmount) {
         return fulfill(eco, fulfiller, orderId, requestedAmount, false);
     }
 
-    /** Same as the 4-arg overload, but {@code excludeArmor} skips armor slots — /sell never touches armor. */
     public static Result fulfill(EconomyManager eco, ServerPlayer fulfiller, int orderId, int requestedAmount, boolean excludeArmor) {
         OrderManager orders = eco.getOrders();
         OrderRequest order = orders.getRequest(orderId);
@@ -104,12 +83,6 @@ public final class OrderFulfillment {
         return new Result(Status.OK, give, payout, remaining, itemProto, requester);
     }
 
-    /**
-     * Same as {@link #fulfill}, but takes the items directly from {@code sourceStack} - a live
-     * reference to exactly the stack the caller is selling - instead of sweeping the fulfiller's
-     * whole inventory. Used by plain {@code /sell}, which only ever means "sell what's in my
-     * hand," never other matching stacks elsewhere in the inventory.
-     */
     public static Result fulfillExact(EconomyManager eco, ServerPlayer fulfiller, int orderId, int requestedAmount, ItemStack sourceStack) {
         OrderManager orders = eco.getOrders();
         OrderRequest order = orders.getRequest(orderId);
@@ -160,14 +133,9 @@ public final class OrderFulfillment {
         return new Result(Status.OK, give, payout, remaining, itemProto, requester);
     }
 
-    /**
-     * Open orders for {@code proto} that net more per unit than {@code serverUnitSell}, best price
-     * first, excluding {@code seller}'s own. Matched by the exact resolved price entry, not just
-     * the base item id, so one labeled variant's order can't claim another variant's sale.
-     */
     public static List<OrderRequest> findBetterOrders(EconomyManager eco, ItemStack proto, UUID seller, long serverUnitSell) {
         PriceRegistry prices = eco.getPrices();
-        PriceRegistry.ResolvedPrice protoPrice = prices.resolve(proto);
+        PriceRegistry.PriceEntry protoPrice = prices.resolve(proto);
         if (protoPrice == null) return List.of();
 
         List<OrderRequest> out = new ArrayList<>();
@@ -176,8 +144,8 @@ public final class OrderFulfillment {
             if (!order.item.is(proto.getItem())) continue;
             if (seller.equals(order.requester)) continue;
 
-            PriceRegistry.ResolvedPrice orderPrice = prices.resolve(order.item);
-            if (orderPrice == null || orderPrice.entry() != protoPrice.entry()) continue;
+            PriceRegistry.PriceEntry orderPrice = prices.resolve(order.item);
+            if (orderPrice == null || orderPrice != protoPrice) continue;
 
             if (netRatePerUnit(order) > serverUnitSell) out.add(order);
         }
@@ -185,7 +153,6 @@ public final class OrderFulfillment {
         return out;
     }
 
-    /** Total count of items matching the order's item type across the fulfiller's inventory. */
     public static int countHeld(ServerPlayer player, ItemStack proto) {
         return countHeld(player, proto, false);
     }
@@ -206,7 +173,6 @@ public final class OrderFulfillment {
         return total;
     }
 
-    /** Net payout (after tax) for fulfilling {@code give} of {@code order}. */
     public static long payoutFor(OrderRequest order, int give) {
         if (order == null || order.amount <= 0 || give <= 0) return 0;
         long payment = Math.min(Math.round((double) order.price * give / order.amount), order.price);
@@ -214,11 +180,6 @@ public final class OrderFulfillment {
         return payment - tax;
     }
 
-    /**
-     * Exact (unrounded) net-per-unit rate a fulfiller would earn from {@code order}, after tax.
-     * Used only to rank/filter orders - actual payouts are still rounded at the real fulfilled
-     * amount by {@link #payoutFor}/{@link #fulfill}, never at a hypothetical single unit.
-     */
     private static double netRatePerUnit(OrderRequest order) {
         if (order == null || order.amount <= 0) return 0;
         return (order.price / (double) order.amount) * (1.0 - EconomyConfig.get().taxRate);

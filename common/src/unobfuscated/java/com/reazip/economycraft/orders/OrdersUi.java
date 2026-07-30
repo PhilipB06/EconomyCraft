@@ -79,22 +79,6 @@ public final class OrdersUi {
         });
     }
 
-    private static MenuType<?> getMenuType(int rows) {
-        return switch (rows) {
-            case 1 -> MenuType.GENERIC_9x1;
-            case 2 -> MenuType.GENERIC_9x2;
-            case 3 -> MenuType.GENERIC_9x3;
-            case 4 -> MenuType.GENERIC_9x4;
-            case 5 -> MenuType.GENERIC_9x5;
-            default -> MenuType.GENERIC_9x6;
-        };
-    }
-
-    private static int requiredRows(int itemCount) {
-        int contentRows = (int) Math.ceil(Math.max(1, itemCount) / 9.0);
-        return Math.clamp(contentRows + 1, 2, 6);
-    }
-
     private static class RequestMenu extends AbstractContainerMenu {
         private final OrderManager orders;
         private final EconomyManager eco;
@@ -109,17 +93,22 @@ public final class OrdersUi {
         private final Runnable listener = this::updatePage;
 
         RequestMenu(int id, Inventory inv, OrderManager orders, EconomyManager eco, ServerPlayer viewer, int page, @Nullable String query) {
-            super(getMenuType(requiredRows(resolveRequests(orders, query).size())), id);
+            this(id, inv, orders, eco, viewer, page, query, resolveRequests(orders, query));
+        }
+
+        private RequestMenu(int id, Inventory inv, OrderManager orders, EconomyManager eco, ServerPlayer viewer, int page, @Nullable String query, List<OrderRequest> resolved) {
+            super(MenuUiSupport.getMenuType(MenuUiSupport.requiredRows(resolved.size())), id);
             this.orders = orders;
             this.eco = eco;
             this.viewer = viewer;
             this.page = page;
             this.query = query;
-            this.rows = requiredRows(resolveRequests(orders, query).size());
+            this.rows = MenuUiSupport.requiredRows(resolved.size());
             this.itemsPerPage = (rows - 1) * 9;
             this.navRowStart = itemsPerPage;
             this.container = new SimpleContainer(rows * 9);
-            updatePage();
+            this.requests = resolved;
+            renderPage();
             orders.addListener(listener);
             for (Slot slot : MenuUiSupport.readOnlyGridSlots(container, rows * 9)) {
                 this.addSlot(slot);
@@ -139,6 +128,10 @@ public final class OrdersUi {
 
         private void updatePage() {
             requests = resolveRequests(orders, query);
+            renderPage();
+        }
+
+        private void renderPage() {
             container.clearContent();
             int start = page * itemsPerPage;
             int totalPages = (int) Math.ceil(requests.size() / (double) itemsPerPage);

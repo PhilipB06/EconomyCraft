@@ -15,12 +15,9 @@ import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** Kept separate from the entrypoint so it's only classloaded once TAB is confirmed present. Uses reflection since TAB has no resolvable API dependency and no auto-bridge to placeholder-api-neoforge on NeoForge like it has on Fabric. */
 final class EconomyCraftNeoForgeTab {
     private static final Logger LOGGER = LoggerFactory.getLogger("EconomyCraft/TAB");
     private static final int REFRESH_MS = 1000;
-    // Matches PlaceholderResult.invalid("No player!")'s rendered text ("[" + reason + "]"), so a
-    // missing leaderboard rank reads the same here as it does through placeholder-api-neoforge.
     private static final String NO_PLAYER = "[No player!]";
     private static final Pattern TOP_NAME = Pattern.compile("^%economycraft:top_name (\\d+)%$");
     private static final Pattern TOP_BALANCE = Pattern.compile("^%economycraft:top_balance (\\d+)%$");

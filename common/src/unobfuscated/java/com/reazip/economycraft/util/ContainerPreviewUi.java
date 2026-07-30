@@ -15,10 +15,6 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
-/**
- * Read-only preview of a container item's contents (e.g. a filled shulker box), reachable by
- * right-click from any menu that shows the item. Shared by the shop, server shop, and orders UIs.
- */
 public final class ContainerPreviewUi {
     private ContainerPreviewUi() {}
 

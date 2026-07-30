@@ -75,8 +75,6 @@ public class EconomyManager {
         return server;
     }
 
-    // ---- Name handling ----
-
     private void ensureDiskUserCacheLoaded() {
         if (diskUserCache != null) return;
         diskUserCache = new HashMap<>();
@@ -113,23 +111,18 @@ public class EconomyManager {
     public UUID tryResolveUuidByName(String name) {
         if (name == null || name.isBlank()) return null;
 
-        // 1) Online
         ServerPlayer online = server.getPlayerList().getPlayerByName(name);
         if (online != null) return online.getUUID();
 
-        // 2) Offline from usercache.json
         ensureDiskUserCacheLoaded();
         for (var e : diskUserCache.entrySet()) {
             if (name.equalsIgnoreCase(e.getValue())) return e.getKey();
         }
 
-        // 3) direct UUID string
         try { return UUID.fromString(name); } catch (IllegalArgumentException ignored) {}
 
         return null;
     }
-
-    // ---- Balances ----
 
     public Long getBalance(UUID player, boolean newBalanceIfNonExistent) {
         if (!balances.containsKey(player)) {
@@ -174,8 +167,6 @@ public class EconomyManager {
         addMoney(to, amount);
         return true;
     }
-
-    // ---- Load / Save ----
 
     public void load() {
         if (Files.exists(file)) {
@@ -234,8 +225,6 @@ public class EconomyManager {
         }
     }
 
-    // ---- Scoreboard / Leaderboard ----
-
     private void applyScoreboardSettingOnStartup() {
         if (EconomyConfig.get().scoreboardEnabled) {
             setupObjective();
@@ -255,7 +244,6 @@ public class EconomyManager {
         );
     }
 
-    /** Claims the SIDEBAR slot only if we don't already hold it, so other plugins/mods keeping the slot afterward aren't fought over on every score update. */
     private void ensureObjective(Scoreboard board) {
         if (objective != null) return;
 
@@ -266,7 +254,6 @@ public class EconomyManager {
         board.setDisplayObjective(DisplaySlot.SIDEBAR, objective);
     }
 
-    /** Releases the SIDEBAR slot. A no-op if we don't currently hold an objective, so callers on a hot path (every balance change) can skip touching the scoreboard entirely. */
     private void teardownObjective(Scoreboard board) {
         Objective existing = objective != null ? objective : board.getObjective(ECO_BALANCE_OBJECTIVE);
         if (existing == null) return;
@@ -331,7 +318,6 @@ public class EconomyManager {
         return result;
     }
 
-    /** Returns the Nth-highest balance (1-based rank), or null if fewer than {@code rank} players exist. */
     public @Nullable LeaderboardEntry getLeaderboardEntry(int rank) {
         if (rank < 1) return null;
         List<LeaderboardEntry> top = computeLeaderboard(rank);
@@ -352,8 +338,6 @@ public class EconomyManager {
 
         return EconomyConfig.get().scoreboardEnabled;
     }
-
-    // ---- Misc ----
 
     public ShopManager getShop() {
         return shop;

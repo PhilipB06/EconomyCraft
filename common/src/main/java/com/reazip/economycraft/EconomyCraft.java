@@ -70,17 +70,10 @@ public final class EconomyCraft {
         return manager;
     }
 
-    /** Applies PVP balance loss if the damage source was another player. */
     public static void tryHandlePvpKill(ServerPlayer victim, Entity damageSource) {
         if (damageSource instanceof ServerPlayer killer) {
             getManager(victim.level().getServer()).handlePvpKill(victim, killer);
         }
-    }
-
-    public static Component createBalanceTitle(String baseTitle, ServerPlayer player) {
-        EconomyManager eco = getManager(player.level().getServer());
-        long balance = eco.getBalance(player.getUUID(), true);
-        return Component.literal(baseTitle + " - Balance: " + formatMoney(balance));
     }
 
     public static String formatMoney(long amount) {

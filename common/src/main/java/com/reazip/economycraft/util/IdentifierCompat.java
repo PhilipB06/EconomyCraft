@@ -15,7 +15,6 @@ import java.util.Optional;
 
 public final class IdentifierCompat {
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final Class<?> ID_CLASS;
     private static final Constructor<?> ID_CONSTRUCTOR_TWO;
     private static final Constructor<?> ID_CONSTRUCTOR_ONE;
     private static final Method ID_FACTORY_ONE;
@@ -28,21 +27,18 @@ public final class IdentifierCompat {
     private static final Method EITHER_RIGHT;
 
     static {
-        Class<?> idClass = null;
+        Class<?> idClass;
         Constructor<?> idConstructorTwo = null;
         Constructor<?> idConstructorOne = null;
         Method idFactoryOne = null;
         Method idFactoryTwo = null;
-        Method registryContainsKey = null;
-        Method registryGetOptional = null;
-        Method resourceKeyCreate = null;
-        Method resourceKeyIdentifier = null;
+        Method registryContainsKey;
+        Method registryGetOptional;
+        Method resourceKeyCreate;
+        Method resourceKeyIdentifier;
         Method eitherLeft = null;
         Method eitherRight = null;
         Object sample = BuiltInRegistries.ITEM.getKey(Items.AIR);
-        if (sample == null) {
-            throw new ExceptionInInitializerError("Identifier sample not found");
-        }
 
         Object idSample = extractIdentifierSample(sample);
         if (idSample == null) {
@@ -76,8 +72,8 @@ public final class IdentifierCompat {
             throw new ExceptionInInitializerError("Identifier constructor not found");
         }
 
-        registryContainsKey = findRegistryMethod(Registry.class, boolean.class, idClass);
-        registryGetOptional = findRegistryMethod(Registry.class, Optional.class, idClass);
+        registryContainsKey = findRegistryMethod(boolean.class, idClass);
+        registryGetOptional = findRegistryMethod(Optional.class, idClass);
         resourceKeyCreate = findResourceKeyCreate(idClass);
         resourceKeyIdentifier = findResourceKeyIdentifier(idClass);
         Method[] eitherMethods = findEitherMethods();
@@ -86,7 +82,6 @@ public final class IdentifierCompat {
             eitherRight = eitherMethods[1];
         }
 
-        ID_CLASS = idClass;
         ID_CONSTRUCTOR_TWO = idConstructorTwo;
         ID_CONSTRUCTOR_ONE = idConstructorOne;
         ID_FACTORY_ONE = idFactoryOne;
@@ -146,11 +141,6 @@ public final class IdentifierCompat {
         return parseFromString(value.toString(), value);
     }
 
-    @SuppressWarnings("unchecked")
-    public static <T> T unwrap(Id id) {
-        return id == null ? null : (T) id.handle();
-    }
-
     public static boolean registryContainsKey(Registry<?> registry, Id id) {
         if (id == null) {
             return false;
@@ -162,7 +152,6 @@ public final class IdentifierCompat {
         if (id == null) {
             return Optional.empty();
         }
-        @SuppressWarnings("unchecked")
         Optional<Object> result = (Optional<Object>) invoke(REGISTRY_GET_OPTIONAL, registry, id.handle());
         if (result.isEmpty()) {
             return Optional.empty();
@@ -171,7 +160,6 @@ public final class IdentifierCompat {
         if (value == null) {
             return Optional.empty();
         }
-        @SuppressWarnings("unchecked")
         T direct;
         try {
             direct = (T) value;
@@ -187,9 +175,7 @@ public final class IdentifierCompat {
         if (id == null) {
             return null;
         }
-        @SuppressWarnings("unchecked")
-        ResourceKey<T> result = (ResourceKey<T>) invokeStatic(RESOURCE_KEY_CREATE, registryKey, id.handle());
-        return result;
+        return (ResourceKey<T>) invokeStatic(registryKey, id.handle());
     }
 
     public static Id fromResourceKey(ResourceKey<?> key) {
@@ -247,7 +233,6 @@ public final class IdentifierCompat {
 
         while (v instanceof Holder<?> h) {
             v = h.value();
-            if (v == null) return null;
         }
 
         if (EITHER_LEFT != null && EITHER_RIGHT != null && isEither(v)) {
@@ -267,7 +252,6 @@ public final class IdentifierCompat {
         return value != null && value.getClass().getName().equals("com.mojang.datafixers.util.Either");
     }
 
-    @SuppressWarnings("unchecked")
     private static Optional<?> invokeEitherOptional(Method method, Object target) {
         if (method == null || target == null) {
             return null;
@@ -305,9 +289,9 @@ public final class IdentifierCompat {
         return true;
     }
 
-    private static Method findRegistryMethod(Class<?> registryClass, Class<?> returnType, Class<?> idClass) {
+    private static Method findRegistryMethod(Class<?> returnType, Class<?> idClass) {
         Method assignableMatch = null;
-        for (Method method : registryClass.getMethods()) {
+        for (Method method : Registry.class.getMethods()) {
             if (method.getParameterCount() != 1 || !returnType.equals(method.getReturnType())) {
                 continue;
             }
@@ -372,16 +356,14 @@ public final class IdentifierCompat {
                 if (id != null) {
                     return id;
                 }
-            } catch (ReflectiveOperationException ignored) {
-                // try next name
-            }
+            } catch (ReflectiveOperationException ignored) {}
         }
         return sample;
     }
 
-    private static Object invokeStatic(Method method, Object... args) {
+    private static Object invokeStatic(Object... args) {
         try {
-            return method.invoke(null, args);
+            return IdentifierCompat.RESOURCE_KEY_CREATE.invoke(null, args);
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException(e);
         }
