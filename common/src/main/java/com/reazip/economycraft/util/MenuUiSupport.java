@@ -12,10 +12,13 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
+import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.ItemContainerContents;
@@ -29,21 +32,132 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.function.BiFunction;
 
 public final class MenuUiSupport {
     private MenuUiSupport() {}
 
     public static final ChatFormatting LABEL_PRIMARY_COLOR = ChatFormatting.GOLD;
     public static final ChatFormatting LABEL_SECONDARY_COLOR = ChatFormatting.AQUA;
-    public static final ChatFormatting VALUE_COLOR = ChatFormatting.DARK_PURPLE;
+    public static final ChatFormatting VALUE_COLOR = ChatFormatting.WHITE;
     public static final ChatFormatting BALANCE_NAME_COLOR = ChatFormatting.YELLOW;
     public static final ChatFormatting BALANCE_LABEL_COLOR = ChatFormatting.GOLD;
-    public static final ChatFormatting BALANCE_VALUE_COLOR = ChatFormatting.DARK_PURPLE;
+    public static final ChatFormatting BALANCE_VALUE_COLOR = ChatFormatting.GREEN;
+
+    public static final int ROW_CANCEL = 2;
+    public static final int ROW_SUBJECT = 4;
+    public static final int ROW_CONFIRM = 6;
 
     private static final int SLOT_SIZE = 18;
     private static final int GRID_LEFT = 8;
     private static final int GRID_TOP = 18;
     private static final int CONFIRM_ROW_Y = 20;
+
+    public static void openMenu(ServerPlayer player, String title, BiFunction<Integer, Inventory, AbstractContainerMenu> factory) {
+        player.openMenu(new MenuProvider() {
+            @Override
+            public Component getDisplayName() {
+                return Component.literal(title);
+            }
+
+            @Override
+            public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
+                return factory.apply(id, inv);
+            }
+        });
+    }
+
+    public static ItemStack button(Item item, String name, ChatFormatting color, Component... lore) {
+        ItemStack stack = new ItemStack(item);
+        stack.set(DataComponents.CUSTOM_NAME, Component.literal(name)
+                .withStyle(s -> s.withItalic(false).withBold(true).withColor(color)));
+        if (lore.length > 0) {
+            stack.set(DataComponents.LORE, new ItemLore(List.of(lore)));
+        }
+        return stack;
+    }
+
+    public static Component hint(String text) {
+        return Component.literal(text).withStyle(s -> s.withItalic(false).withColor(ChatFormatting.GRAY));
+    }
+
+    public static Component italicHint(String text) {
+        return Component.literal(text).withStyle(s -> s.withItalic(true).withColor(ChatFormatting.DARK_GRAY));
+    }
+
+    public static Component line(String text, ChatFormatting color) {
+        return Component.literal(text).withStyle(s -> s.withItalic(false).withColor(color));
+    }
+
+    public static Component toggleOption(String label, boolean active) {
+        return Component.literal("• " + label).withStyle(s -> s.withItalic(false).withBold(active)
+                .withColor(active ? ChatFormatting.WHITE : ChatFormatting.GRAY));
+    }
+
+    public static ItemStack backButton() {
+        return button(Items.BARRIER, "Back", ChatFormatting.DARK_RED);
+    }
+
+    public static ItemStack closeButton() {
+        return button(Items.BARRIER, "Close", ChatFormatting.DARK_RED);
+    }
+
+    public static ItemStack cancelButton() {
+        return button(ItemsCompat.redStainedGlassPane(), "Cancel", ChatFormatting.DARK_RED);
+    }
+
+    public static ItemStack confirmButton(String name, Component... lore) {
+        return button(ItemsCompat.limeStainedGlassPane(), name, ChatFormatting.GREEN, lore);
+    }
+
+    public static ItemStack prevPageButton() {
+        return button(Items.ARROW, "Previous page", ChatFormatting.WHITE);
+    }
+
+    public static ItemStack nextPageButton() {
+        return button(Items.ARROW, "Next page", ChatFormatting.WHITE);
+    }
+
+    public static ItemStack pageIndicator(int page, int totalPages) {
+        return button(Items.PAPER, "Page " + (page + 1) + "/" + Math.max(1, totalPages), ChatFormatting.WHITE);
+    }
+
+    public static ItemStack filler() {
+        ItemStack stack = new ItemStack(ItemsCompat.grayStainedGlassPane());
+        stack.set(DataComponents.CUSTOM_NAME, Component.literal(" "));
+        return stack;
+    }
+
+    public static void fillEmpty(Container container, int from, int to) {
+        ItemStack filler = filler();
+        for (int i = from; i < to && i < container.getContainerSize(); i++) {
+            if (container.getItem(i).isEmpty()) {
+                container.setItem(i, filler.copy());
+            }
+        }
+    }
+
+    public static void fillFooter(Container container) {
+        int size = container.getContainerSize();
+        fillEmpty(container, Math.max(0, size - 9), size);
+    }
+
+    public static void fillBackground(Container container) {
+        fillEmpty(container, 0, container.getContainerSize());
+    }
+
+    public static ItemStack clearSearchButton(String query) {
+        return button(ItemsCompat.redStainedGlassPane(), "Clear search", ChatFormatting.RED,
+                hint("Showing: " + query));
+    }
+
+    public static ItemStack searchButton() {
+        return button(Items.COMPASS, "Search", ChatFormatting.GREEN);
+    }
+
+    public static int totalPages(int size, int perPage) {
+        return Math.max(1, (int) Math.ceil(size / (double) perPage));
+    }
 
     public static MenuType<?> getMenuType(int rows) {
         return switch (rows) {
@@ -140,9 +254,7 @@ public final class MenuUiSupport {
     public static List<Slot> lockedRowSlots(Container container, int y) {
         List<Slot> slots = new ArrayList<>(9);
         for (int i = 0; i < 9; i++) {
-            slots.add(new Slot(container, i, GRID_LEFT + i * SLOT_SIZE, y) {
-                @Override public boolean mayPickup(@NonNull Player player) { return false; }
-            });
+            slots.add(lockedSlot(container, i, GRID_LEFT + i * SLOT_SIZE, y));
         }
         return slots;
     }

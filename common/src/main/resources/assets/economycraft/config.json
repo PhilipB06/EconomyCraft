@@ -9,5 +9,7 @@
   "scoreboard_enabled": true,
   "server_shop_enabled": true,
   "sell_enabled": true,
+  "shop_enabled": true,
+  "orders_enabled": true,
   "balance_separator": "."
 }

@@ -18,15 +18,20 @@ public final class PermissionCompat {
             } catch (Exception e) {
                 return true;
             }
-
-            NameAndId nameAndId = new NameAndId(
-                    player.getUUID(),
-                    player.getName().getString()
-            );
-
-            return source.getServer()
-                    .getPlayerList()
-                    .isOp(nameAndId);
+            return isAdmin(player);
         };
+    }
+
+    public static boolean isAdmin(ServerPlayer player) {
+        if (player == null) return false;
+        var server = player.level().getServer();
+        if (server == null) return false;
+
+        NameAndId nameAndId = new NameAndId(
+                player.getUUID(),
+                player.getName().getString()
+        );
+
+        return server.getPlayerList().isOp(nameAndId);
     }
 }

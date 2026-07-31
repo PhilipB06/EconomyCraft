@@ -368,6 +368,10 @@ public class EconomyManager {
         return true;
     }
 
+    public boolean hasClaimedDailyToday(UUID player) {
+        return lastDaily.getOrDefault(player, -1L) == LocalDate.now().toEpochDay();
+    }
+
     public boolean tryRecordDailySell(UUID player, long saleAmount) {
         long limit = EconomyConfig.get().dailySellLimit;
         if (limit <= 0) return false;

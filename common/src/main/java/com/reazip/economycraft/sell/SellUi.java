@@ -3,26 +3,22 @@ package com.reazip.economycraft.sell;
 import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyManager;
+import com.reazip.economycraft.HubUi;
 import com.reazip.economycraft.PriceRegistry;
 import com.reazip.economycraft.SellService;
-import com.reazip.economycraft.util.ItemsCompat;
+import com.reazip.economycraft.util.ClickKind;
+import com.reazip.economycraft.util.CompatMenu;
 import com.reazip.economycraft.util.MenuUiSupport;
 import net.minecraft.ChatFormatting;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.MenuProvider;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.component.ItemLore;
-
-import java.util.List;
+import net.minecraft.world.item.Items;
 
 public final class SellUi {
     private SellUi() {}
@@ -30,26 +26,18 @@ public final class SellUi {
     private static final int DEPOSIT_ROWS = 5;
     private static final int DEPOSIT_SLOTS = DEPOSIT_ROWS * 9;
     private static final int NAV_BALANCE = 0;
+    private static final int NAV_FILL = 3;
+    private static final int NAV_HELP = 4;
+    private static final int NAV_MENU = 5;
     private static final int NAV_CONFIRM = 8;
     private static final int NAV_ROW_SLOTS = 9;
     private static final int NAV_ROW_END = DEPOSIT_SLOTS + NAV_ROW_SLOTS;
-    private static final int CONFIRM_SLOT = DEPOSIT_SLOTS + NAV_CONFIRM;
 
     public static void open(ServerPlayer player, EconomyManager manager) {
-        player.openMenu(new MenuProvider() {
-            @Override
-            public Component getDisplayName() {
-                return Component.literal("Sell");
-            }
-
-            @Override
-            public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                return new SellMenu(id, inv, player, manager);
-            }
-        });
+        MenuUiSupport.openMenu(player, "Sell", (id, inv) -> new SellMenu(id, inv, player, manager));
     }
 
-    private static class SellMenu extends AbstractContainerMenu {
+    private static class SellMenu extends CompatMenu {
         private final ServerPlayer viewer;
         private final EconomyManager manager;
         private final PriceRegistry prices;
@@ -98,17 +86,49 @@ public final class SellUi {
         }
 
         private void renderNavRow() {
+            navContainer.clearContent();
             navContainer.setItem(NAV_BALANCE, MenuUiSupport.createBalanceItem(viewer));
 
+            navContainer.setItem(NAV_HELP, MenuUiSupport.button(Items.BOOK, "How this works", ChatFormatting.YELLOW,
+                    MenuUiSupport.hint("Drop items in the slots above."),
+                    MenuUiSupport.hint("Only items with a sell price fit."),
+                    MenuUiSupport.hint("Nothing is sold until you confirm."),
+                    MenuUiSupport.hint("Closing gives everything back.")));
+
+            navContainer.setItem(NAV_FILL, MenuUiSupport.button(Items.HOPPER, "Add everything sellable",
+                    ChatFormatting.AQUA, MenuUiSupport.hint("Pulls every sellable item from your inventory")));
+
+            navContainer.setItem(NAV_MENU, MenuUiSupport.button(Items.NETHER_STAR, "Main menu", ChatFormatting.YELLOW));
+
             SellPreview preview = previewTotals();
-            ItemStack confirm = new ItemStack(ItemsCompat.limeStainedGlassPane());
-            confirm.set(DataComponents.CUSTOM_NAME,
-                    Component.literal("Confirm").withStyle(s -> s.withItalic(false).withBold(true).withColor(ChatFormatting.GREEN)));
-            confirm.set(DataComponents.LORE, new ItemLore(List.of(
-                    Component.literal("Sells the items above").withStyle(s -> s.withItalic(false).withColor(ChatFormatting.GRAY)),
-                    MenuUiSupport.labeledValue("Items", String.valueOf(preview.count()), MenuUiSupport.LABEL_SECONDARY_COLOR),
-                    MenuUiSupport.labeledValue("Total", EconomyCraft.formatMoney(preview.total()), MenuUiSupport.LABEL_PRIMARY_COLOR))));
-            navContainer.setItem(NAV_CONFIRM, confirm);
+            navContainer.setItem(NAV_CONFIRM, MenuUiSupport.confirmButton("Confirm",
+                    MenuUiSupport.hint("Sells the items above"),
+                    MenuUiSupport.labeledValue("Items", String.valueOf(preview.count()), MenuUiSupport.LABEL_PRIMARY_COLOR),
+                    MenuUiSupport.labeledValue("Total", EconomyCraft.formatMoney(preview.total()), MenuUiSupport.LABEL_PRIMARY_COLOR)));
+
+            MenuUiSupport.fillFooter(navContainer);
+        }
+
+        private void fillFromInventory(Player player) {
+            Inventory inv = player.getInventory();
+            int moved = 0;
+            for (int i = 0; i < SellService.MAIN_INVENTORY_SLOTS; i++) {
+                ItemStack stack = inv.getItem(i);
+                if (stack.isEmpty()) continue;
+                if (SellService.sellableResolved(prices, stack) == null) continue;
+
+                ItemStack remainder = depositContainer.addItem(stack.copy());
+                int placed = stack.getCount() - remainder.getCount();
+                if (placed <= 0) continue;
+                stack.shrink(placed);
+                if (stack.isEmpty()) inv.setItem(i, ItemStack.EMPTY);
+                moved += placed;
+            }
+
+            if (moved == 0) {
+                viewer.sendSystemMessage(MenuUiSupport.line("Nothing in your inventory can be sold.", ChatFormatting.RED));
+            }
+            renderNavRow();
         }
 
         private void performSale(ServerPlayer player) {
@@ -129,11 +149,9 @@ public final class SellUi {
                 orderGivenTotal += split.orderGiven();
                 orderPayoutTotal += split.orderPayout();
 
-                if (split.serverRemaining() > 0) {
-                    Long potential = safeMultiply(unitSell, split.serverRemaining());
-                    if (potential == null) {
-                        // overflow: leave the remainder in the slot, it'll be handed back when the GUI closes
-                    } else if (EconomyConfig.get().dailySellLimit > 0 && manager.tryRecordDailySell(player.getUUID(), potential)) {
+                Long potential = split.serverRemaining() > 0 ? safeMultiply(unitSell, split.serverRemaining()) : null;
+                if (potential != null) {
+                    if (EconomyConfig.get().dailySellLimit > 0 && manager.tryRecordDailySell(player.getUUID(), potential)) {
                         limitBlockedTotal += split.serverRemaining();
                     } else {
                         serverSoldTotal += split.serverRemaining();
@@ -149,11 +167,10 @@ public final class SellUi {
             int totalSold = orderGivenTotal + serverSoldTotal;
             if (totalSold > 0) {
                 long totalPayout = orderPayoutTotal + serverPayoutTotal;
-                Component msg = Component.literal("Successfully sold " + totalSold + " item" + (totalSold == 1 ? "" : "s") +
+                player.sendSystemMessage(Component.literal("Successfully sold " + totalSold + " item" + (totalSold == 1 ? "" : "s") +
                                 " for " + EconomyCraft.formatMoney(totalPayout) +
                                 (orderGivenTotal > 0 ? " (" + orderGivenTotal + " to open orders for a better price)" : "") + ".")
-                        .withStyle(ChatFormatting.GREEN);
-                player.sendSystemMessage(msg);
+                        .withStyle(ChatFormatting.GREEN));
             }
 
             if (limitBlockedTotal > 0) {
@@ -168,24 +185,33 @@ public final class SellUi {
         }
 
         @Override
-        public void clicked(int slot, int dragType, ClickType type, Player player) {
-            if (slot == CONFIRM_SLOT) {
-                if (type == ClickType.PICKUP) {
-                    performSale((ServerPlayer) player);
-                }
-                return;
-            }
+        protected boolean onClick(int slot, int dragType, ClickKind kind, Player player) {
             if (slot >= DEPOSIT_SLOTS && slot < NAV_ROW_END) {
-                return;
+                if (kind == ClickKind.PICKUP || kind == ClickKind.QUICK_MOVE) {
+                    int navSlot = slot - DEPOSIT_SLOTS;
+                    if (navSlot == NAV_CONFIRM) {
+                        performSale((ServerPlayer) player);
+                    } else if (navSlot == NAV_FILL) {
+                        fillFromInventory(player);
+                    } else if (navSlot == NAV_MENU) {
+                        player.closeContainer();
+                        HubUi.open((ServerPlayer) player);
+                    }
+                }
+                return true;
             }
             if (slot >= 0 && slot < DEPOSIT_SLOTS) {
                 ItemStack carried = this.getCarried();
                 if (!carried.isEmpty() && SellService.sellableResolved(prices, carried) == null) {
                     rejectUnsellable(player, carried);
-                    return;
+                    return true;
                 }
             }
-            super.clicked(slot, dragType, type, player);
+            return false;
+        }
+
+        @Override
+        protected void afterClick(int slot, int dragType, ClickKind kind, Player player) {
             renderNavRow();
         }
 
@@ -199,14 +225,8 @@ public final class SellUi {
         @Override
         public void removed(Player player) {
             super.removed(player);
-            if (player instanceof ServerPlayer sp) {
-                performSale(sp);
-            }
             clearContainer(player, depositContainer);
         }
-
-        @Override
-        public boolean stillValid(Player player) { return true; }
 
         @Override
         public ItemStack quickMoveStack(Player player, int index) {

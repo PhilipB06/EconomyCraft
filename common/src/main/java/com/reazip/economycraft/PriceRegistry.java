@@ -35,6 +35,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
+import java.util.function.Predicate;
 
 public final class PriceRegistry {
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -83,8 +84,8 @@ public final class PriceRegistry {
             }
 
             int entryCount = 0;
-            int missingItemCount = 0;
             int invalidCustomItemCount = 0;
+            List<String> missingItems = new ArrayList<>();
             for (Map.Entry<String, JsonElement> e : root.entrySet()) {
                 String key = e.getKey();
                 String baseKeyStr = key;
@@ -106,10 +107,12 @@ public final class PriceRegistry {
                 }
                 JsonObject obj = el.getAsJsonObject();
 
+                if (isRemoved(obj)) continue;
+
                 boolean isRealItem = IdentifierCompat.registryContainsKey(BuiltInRegistries.ITEM, id);
                 boolean isVirtual = isVirtualPriceId(id);
                 if (!isRealItem && !isVirtual) {
-                    missingItemCount++;
+                    missingItems.add(key);
                     continue;
                 }
 
@@ -132,13 +135,16 @@ public final class PriceRegistry {
                 long unitBuy = getLong(obj, "unit_buy");
                 long unitSell = getLong(obj, "unit_sell");
 
-                PriceEntry entry = new PriceEntry(id, category, stack, unitBuy, unitSell, customItem);
+                PriceEntry entry = new PriceEntry(key, id, category, stack, unitBuy, unitSell, customItem);
                 prices.computeIfAbsent(id, k -> new ArrayList<>()).add(entry);
                 entryCount++;
             }
 
-            if (missingItemCount > 0) {
-                LOGGER.warn("[EconomyCraft] Skipped {} price entries for items not present in this server version.", missingItemCount);
+            if (!missingItems.isEmpty()) {
+                List<String> shown = missingItems.size() > 10 ? missingItems.subList(0, 10) : missingItems;
+                String more = missingItems.size() > shown.size() ? " and " + (missingItems.size() - shown.size()) + " more" : "";
+                LOGGER.warn("[EconomyCraft] Skipped {} price entries whose item is not present on this server: {}{}",
+                        missingItems.size(), String.join(", ", shown), more);
             }
             if (invalidCustomItemCount > 0) {
                 LOGGER.warn("[EconomyCraft] Skipped {} price entries with an invalid 'components' payload.", invalidCustomItemCount);
@@ -223,50 +229,100 @@ public final class PriceRegistry {
         return bundle != null && !bundle.isEmpty();
     }
 
+    private static final Predicate<PriceEntry> BUYABLE = p -> p.unitBuy() > 0;
+    private static final Predicate<PriceEntry> ANY = p -> true;
+
     public Set<String> buyCategories() {
         Set<String> out = new LinkedHashSet<>();
-        for (List<PriceEntry> list : prices.values()) {
-            for (PriceEntry p : list) {
-                if (p.unitBuy() > 0) {
-                    out.add(p.category());
-                }
-            }
+        for (PriceEntry p : entries(BUYABLE)) {
+            out.add(p.category());
         }
         return out;
     }
 
     public List<PriceEntry> buyableByCategory(String category) {
-        if (category == null) return List.of();
-        String c = category.trim().toLowerCase(Locale.ROOT);
+        return byCategory(category, BUYABLE);
+    }
 
+    public List<PriceEntry> search(String query, @Nullable String category) {
+        return search(query, category, BUYABLE);
+    }
+
+    public List<String> buyTopCategories() {
+        return topCategories(BUYABLE);
+    }
+
+    public List<String> buySubcategories(String topCategory) {
+        return subcategories(topCategory, BUYABLE);
+    }
+
+    public List<PriceEntry> allEntries() {
+        return entries(ANY);
+    }
+
+    public List<PriceEntry> allByCategory(String category) {
+        return byCategory(category, ANY);
+    }
+
+    public List<String> allTopCategories() {
+        return topCategories(ANY);
+    }
+
+    public List<String> allSubcategories(String topCategory) {
+        return subcategories(topCategory, ANY);
+    }
+
+    public List<PriceEntry> searchAll(String query) {
+        return search(query, null, ANY);
+    }
+
+    public List<PriceEntry> searchAll(String query, @Nullable String category) {
+        return search(query, category, ANY);
+    }
+
+    @Nullable
+    public PriceEntry findByKey(String key) {
+        if (key == null) return null;
+        for (PriceEntry p : entries(ANY)) {
+            if (key.equals(p.key())) return p;
+        }
+        return null;
+    }
+
+    private List<PriceEntry> entries(Predicate<PriceEntry> keep) {
         List<PriceEntry> out = new ArrayList<>();
         for (List<PriceEntry> list : prices.values()) {
             for (PriceEntry p : list) {
-                if (p.unitBuy() <= 0) continue;
-                if (matchesCategory(p, c)) {
-                    out.add(p);
-                }
+                if (keep.test(p)) out.add(p);
             }
         }
         return out;
     }
 
-    public List<PriceEntry> search(String query, @Nullable String category) {
+    private List<PriceEntry> byCategory(String category, Predicate<PriceEntry> keep) {
+        if (category == null) return List.of();
+        String c = category.trim().toLowerCase(Locale.ROOT);
+
+        List<PriceEntry> out = new ArrayList<>();
+        for (PriceEntry p : entries(keep)) {
+            if (matchesCategory(p, c)) out.add(p);
+        }
+        return out;
+    }
+
+    private List<PriceEntry> search(String query, @Nullable String category, Predicate<PriceEntry> keep) {
         if (query == null || query.isBlank()) return List.of();
         String q = query.trim().toLowerCase(Locale.ROOT);
         String c = category != null ? category.trim().toLowerCase(Locale.ROOT) : null;
 
         List<PriceEntry> out = new ArrayList<>();
-        for (List<PriceEntry> list : prices.values()) {
-            for (PriceEntry p : list) {
-                if (p.unitBuy() <= 0) continue;
-                if (c != null && !matchesCategory(p, c)) continue;
-                String name = p.id().path().replace('_', ' ').toLowerCase(Locale.ROOT);
-                if (name.contains(q)
-                        || (p.category() != null && p.category().toLowerCase(Locale.ROOT).contains(q))
-                        || (p.customItem() != null && MenuUiSupport.matchesSearch(p.customItem(), query))) {
-                    out.add(p);
-                }
+        for (PriceEntry p : entries(keep)) {
+            if (c != null && !matchesCategory(p, c)) continue;
+            String name = p.id().path().replace('_', ' ').toLowerCase(Locale.ROOT);
+            if (name.contains(q)
+                    || (p.category() != null && p.category().toLowerCase(Locale.ROOT).contains(q))
+                    || (p.customItem() != null && MenuUiSupport.matchesSearch(p.customItem(), query))) {
+                out.add(p);
             }
         }
         return out;
@@ -276,41 +332,133 @@ public final class PriceRegistry {
         return p.category() != null && p.category().trim().toLowerCase(Locale.ROOT).equals(normalizedCategory);
     }
 
-    public List<String> buyTopCategories() {
+    private List<String> topCategories(Predicate<PriceEntry> keep) {
         LinkedHashSet<String> out = new LinkedHashSet<>();
-        for (List<PriceEntry> list : prices.values()) {
-            for (PriceEntry p : list) {
-                if (p.unitBuy() <= 0 || p.category() == null) continue;
-                String cat = p.category();
-                int dot = cat.indexOf('.');
-                if (dot > 0) {
-                    out.add(cat.substring(0, dot));
-                } else {
-                    out.add(cat);
-                }
+        for (PriceEntry p : entries(keep)) {
+            if (p.category() == null) continue;
+            String cat = p.category();
+            int dot = cat.indexOf('.');
+            out.add(dot > 0 ? cat.substring(0, dot) : cat);
+        }
+        return new ArrayList<>(out);
+    }
+
+    private List<String> subcategories(String topCategory, Predicate<PriceEntry> keep) {
+        if (topCategory == null || topCategory.isBlank()) return List.of();
+        String root = topCategory.trim().toLowerCase(Locale.ROOT);
+        LinkedHashSet<String> out = new LinkedHashSet<>();
+        for (PriceEntry p : entries(keep)) {
+            if (p.category() == null) continue;
+            String cat = p.category().trim();
+            int dot = cat.indexOf('.');
+            if (dot <= 0 || dot >= cat.length() - 1) continue;
+            if (cat.substring(0, dot).toLowerCase(Locale.ROOT).equals(root)) {
+                out.add(cat.substring(dot + 1));
             }
         }
         return new ArrayList<>(out);
     }
 
-    public List<String> buySubcategories(String topCategory) {
-        if (topCategory == null || topCategory.isBlank()) return List.of();
-        String root = topCategory.trim().toLowerCase(Locale.ROOT);
-        LinkedHashSet<String> out = new LinkedHashSet<>();
-        for (List<PriceEntry> list : prices.values()) {
-            for (PriceEntry p : list) {
-                if (p.unitBuy() <= 0 || p.category() == null) continue;
-                String cat = p.category().trim();
-                int dot = cat.indexOf('.');
-                if (dot <= 0 || dot >= cat.length() - 1) continue;
-                String base = cat.substring(0, dot).toLowerCase(Locale.ROOT);
-                String sub = cat.substring(dot + 1);
-                if (base.equals(root)) {
-                    out.add(sub);
-                }
+    public synchronized boolean upsert(String key, String category, int stack, long unitBuy, long unitSell,
+                                       @Nullable ItemStack customItem) {
+        if (key == null || key.isBlank()) return false;
+        return mutate(root -> {
+            JsonObject obj = new JsonObject();
+            obj.addProperty("category", category == null || category.isBlank() ? "misc" : category.trim());
+            obj.addProperty("stack", Math.max(1, stack));
+            obj.addProperty("unit_buy", Math.max(0, unitBuy));
+            obj.addProperty("unit_sell", Math.max(0, unitSell));
+            JsonElement components = customItem == null ? null : encodeComponents(key, customItem);
+            if (components != null) obj.add("components", components);
+            root.add(key, obj);
+        });
+    }
+
+    public synchronized boolean delete(String key) {
+        if (key == null || key.isBlank()) return false;
+        return mutate(root -> {
+            if (isBundledDefaultKey(key)) {
+                JsonObject tombstone = new JsonObject();
+                tombstone.addProperty("removed", true);
+                root.add(key, tombstone);
+            } else {
+                root.remove(key);
             }
+        });
+    }
+
+    public synchronized boolean keyExists(String key) {
+        if (key == null || key.isBlank()) return false;
+        JsonObject root = readUserJson();
+        return root != null && root.has(key);
+    }
+
+    public String uniqueKeyFor(IdentifierCompat.Id id, @Nullable String label) {
+        String base = id.asString();
+        if (label == null || label.isBlank()) {
+            return base;
         }
-        return new ArrayList<>(out);
+        String slug = label.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "_").replaceAll("^_+|_+$", "");
+        if (slug.isBlank()) slug = "custom";
+        String candidate = base + "#" + slug;
+        int suffix = 2;
+        while (keyExists(candidate)) {
+            candidate = base + "#" + slug + "_" + suffix++;
+        }
+        return candidate;
+    }
+
+    private boolean isBundledDefaultKey(String key) {
+        JsonObject defaults = readBundledDefaultJson();
+        return defaults != null && defaults.has(key);
+    }
+
+    private boolean mutate(java.util.function.Consumer<JsonObject> edit) {
+        JsonObject root = readUserJson();
+        if (root == null) root = new JsonObject();
+        edit.accept(root);
+        try {
+            Files.writeString(file, GSON.toJson(root), StandardCharsets.UTF_8);
+        } catch (IOException ex) {
+            LOGGER.error("[EconomyCraft] Failed to write prices.json at {}", file, ex);
+            return false;
+        }
+        reload();
+        return true;
+    }
+
+    @Nullable
+    private JsonObject readUserJson() {
+        if (Files.notExists(file)) return new JsonObject();
+        try {
+            String json = Files.readString(file, StandardCharsets.UTF_8);
+            JsonObject root = GSON.fromJson(json, JsonObject.class);
+            return root == null ? new JsonObject() : root;
+        } catch (Exception ex) {
+            LOGGER.error("[EconomyCraft] Failed to read prices.json at {}", file, ex);
+            return null;
+        }
+    }
+
+    @Nullable
+    private JsonElement encodeComponents(String key, ItemStack stack) {
+        DataComponentPatch patch = stack.getComponentsPatch();
+        if (patch.isEmpty()) return null;
+        try {
+            return DataComponentPatch.CODEC.encodeStart(RegistryOps.create(JsonOps.INSTANCE, registryAccess), patch)
+                    .resultOrPartial(err -> LOGGER.warn("[EconomyCraft] Could not encode components for '{}': {}", key, err))
+                    .orElse(null);
+        } catch (Exception ex) {
+            LOGGER.warn("[EconomyCraft] Could not encode components for '{}': {}", key, ex.toString());
+            return null;
+        }
+    }
+
+    private static boolean isRemoved(JsonObject obj) {
+        return obj.has("removed")
+                && obj.get("removed").isJsonPrimitive()
+                && obj.get("removed").getAsJsonPrimitive().isBoolean()
+                && obj.get("removed").getAsBoolean();
     }
 
     private void createFromBundledDefault() {
@@ -333,7 +481,11 @@ public final class PriceRegistry {
             "minecraft:potion_of_wind_charging_1",
             "minecraft:splash_potion_of_wind_charging_1",
             "minecraft:lingering_potion_of_wind_charging_1",
-            "minecraft:arrow_of_wind_charging_1"
+            "minecraft:arrow_of_wind_charging_1",
+            "minecraft:potion_of_infestation_1",
+            "minecraft:splash_potion_of_infestation_1",
+            "minecraft:lingering_potion_of_infestation_1",
+            "minecraft:arrow_of_infestation_1"
     );
 
     private void mergeNewDefaultsFromBundledDefault() {
@@ -590,6 +742,7 @@ public final class PriceRegistry {
     }
 
     public record PriceEntry(
+            String key,
             IdentifierCompat.Id id,
             String category,
             int stack,

@@ -9,6 +9,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import com.mojang.logging.LogUtils;
+import com.reazip.economycraft.admin.AdminUi;
 import com.reazip.economycraft.util.IdentityCompat;
 import com.reazip.economycraft.util.ItemArgumentCompat;
 import com.reazip.economycraft.util.PermissionCompat;
@@ -19,6 +20,7 @@ import net.minecraft.commands.arguments.GameProfileArgument;
 import net.minecraft.commands.arguments.item.ItemArgument;
 import net.minecraft.commands.arguments.item.ItemInput;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import org.slf4j.Logger;
 
@@ -114,6 +116,11 @@ public final class EconomyCommands {
     ) {
         LiteralArgumentBuilder<CommandSourceStack> root = literal("eco");
 
+        root.executes(ctx -> openHub(ctx.getSource()));
+        root.then(literal("menu").executes(ctx -> openHub(ctx.getSource())));
+        root.then(literal("admin").requires(PermissionCompat.gamemaster())
+                .executes(ctx -> openAdmin(ctx.getSource())));
+
         root.then(buildBalance());
         root.then(buildPay());
         root.then(SellCommand.register().requires(s -> EconomyConfig.get().sellEnabled));
@@ -128,11 +135,48 @@ public final class EconomyCommands {
         root.then(removePlayer);
         root.then(toggleScoreboard);
 
-        if (EconomyConfig.get().serverShopEnabled) {
-            root.then(buildServerShop());
-        }
+        root.then(buildServerShop());
 
         return root;
+    }
+
+    public static void resyncCommands(MinecraftServer server) {
+        if (server == null) return;
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            server.getCommands().sendCommands(player);
+        }
+    }
+
+    private static int openHub(CommandSourceStack source) {
+        ServerPlayer player = tryGetPlayer(source);
+        if (player == null) {
+            source.sendFailure(Component.literal("Only players can open the menu.").withStyle(ChatFormatting.RED));
+            return 0;
+        }
+        try {
+            HubUi.open(player);
+            return 1;
+        } catch (Exception e) {
+            LOGGER.error("[EconomyCraft] Failed to open the menu for {}", player.getDisplayName().getString(), e);
+            source.sendFailure(Component.literal("Failed to open the menu. Check server logs."));
+            return 0;
+        }
+    }
+
+    private static int openAdmin(CommandSourceStack source) {
+        ServerPlayer player = tryGetPlayer(source);
+        if (player == null) {
+            source.sendFailure(Component.literal("Only players can open the admin menu.").withStyle(ChatFormatting.RED));
+            return 0;
+        }
+        try {
+            AdminUi.open(player, EconomyCraft.getManager(source.getServer()));
+            return 1;
+        } catch (Exception e) {
+            LOGGER.error("[EconomyCraft] Failed to open the admin menu for {}", player.getDisplayName().getString(), e);
+            source.sendFailure(Component.literal("Failed to open the admin menu. Check server logs."));
+            return 0;
+        }
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildBalance() {
@@ -559,6 +603,7 @@ public final class EconomyCommands {
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildShop() {
         return literal("shop")
+                .requires(src -> EconomyConfig.get().shopEnabled)
                 .executes(ctx -> openShop(ctx.getSource().getPlayerOrException(), ctx.getSource()))
                 .then(literal("list")
                         .executes(ctx -> usage(ctx.getSource(), "/shop list <price> [<amount>]"))
@@ -580,6 +625,10 @@ public final class EconomyCommands {
     }
 
     private static int openShop(ServerPlayer player, CommandSourceStack source) {
+        if (!EconomyConfig.get().shopEnabled) {
+            source.sendFailure(Component.literal("The player shop is disabled.").withStyle(ChatFormatting.RED));
+            return 0;
+        }
         try {
             ShopUi.open(player, EconomyCraft.getManager(source.getServer()).getShop());
             return 1;
@@ -591,6 +640,10 @@ public final class EconomyCommands {
     }
 
     private static int searchShop(ServerPlayer player, String query, CommandSourceStack source) {
+        if (!EconomyConfig.get().shopEnabled) {
+            source.sendFailure(Component.literal("The player shop is disabled.").withStyle(ChatFormatting.RED));
+            return 0;
+        }
         try {
             ShopUi.openSearch(player, EconomyCraft.getManager(source.getServer()).getShop(), query);
             return 1;
@@ -602,6 +655,10 @@ public final class EconomyCommands {
     }
 
     private static int listItem(ServerPlayer player, long price, int amount, CommandSourceStack source) {
+        if (!EconomyConfig.get().shopEnabled) {
+            source.sendFailure(Component.literal("The player shop is disabled.").withStyle(ChatFormatting.RED));
+            return 0;
+        }
         ItemStack hand = player.getMainHandItem();
         if (hand.isEmpty()) {
             source.sendFailure(Component.literal("Hold the item to list in your hand").withStyle(ChatFormatting.RED));
@@ -689,6 +746,7 @@ public final class EconomyCommands {
         return literal("orders")
                 .executes(ctx -> openOrders(ctx.getSource().getPlayerOrException(), ctx.getSource()))
                 .then(literal("request")
+                        .requires(src -> EconomyConfig.get().ordersEnabled)
                         .executes(ctx -> usage(ctx.getSource(), requestUsage))
                         .then(argument("item", ItemArgument.item(buildContext))
                                 .executes(ctx -> usage(ctx.getSource(), requestUsage))
@@ -702,6 +760,7 @@ public final class EconomyCommands {
                                                         ctx.getSource()))))))
                 .then(literal("claim").executes(ctx -> claimOrders(ctx.getSource().getPlayerOrException(), ctx.getSource())))
                 .then(literal("search")
+                        .requires(src -> EconomyConfig.get().ordersEnabled)
                         .executes(ctx -> usage(ctx.getSource(), "/orders search <query>"))
                         .then(argument("query", StringArgumentType.greedyString())
                                 .executes(ctx -> searchOrders(ctx.getSource().getPlayerOrException(),
@@ -710,6 +769,10 @@ public final class EconomyCommands {
     }
 
     private static int openOrders(ServerPlayer player, CommandSourceStack source) {
+        if (!EconomyConfig.get().ordersEnabled) {
+            source.sendFailure(Component.literal("Orders are disabled.").withStyle(ChatFormatting.RED));
+            return 0;
+        }
         try {
             OrdersUi.open(player, EconomyCraft.getManager(source.getServer()));
             return 1;
@@ -756,6 +819,10 @@ public final class EconomyCommands {
     }
 
     private static int searchOrders(ServerPlayer player, String query, CommandSourceStack source) {
+        if (!EconomyConfig.get().ordersEnabled) {
+            source.sendFailure(Component.literal("Orders are disabled.").withStyle(ChatFormatting.RED));
+            return 0;
+        }
         try {
             OrdersUi.openSearch(player, EconomyCraft.getManager(source.getServer()), query);
             return 1;

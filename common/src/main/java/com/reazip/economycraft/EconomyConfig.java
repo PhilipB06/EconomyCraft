@@ -35,6 +35,10 @@ public class EconomyConfig {
     public boolean serverShopEnabled = true;
     @SerializedName("sell_enabled")
     public boolean sellEnabled = true;
+    @SerializedName("shop_enabled")
+    public boolean shopEnabled = true;
+    @SerializedName("orders_enabled")
+    public boolean ordersEnabled = true;
     @SerializedName("balance_separator")
     public String balanceSeparator = ".";
 
