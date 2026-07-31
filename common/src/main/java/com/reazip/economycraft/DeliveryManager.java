@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
+import com.reazip.economycraft.util.AsyncFileWriter;
 import com.reazip.economycraft.util.DeliveryLedger;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.ItemStack;
@@ -91,10 +92,6 @@ public final class DeliveryManager {
     }
 
     public void save() {
-        try {
-            Files.writeString(file, GSON.toJson(ledger.save(server.registryAccess())), StandardCharsets.UTF_8);
-        } catch (IOException ex) {
-            LOGGER.error("[EconomyCraft] Failed to save {}", file, ex);
-        }
+        AsyncFileWriter.writeAsync(file, GSON.toJson(ledger.save(server.registryAccess())));
     }
 }

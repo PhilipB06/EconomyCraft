@@ -8,6 +8,7 @@ import com.reazip.economycraft.util.ContainerPreviewUi;
 import com.reazip.economycraft.util.ItemsCompat;
 import com.reazip.economycraft.util.MenuUiSupport;
 import com.reazip.economycraft.util.SearchInputUi;
+import com.reazip.economycraft.util.SortMode;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.ClickEvent;
@@ -27,20 +28,21 @@ import net.minecraft.world.item.component.ItemLore;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 public final class ShopUi {
     private ShopUi() {}
 
     public static void open(ServerPlayer player, ShopManager shop) {
-        open(player, shop, 0, null);
+        open(player, shop, 0, null, SortMode.DEFAULT, false);
     }
 
     public static void openSearch(ServerPlayer player, ShopManager shop, String query) {
-        open(player, shop, 0, query);
+        open(player, shop, 0, query, SortMode.DEFAULT, false);
     }
 
-    static void open(ServerPlayer player, ShopManager shop, int page, @Nullable String query) {
+    static void open(ServerPlayer player, ShopManager shop, int page, @Nullable String query, SortMode sort, boolean mineOnly) {
         Component title = Component.literal("Shop");
 
         player.openMenu(new MenuProvider() {
@@ -51,12 +53,12 @@ public final class ShopUi {
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                return new ShopMenu(id, inv, shop, player, page, query);
+                return new ShopMenu(id, inv, shop, player, page, query, sort, mineOnly);
             }
         });
     }
 
-    static void openConfirm(ServerPlayer player, ShopManager shop, ShopListing listing, @Nullable String query) {
+    static void openConfirm(ServerPlayer player, ShopManager shop, ShopListing listing, @Nullable String query, SortMode sort, boolean mineOnly) {
         player.openMenu(new MenuProvider() {
             @Override
             public Component getDisplayName() {
@@ -65,12 +67,12 @@ public final class ShopUi {
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                return new ConfirmMenu(id, inv, shop, listing, player, query);
+                return new ConfirmMenu(id, inv, shop, listing, player, query, sort, mineOnly);
             }
         });
     }
 
-    private static void openRemove(ServerPlayer player, ShopManager shop, ShopListing listing, @Nullable String query) {
+    private static void openRemove(ServerPlayer player, ShopManager shop, ShopListing listing, @Nullable String query, SortMode sort, boolean mineOnly) {
         player.openMenu(new MenuProvider() {
             @Override
             public Component getDisplayName() {
@@ -79,7 +81,7 @@ public final class ShopUi {
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                return new RemoveMenu(id, inv, shop, listing, player, query);
+                return new RemoveMenu(id, inv, shop, listing, player, query, sort, mineOnly);
             }
         });
     }
@@ -101,6 +103,8 @@ public final class ShopUi {
         private final ShopManager shop;
         private final ServerPlayer viewer;
         @Nullable private final String query;
+        private SortMode sort;
+        private boolean mineOnly;
         private List<ShopListing> listings = new ArrayList<>();
         private final SimpleContainer container;
         private final int rows;
@@ -109,16 +113,18 @@ public final class ShopUi {
         private int page;
         private final Runnable listener = this::updatePage;
 
-        ShopMenu(int id, Inventory inv, ShopManager shop, ServerPlayer viewer, int page, @Nullable String query) {
-            this(id, inv, shop, viewer, page, query, resolveListings(shop, query));
+        ShopMenu(int id, Inventory inv, ShopManager shop, ServerPlayer viewer, int page, @Nullable String query, SortMode sort, boolean mineOnly) {
+            this(id, inv, shop, viewer, page, query, sort, mineOnly, resolveListings(shop, query, sort, mineOnly, viewer));
         }
 
-        private ShopMenu(int id, Inventory inv, ShopManager shop, ServerPlayer viewer, int page, @Nullable String query, List<ShopListing> resolved) {
+        private ShopMenu(int id, Inventory inv, ShopManager shop, ServerPlayer viewer, int page, @Nullable String query, SortMode sort, boolean mineOnly, List<ShopListing> resolved) {
             super(MenuUiSupport.getMenuType(MenuUiSupport.requiredRows(resolved.size())), id);
             this.shop = shop;
             this.viewer = viewer;
             this.page = page;
             this.query = query;
+            this.sort = sort;
+            this.mineOnly = mineOnly;
             this.rows = MenuUiSupport.requiredRows(resolved.size());
             this.itemsPerPage = (rows - 1) * 9;
             this.navRowStart = itemsPerPage;
@@ -134,17 +140,44 @@ public final class ShopUi {
             }
         }
 
-        private static List<ShopListing> resolveListings(ShopManager shop, @Nullable String query) {
+        private static List<ShopListing> resolveListings(ShopManager shop, @Nullable String query, SortMode sort, boolean mineOnly, ServerPlayer viewer) {
             List<ShopListing> list = new ArrayList<>(shop.getListings());
             if (query != null && !query.isBlank()) {
                 list.removeIf(l -> !MenuUiSupport.matchesSearch(l.item, query));
             }
+            if (mineOnly) {
+                list.removeIf(l -> !viewer.getUUID().equals(l.seller));
+            }
+            if (sort == SortMode.PRICE_ASC) {
+                list.sort(Comparator.comparingLong(l -> l.price));
+            } else if (sort == SortMode.PRICE_DESC) {
+                list.sort((a, b) -> Long.compare(b.price, a.price));
+            }
             return list;
         }
 
+        private static Component sortOption(String label, boolean active) {
+            return Component.literal("• " + label).withStyle(s -> s.withItalic(false).withBold(active)
+                    .withColor(active ? ChatFormatting.WHITE : ChatFormatting.GRAY));
+        }
+
         private void updatePage() {
-            listings = resolveListings(shop, query);
+            listings = resolveListings(shop, query, sort, mineOnly, viewer);
             renderPage();
+        }
+
+        private void cycleSort() {
+            if (mineOnly) {
+                mineOnly = false;
+                sort = SortMode.DEFAULT;
+            } else if (sort == SortMode.DEFAULT) {
+                sort = SortMode.PRICE_ASC;
+            } else if (sort == SortMode.PRICE_ASC) {
+                sort = SortMode.PRICE_DESC;
+            } else {
+                sort = SortMode.DEFAULT;
+                mineOnly = true;
+            }
         }
 
         private void renderPage() {
@@ -187,6 +220,16 @@ public final class ShopUi {
             ItemStack balance = MenuUiSupport.createBalanceItem(viewer);
             container.setItem(navRowStart, balance);
 
+            ItemStack sortIcon = new ItemStack(Items.HOPPER);
+            sortIcon.set(DataComponents.CUSTOM_NAME, Component.literal("Sort").withStyle(s -> s.withItalic(false).withBold(true).withColor(MenuUiSupport.LABEL_PRIMARY_COLOR)));
+            sortIcon.set(DataComponents.LORE, new ItemLore(List.of(
+                    Component.literal("Click to cycle").withStyle(s -> s.withItalic(true).withColor(ChatFormatting.GRAY)),
+                    sortOption("Recently Listed", !mineOnly && sort == SortMode.DEFAULT),
+                    sortOption("Lowest Price", !mineOnly && sort == SortMode.PRICE_ASC),
+                    sortOption("Highest Price", !mineOnly && sort == SortMode.PRICE_DESC),
+                    sortOption("Mine Only", mineOnly))));
+            container.setItem(navRowStart + 1, sortIcon);
+
             ItemStack paper = new ItemStack(Items.PAPER);
             paper.set(DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
             container.setItem(navRowStart + 4, paper);
@@ -204,7 +247,7 @@ public final class ShopUi {
             if (type == ContainerInput.THROW && slot >= 0 && slot < navRowStart) {
                 int index = page * itemsPerPage + slot;
                 if (index < listings.size() && MenuUiSupport.hasContainerContents(listings.get(index).item)) {
-                    ContainerPreviewUi.open((ServerPlayer) player, listings.get(index).item, () -> ShopUi.open((ServerPlayer) player, shop, page, query));
+                    ContainerPreviewUi.open((ServerPlayer) player, listings.get(index).item, () -> ShopUi.open((ServerPlayer) player, shop, page, query, sort, mineOnly));
                 }
                 return;
             }
@@ -215,23 +258,29 @@ public final class ShopUi {
                         ShopListing listing = listings.get(index);
                         ServerPlayer sp = (ServerPlayer) player;
                         if (listing.seller.equals(sp.getUUID())) {
-                            openRemove(sp, shop, listing, query);
+                            openRemove(sp, shop, listing, query, sort, mineOnly);
                         } else if (!canAfford(sp, listing.price)) {
                             sp.sendSystemMessage(Component.literal("Not enough balance").withStyle(ChatFormatting.RED));
                         } else {
-                            ShopUi.openConfirm(sp, shop, listing, query);
+                            ShopUi.openConfirm(sp, shop, listing, query, sort, mineOnly);
                         }
                         return;
                     }
                 }
                 if (slot == navRowStart + 3 && page > 0) { page--; updatePage(); return; }
                 if (slot == navRowStart + 5 && (page + 1) * itemsPerPage < listings.size()) { page++; updatePage(); return; }
+                if (slot == navRowStart + 1) {
+                    cycleSort();
+                    page = 0;
+                    updatePage();
+                    return;
+                }
                 if (slot == navRowStart + 8) {
                     ServerPlayer sp = (ServerPlayer) player;
                     if (query != null && !query.isBlank()) {
-                        ShopUi.open(sp, shop, 0, null);
+                        ShopUi.open(sp, shop, 0, null, sort, mineOnly);
                     } else {
-                        SearchInputUi.open(sp, "Search Shop", (p, q) -> ShopUi.open(p, shop, 0, q));
+                        SearchInputUi.open(sp, "Search Shop", (p, q) -> ShopUi.open(p, shop, 0, q, sort, mineOnly));
                     }
                     return;
                 }
@@ -256,13 +305,17 @@ public final class ShopUi {
         private final ShopManager shop;
         private final ShopListing listing;
         @Nullable private final String query;
+        private final SortMode sort;
+        private final boolean mineOnly;
         private final SimpleContainer container = new SimpleContainer(9);
 
-        ConfirmMenu(int id, Inventory inv, ShopManager shop, ShopListing listing, ServerPlayer viewer, @Nullable String query) {
+        ConfirmMenu(int id, Inventory inv, ShopManager shop, ShopListing listing, ServerPlayer viewer, @Nullable String query, SortMode sort, boolean mineOnly) {
             super(MenuType.GENERIC_9x1, id);
             this.shop = shop;
             this.listing = listing;
             this.query = query;
+            this.sort = sort;
+            this.mineOnly = mineOnly;
 
             ItemStack confirm = new ItemStack(ItemsCompat.limeStainedGlassPane());
             confirm.set(DataComponents.CUSTOM_NAME,
@@ -298,7 +351,7 @@ public final class ShopUi {
         @Override
         public void clicked(int slot, int dragType, ContainerInput type, Player player) {
             if (type == ContainerInput.THROW && slot == 4 && MenuUiSupport.hasContainerContents(listing.item)) {
-                ContainerPreviewUi.open((ServerPlayer) player, listing.item, () -> ShopUi.openConfirm((ServerPlayer) player, shop, listing, query));
+                ContainerPreviewUi.open((ServerPlayer) player, listing.item, () -> ShopUi.openConfirm((ServerPlayer) player, shop, listing, query, sort, mineOnly));
                 return;
             }
             if (type == ContainerInput.PICKUP) {
@@ -354,13 +407,13 @@ public final class ShopUi {
                         }
                     }
                     player.closeContainer();
-                    ShopUi.open(sp, shop, 0, query);
+                    ShopUi.open(sp, shop, 0, query, sort, mineOnly);
                     return;
                 }
 
                 if (slot == 6) {
                     player.closeContainer();
-                    ShopUi.open((ServerPlayer) player, shop, 0, query);
+                    ShopUi.open((ServerPlayer) player, shop, 0, query, sort, mineOnly);
                     return;
                 }
             }
@@ -379,14 +432,18 @@ public final class ShopUi {
         private final ShopListing listing;
         private final ServerPlayer viewer;
         @Nullable private final String query;
+        private final SortMode sort;
+        private final boolean mineOnly;
         private final SimpleContainer container = new SimpleContainer(9);
 
-        RemoveMenu(int id, Inventory inv, ShopManager shop, ShopListing listing, ServerPlayer viewer, @Nullable String query) {
+        RemoveMenu(int id, Inventory inv, ShopManager shop, ShopListing listing, ServerPlayer viewer, @Nullable String query, SortMode sort, boolean mineOnly) {
             super(MenuType.GENERIC_9x1, id);
             this.shop = shop;
             this.listing = listing;
             this.viewer = viewer;
             this.query = query;
+            this.sort = sort;
+            this.mineOnly = mineOnly;
 
             ItemStack confirm = new ItemStack(ItemsCompat.limeStainedGlassPane());
             confirm.set(DataComponents.CUSTOM_NAME,
@@ -446,12 +503,12 @@ public final class ShopUi {
                         viewer.sendSystemMessage(Component.literal("Listing no longer available"));
                     }
                     player.closeContainer();
-                    ShopUi.open((ServerPlayer) player, shop, 0, query);
+                    ShopUi.open((ServerPlayer) player, shop, 0, query, sort, mineOnly);
                     return;
                 }
                 if (slot == 6) {
                     player.closeContainer();
-                    ShopUi.open((ServerPlayer) player, shop, 0, query);
+                    ShopUi.open((ServerPlayer) player, shop, 0, query, sort, mineOnly);
                     return;
                 }
             }

@@ -1,5 +1,6 @@
 package com.reazip.economycraft;
 
+import com.reazip.economycraft.util.AsyncFileWriter;
 import com.reazip.economycraft.util.ChatCompat;
 import dev.architectury.event.events.common.CommandRegistrationEvent;
 import dev.architectury.event.events.common.LifecycleEvent;
@@ -33,6 +34,7 @@ public final class EconomyCraft {
             if (manager != null && lastServer == server) {
                 manager.save();
             }
+            AsyncFileWriter.flush();
         });
 
         PlayerEvent.PLAYER_JOIN.register(EconomyCraft::onPlayerJoin);

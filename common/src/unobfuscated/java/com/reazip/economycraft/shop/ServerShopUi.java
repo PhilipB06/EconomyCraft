@@ -11,6 +11,7 @@ import com.reazip.economycraft.util.ContainerPreviewUi;
 import com.reazip.economycraft.util.ItemsCompat;
 import com.reazip.economycraft.util.MenuUiSupport;
 import com.reazip.economycraft.util.SearchInputUi;
+import com.reazip.economycraft.util.SortMode;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
@@ -90,6 +91,10 @@ public final class ServerShopUi {
     }
 
     private static void openSearchResults(ServerPlayer player, EconomyManager eco, @Nullable String category, String query, int page) {
+        openSearchResults(player, eco, category, query, page, SortMode.DEFAULT);
+    }
+
+    private static void openSearchResults(ServerPlayer player, EconomyManager eco, @Nullable String category, String query, int page, SortMode sort) {
         Component title = Component.literal("Search: " + query);
 
         player.openMenu(new MenuProvider() {
@@ -100,7 +105,7 @@ public final class ServerShopUi {
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                return new ItemMenu(id, inv, eco, category, null, query, page, player);
+                return new ItemMenu(id, inv, eco, category, null, query, page, player, sort);
             }
         });
     }
@@ -137,14 +142,18 @@ public final class ServerShopUi {
     }
 
     private static void openItems(ServerPlayer player, EconomyManager eco, String category) {
-        openItems(player, eco, category, null, 0);
+        openItems(player, eco, category, null, 0, SortMode.DEFAULT);
     }
 
     private static void openItems(ServerPlayer player, EconomyManager eco, String category, @Nullable String displayTitle) {
-        openItems(player, eco, category, displayTitle, 0);
+        openItems(player, eco, category, displayTitle, 0, SortMode.DEFAULT);
     }
 
     private static void openItems(ServerPlayer player, EconomyManager eco, String category, @Nullable String displayTitle, int page) {
+        openItems(player, eco, category, displayTitle, page, SortMode.DEFAULT);
+    }
+
+    private static void openItems(ServerPlayer player, EconomyManager eco, String category, @Nullable String displayTitle, int page, SortMode sort) {
         Component title;
         if (displayTitle != null) {
             title = Component.literal(formatCategoryTitle(displayTitle));
@@ -160,7 +169,7 @@ public final class ServerShopUi {
 
             @Override
             public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                return new ItemMenu(id, inv, eco, category, displayTitle, null, page, player);
+                return new ItemMenu(id, inv, eco, category, displayTitle, null, page, player, sort);
             }
         });
     }
@@ -410,6 +419,7 @@ public final class ServerShopUi {
         @Nullable private final String category;
         @Nullable private final String displayTitle;
         @Nullable private final String searchQuery;
+        private SortMode sort;
         private List<PriceRegistry.PriceEntry> entries = new ArrayList<>();
         private final SimpleContainer container;
         private final int rows;
@@ -418,18 +428,20 @@ public final class ServerShopUi {
         private int page;
 
         ItemMenu(int id, Inventory inv, EconomyManager eco, @Nullable String category, @Nullable String displayTitle,
-                  @Nullable String searchQuery, int page, ServerPlayer viewer) {
-            this(id, inv, eco, category, displayTitle, searchQuery, page, viewer, resolveEntries(eco, category, searchQuery));
+                  @Nullable String searchQuery, int page, ServerPlayer viewer, SortMode sort) {
+            this(id, inv, eco, category, displayTitle, searchQuery, page, viewer, sort,
+                    applySort(resolveEntries(eco, category, searchQuery), sort));
         }
 
         private ItemMenu(int id, Inventory inv, EconomyManager eco, @Nullable String category, @Nullable String displayTitle,
-                  @Nullable String searchQuery, int page, ServerPlayer viewer, List<PriceRegistry.PriceEntry> resolved) {
+                  @Nullable String searchQuery, int page, ServerPlayer viewer, SortMode sort, List<PriceRegistry.PriceEntry> resolved) {
             super(MenuUiSupport.getMenuType(MenuUiSupport.requiredRows(resolved.size())), id);
             this.eco = eco;
             this.viewer = viewer;
             this.category = category;
             this.displayTitle = displayTitle;
             this.searchQuery = searchQuery;
+            this.sort = sort;
             this.prices = eco.getPrices();
 
             this.entries = resolved;
@@ -444,6 +456,19 @@ public final class ServerShopUi {
 
         private static List<PriceRegistry.PriceEntry> resolveEntries(EconomyManager eco, @Nullable String category, @Nullable String searchQuery) {
             return searchQuery != null ? eco.getPrices().search(searchQuery, category) : eco.getPrices().buyableByCategory(category);
+        }
+
+        private static List<PriceRegistry.PriceEntry> applySort(List<PriceRegistry.PriceEntry> list, SortMode sort) {
+            if (sort == SortMode.DEFAULT) return list;
+            List<PriceRegistry.PriceEntry> copy = new ArrayList<>(list);
+            Comparator<PriceRegistry.PriceEntry> cmp = Comparator.comparingLong(PriceRegistry.PriceEntry::unitBuy);
+            copy.sort(sort == SortMode.PRICE_DESC ? cmp.reversed() : cmp);
+            return copy;
+        }
+
+        private static Component sortOption(String label, boolean active) {
+            return Component.literal("• " + label).withStyle(s -> s.withItalic(false).withBold(active)
+                    .withColor(active ? ChatFormatting.WHITE : ChatFormatting.GRAY));
         }
 
         private void setupSlots(Inventory inv) {
@@ -536,6 +561,15 @@ public final class ServerShopUi {
             ItemStack balance = MenuUiSupport.createBalanceItem(viewer);
             container.setItem(navRowStart, balance);
 
+            ItemStack sortIcon = new ItemStack(Items.HOPPER);
+            sortIcon.set(DataComponents.CUSTOM_NAME, Component.literal("Sort").withStyle(s -> s.withItalic(false).withBold(true).withColor(MenuUiSupport.LABEL_PRIMARY_COLOR)));
+            sortIcon.set(DataComponents.LORE, new ItemLore(List.of(
+                    Component.literal("Click to cycle").withStyle(s -> s.withItalic(true).withColor(ChatFormatting.GRAY)),
+                    sortOption("Default", sort == SortMode.DEFAULT),
+                    sortOption("Lowest Price", sort == SortMode.PRICE_ASC),
+                    sortOption("Highest Price", sort == SortMode.PRICE_DESC))));
+            container.setItem(navRowStart + 1, sortIcon);
+
             ItemStack paper = new ItemStack(Items.PAPER);
             paper.set(DataComponents.CUSTOM_NAME, Component.literal("Page " + (page + 1) + "/" + Math.max(1, totalPages)).withStyle(s -> s.withItalic(false)));
             container.setItem(navRowStart + 4, paper);
@@ -550,9 +584,9 @@ public final class ServerShopUi {
                     if (MenuUiSupport.hasContainerContents(display)) {
                         ContainerPreviewUi.open(viewer, display, () -> {
                             if (searchQuery != null) {
-                                openSearchResults(viewer, eco, category, searchQuery, page);
+                                openSearchResults(viewer, eco, category, searchQuery, page, sort);
                             } else {
-                                openItems(viewer, eco, category, displayTitle, page);
+                                openItems(viewer, eco, category, displayTitle, page, sort);
                             }
                         });
                     }
@@ -577,6 +611,13 @@ public final class ServerShopUi {
                 if (slot == navRowStart + 5 && (page + 1) * itemsPerPage < entries.size()) { page++; updatePage(); return; }
                 if (slot == navRowStart + 7 && !searching()) {
                     SearchInputUi.open(viewer, "Search Server Shop", (p, q) -> ServerShopUi.openSearchResults(p, eco, category, q, 0));
+                    return;
+                }
+                if (slot == navRowStart + 1) {
+                    sort = sort.next();
+                    entries = applySort(resolveEntries(eco, category, searchQuery), sort);
+                    page = 0;
+                    updatePage();
                     return;
                 }
                 if (slot == navRowStart + 8) {

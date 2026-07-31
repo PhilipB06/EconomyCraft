@@ -5,6 +5,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
 import com.reazip.economycraft.DeliveryManager;
+import com.reazip.economycraft.util.AsyncFileWriter;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.ItemStack;
 import org.slf4j.Logger;
@@ -13,13 +14,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class OrderManager {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Gson GSON = new Gson();
     private final MinecraftServer server;
     private final Path file;
-    private final Map<Integer, OrderRequest> requests = new HashMap<>();
+    private final Map<Integer, OrderRequest> requests = new ConcurrentHashMap<>();
     private final DeliveryManager deliveries;
     private final List<Runnable> listeners = new ArrayList<>();
     private int nextId = 1;
@@ -101,11 +103,7 @@ public class OrderManager {
             reqArr.add(r.save(server.registryAccess()));
         }
         root.add("requests", reqArr);
-        try {
-            Files.writeString(file, GSON.toJson(root));
-        } catch (IOException ex) {
-            LOGGER.error("[EconomyCraft] Failed to save {}", file, ex);
-        }
+        AsyncFileWriter.writeAsync(file, GSON.toJson(root));
     }
 
     public void addListener(Runnable run) {

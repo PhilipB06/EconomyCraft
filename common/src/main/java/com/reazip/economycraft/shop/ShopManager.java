@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
 import com.reazip.economycraft.DeliveryManager;
 import com.reazip.economycraft.EconomyCraft;
+import com.reazip.economycraft.util.AsyncFileWriter;
 import com.reazip.economycraft.util.IdentityCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -18,13 +19,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ShopManager {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Gson GSON = new Gson();
     private final MinecraftServer server;
     private final Path file;
-    private final Map<Integer, ShopListing> listings = new HashMap<>();
+    private final Map<Integer, ShopListing> listings = new ConcurrentHashMap<>();
     private final DeliveryManager deliveries;
     private final List<Runnable> listeners = new ArrayList<>();
     private int nextId = 1;
@@ -128,11 +130,7 @@ public class ShopManager {
             listArr.add(l.save(server.registryAccess()));
         }
         root.add("listings", listArr);
-        try {
-            Files.writeString(file, GSON.toJson(root));
-        } catch (IOException ex) {
-            LOGGER.error("[EconomyCraft] Failed to save {}", file, ex);
-        }
+        AsyncFileWriter.writeAsync(file, GSON.toJson(root));
     }
 
     public void addListener(Runnable run) {

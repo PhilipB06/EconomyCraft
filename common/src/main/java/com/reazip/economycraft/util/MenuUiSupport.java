@@ -105,7 +105,7 @@ public final class MenuUiSupport {
         profile.ifPresent(resolvable -> head.set(DataComponents.PROFILE, resolvable));
         long balance = eco.getBalance(playerId, true);
         String displayName = name != null ? name : playerId.toString();
-        head.set(DataComponents.CUSTOM_NAME, Component.literal(displayName).withStyle(s -> s.withItalic(false).withColor(BALANCE_NAME_COLOR)));
+        head.set(DataComponents.CUSTOM_NAME, Component.literal(displayName).withStyle(s -> s.withItalic(false).withBold(true).withColor(BALANCE_NAME_COLOR)));
         head.set(DataComponents.LORE, new ItemLore(List.of(balanceLore(balance))));
         return head;
     }

@@ -10,14 +10,14 @@ import net.minecraft.world.item.ItemStack;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class DeliveryLedger {
     private static final Logger LOGGER = LogUtils.getLogger();
-    private final Map<UUID, List<ItemStack>> deliveries = new HashMap<>();
+    private final Map<UUID, List<ItemStack>> deliveries = new ConcurrentHashMap<>();
 
     public void add(UUID player, ItemStack stack) {
         if (stack == null || stack.isEmpty()) return;

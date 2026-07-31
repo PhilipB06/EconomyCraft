@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.reazip.economycraft.orders.OrderManager;
 import com.reazip.economycraft.shop.ShopManager;
+import com.reazip.economycraft.util.AsyncFileWriter;
 import com.reazip.economycraft.util.IdentityCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -21,6 +22,7 @@ import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.time.LocalDate;
 
 public class EconomyManager {
@@ -35,17 +37,17 @@ public class EconomyManager {
     private final Path dailyFile;
     private final Path dailySellFile;
 
-    private final Map<UUID, Long> balances = new HashMap<>();
-    private final Map<UUID, Long> lastDaily = new HashMap<>();
-    private final Map<UUID, DailySellData> dailySells = new HashMap<>();
-    private Map<UUID, String> diskUserCache = null;
+    private final Map<UUID, Long> balances = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> lastDaily = new ConcurrentHashMap<>();
+    private final Map<UUID, DailySellData> dailySells = new ConcurrentHashMap<>();
+    private volatile Map<UUID, String> diskUserCache = null;
     private final PriceRegistry prices;
 
     private Objective objective;
     private final DeliveryManager deliveries;
     private final ShopManager shop;
     private final OrderManager orders;
-    private final Map<UUID, String> displayed = new HashMap<>();
+    private final Map<UUID, String> displayed = new ConcurrentHashMap<>();
 
     public static final long MAX = 999_999_999L;
 
@@ -75,24 +77,28 @@ public class EconomyManager {
         return server;
     }
 
-    private void ensureDiskUserCacheLoaded() {
+    private synchronized void ensureDiskUserCacheLoaded() {
         if (diskUserCache != null) return;
-        diskUserCache = new HashMap<>();
+        Map<UUID, String> cache = new HashMap<>();
         try {
             Path uc = server.getFile("usercache.json");
-            if (!Files.exists(uc)) return;
+            if (!Files.exists(uc)) {
+                diskUserCache = cache;
+                return;
+            }
 
             String json = Files.readString(uc);
             UserCacheEntry[] entries = GSON.fromJson(json, UserCacheEntry[].class);
-            if (entries == null) return;
-
-            for (UserCacheEntry e : entries) {
-                if (e == null || e.uuid == null || e.uuid.isBlank() || e.name == null || e.name.isBlank()) continue;
-                try {
-                    diskUserCache.put(UUID.fromString(e.uuid), e.name);
-                } catch (IllegalArgumentException ignored) {}
+            if (entries != null) {
+                for (UserCacheEntry e : entries) {
+                    if (e == null || e.uuid == null || e.uuid.isBlank() || e.name == null || e.name.isBlank()) continue;
+                    try {
+                        cache.put(UUID.fromString(e.uuid), e.name);
+                    } catch (IllegalArgumentException ignored) {}
+                }
             }
         } catch (IOException ignored) {}
+        diskUserCache = cache;
     }
 
     private String resolveName(MinecraftServer server, UUID id) {
@@ -184,21 +190,9 @@ public class EconomyManager {
     }
 
     public void save() {
-        try {
-            Map<UUID, Long> data = new HashMap<>(balances);
-            String json = GSON.toJson(data, TYPE);
-            Files.writeString(file, json);
-        } catch (IOException ignored) {}
-
-        try {
-            String json = GSON.toJson(lastDaily, new TypeToken<Map<UUID, Long>>(){}.getType());
-            Files.writeString(dailyFile, json);
-        } catch (IOException ignored) {}
-
-        try {
-            String json = GSON.toJson(dailySells, DAILY_SELL_TYPE);
-            Files.writeString(dailySellFile, json);
-        } catch (IOException ignored) {}
+        AsyncFileWriter.writeAsync(file, GSON.toJson(new HashMap<>(balances), TYPE));
+        AsyncFileWriter.writeAsync(dailyFile, GSON.toJson(new HashMap<>(lastDaily), new TypeToken<Map<UUID, Long>>(){}.getType()));
+        AsyncFileWriter.writeAsync(dailySellFile, GSON.toJson(new HashMap<>(dailySells), DAILY_SELL_TYPE));
     }
 
     private void loadDaily() {
