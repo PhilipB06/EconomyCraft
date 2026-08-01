@@ -1,7 +1,6 @@
 # EconomyCraft
 
-A server-side economy for Fabric and NeoForge, configured in game or through JSON.
-
+A server-side economy for Fabric and NeoForge.
 Requires Architectury API.
 
 ---
@@ -12,7 +11,7 @@ Requires Architectury API.
 2. Type `/eco` in game to open the menu.
 3. Operators get an **Admin** button in that menu, or can run `/eco admin`.
 
-The default configuration works without changes.
+Default configuration works without manual changes.
 
 ---
 
@@ -28,9 +27,9 @@ The default configuration works without changes.
 | **Pay a Player** | Select a player and an amount.                                                                                                                |
 | **Top Balances** | The richest players on the server.                                                                                                            |
 | **Item Value**   | The buy and sell price of any item.                                                                                                           |
-| **Deliveries**   | Items bought while the inventory was full.                                                                                                    |
+| **Deliveries**   | Items bought while the inventory was full or orders that have been completed while being offline.                                             |
 
-Each screen also has a command: `/bal`, `/bal top`, `/pay`, `/daily`, `/shop`, `/servershop`, `/sell`, `/worth`, `/orders`, `/orders claim`. `/shop search <query>` and the other `search` subcommands are available too.
+Each screen also has a command: `/bal`, `/bal top`, `/pay`, `/daily`, `/shop`, `/servershop`, `/sell`, `/worth`, `/orders`, `/orders claim`.
 
 ---
 
@@ -104,7 +103,7 @@ One entry per server shop item, keyed by item id:
 
 Two further keys are written by the editor:
 
-- `components` holds NBT for custom items such as a name, enchantments or shulker contents. JSON keys must be unique, so a second variant of the same item takes a `#label` suffix — `minecraft:shulker_box#loot_rare`. The suffix is stripped on load and is not shown to players.
+- `components` holds NBT for custom items such as a name, enchantments or shulker contents. JSON keys must be unique, so a second variant of the same item takes a `#label` suffix, e.g.: `minecraft:shulker_box#loot_rare`. The suffix is stripped on load and is not shown to players.
 - `"removed": true` marks a bundled default that was deleted, so it is not restored on the next start. Delete the entry to restore it.
 
 ---
@@ -125,3 +124,5 @@ Both are optional and not bundled. The mod works without them, but the matching 
 | `%economycraft:top_balance_formatted 1%` | Formatted balance of the player ranked `1`.                                                |
 
 The `top_*` placeholders take the rank as an argument, e.g. `%economycraft:top_name 3%` for third place. Ranks beyond the number of players resolve as invalid.
+
+---
