@@ -7,6 +7,7 @@ import com.mojang.logging.LogUtils;
 import com.reazip.economycraft.DeliveryManager;
 import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.util.AsyncFileWriter;
+import com.reazip.economycraft.util.EconomyPaths;
 import com.reazip.economycraft.util.IdentityCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -15,7 +16,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import org.slf4j.Logger;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -33,10 +33,7 @@ public class ShopManager {
 
     public ShopManager(MinecraftServer server, DeliveryManager deliveries) {
         this.server = server;
-        Path dir = server.getFile("config/economycraft");
-        Path dataDir = dir.resolve("data");
-        try { Files.createDirectories(dataDir); } catch (IOException ignored) {}
-        this.file = dataDir.resolve("shop.json");
+        this.file = EconomyPaths.dataDir(server).resolve("shop.json");
         this.deliveries = deliveries;
         load();
     }

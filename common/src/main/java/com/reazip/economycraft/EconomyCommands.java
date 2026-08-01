@@ -10,11 +10,14 @@ import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import com.mojang.logging.LogUtils;
 import com.reazip.economycraft.admin.AdminUi;
+import com.reazip.economycraft.util.AsyncFileWriter;
+import com.reazip.economycraft.util.EconomyPaths;
 import com.reazip.economycraft.util.IdentityCompat;
 import com.reazip.economycraft.util.ItemArgumentCompat;
 import com.reazip.economycraft.util.PermissionCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandBuildContext;
+import net.minecraft.commands.Commands;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.arguments.GameProfileArgument;
 import net.minecraft.commands.arguments.item.ItemArgument;
@@ -45,9 +48,11 @@ import org.jetbrains.annotations.Nullable;
 public final class EconomyCommands {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final int MAIN_INVENTORY_SLOTS = 36;
-    public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext buildContext) {
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext buildContext,
+                                Commands.CommandSelection selection) {
         dispatcher.register(buildRoot(
                 buildContext,
+                selection,
                 buildAddMoney(),
                 buildSetMoney(),
                 buildRemoveMoney(),
@@ -108,6 +113,7 @@ public final class EconomyCommands {
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildRoot(
             CommandBuildContext buildContext,
+            Commands.CommandSelection selection,
             LiteralArgumentBuilder<CommandSourceStack> addMoney,
             LiteralArgumentBuilder<CommandSourceStack> setMoney,
             LiteralArgumentBuilder<CommandSourceStack> removeMoney,
@@ -137,7 +143,37 @@ public final class EconomyCommands {
 
         root.then(buildServerShop());
 
+        if (selection != Commands.CommandSelection.DEDICATED) {
+            root.then(literal("import")
+                    .requires(s -> EconomyCraft.canImportSharedFolder())
+                    .executes(ctx -> importSharedFolder(ctx.getSource())));
+        }
+
         return root;
+    }
+
+    private static int importSharedFolder(CommandSourceStack source) {
+        MinecraftServer server = source.getServer();
+
+        if (!EconomyPaths.hasSharedFolder(server)) {
+            source.sendFailure(Component.literal("There is nothing left to import.").withStyle(ChatFormatting.RED));
+            return 0;
+        }
+
+        AsyncFileWriter.flush();
+
+        if (!EconomyPaths.importSharedFolder(server)) {
+            source.sendFailure(Component.literal("Import failed. config/economycraft was left in place, so you can try again. Check the log for the reason.")
+                    .withStyle(ChatFormatting.RED));
+            return 0;
+        }
+
+        EconomyCraft.reloadFromDisk(server);
+        resyncCommands(server);
+
+        source.sendSuccess(() -> Component.literal("Imported the old settings, prices and economy into this world. The old folder is now config/economycraft_imported.")
+                .withStyle(ChatFormatting.GREEN), false);
+        return 1;
     }
 
     public static void resyncCommands(MinecraftServer server) {

@@ -62,7 +62,10 @@ Select any player, online or not, to give, take or set their balance, or remove 
 
 ## Config files
 
-Config and player data are stored in `config/economycraft/`. The Admin menu writes these files; this section documents them for scripted or bulk edits.
+On a server, config and player data are stored in `config/economycraft/`: `config.json` and `prices.json` at the top, balances, shops, orders and deliveries under `data/`.
+
+In singleplayer each world gets that same folder inside its own save, at `saves/<world>/economycraft/`.
+
 
 ### `config.json`
 

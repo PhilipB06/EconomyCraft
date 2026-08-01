@@ -7,6 +7,7 @@ import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.core.registries.BuiltInRegistries;
+import com.reazip.economycraft.util.EconomyPaths;
 import com.reazip.economycraft.util.IdentifierCompat;
 import com.reazip.economycraft.util.MenuUiSupport;
 import net.minecraft.core.HolderLookup;
@@ -48,14 +49,7 @@ public final class PriceRegistry {
     private final Map<IdentifierCompat.Id, List<PriceEntry>> prices = new LinkedHashMap<>();
 
     public PriceRegistry(MinecraftServer server) {
-        Path dir = server.getFile("config/economycraft");
-        try {
-            Files.createDirectories(dir);
-        } catch (IOException e) {
-            LOGGER.error("[EconomyCraft] Could not create config directory: {}", dir, e);
-        }
-
-        this.file = dir.resolve("prices.json");
+        this.file = EconomyPaths.configDir(server).resolve("prices.json");
         this.registryAccess = server.registryAccess();
 
         if (Files.notExists(this.file)) {

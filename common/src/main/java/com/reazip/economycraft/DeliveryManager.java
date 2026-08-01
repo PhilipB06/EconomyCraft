@@ -6,11 +6,11 @@ import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
 import com.reazip.economycraft.util.AsyncFileWriter;
 import com.reazip.economycraft.util.DeliveryLedger;
+import com.reazip.economycraft.util.EconomyPaths;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.ItemStack;
 import org.slf4j.Logger;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -27,13 +27,7 @@ public final class DeliveryManager {
 
     public DeliveryManager(MinecraftServer server) {
         this.server = server;
-        Path dir = server.getFile("config/economycraft");
-        Path dataDir = dir.resolve("data");
-        try {
-            Files.createDirectories(dataDir);
-        } catch (IOException e) {
-            LOGGER.error("[EconomyCraft] Could not create data directory: {}", dataDir, e);
-        }
+        Path dataDir = EconomyPaths.dataDir(server);
         this.file = dataDir.resolve("deliveries.json");
         load(dataDir);
     }

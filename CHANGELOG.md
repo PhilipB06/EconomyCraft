@@ -11,5 +11,6 @@
 - Menus use one colour scheme: gold labels for values, aqua for click actions, grey for hints.
 
 ### Fixes
+- Fixed every singleplayer world sharing one economy and one config.
 - Fixed 12 brewing entries showing as unavailable in the server shop.
 - Fixed `server_shop_enabled` only taking effect when commands were registered.

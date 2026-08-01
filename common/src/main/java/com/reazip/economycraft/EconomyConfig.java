@@ -3,6 +3,7 @@ package com.reazip.economycraft;
 import com.google.gson.*;
 import com.google.gson.annotations.SerializedName;
 import com.mojang.logging.LogUtils;
+import com.reazip.economycraft.util.EconomyPaths;
 import net.minecraft.server.MinecraftServer;
 import org.slf4j.Logger;
 
@@ -50,9 +51,7 @@ public class EconomyConfig {
     }
 
     public static void load(MinecraftServer server) {
-        Path dir = server != null ? server.getFile("config/economycraft") : Path.of("config/economycraft");
-        try { Files.createDirectories(dir); } catch (IOException ignored) {}
-        file = dir.resolve("config.json");
+        file = EconomyPaths.configDir(server).resolve("config.json");
 
         if (Files.notExists(file)) {
             copyDefaultFromJarOrThrow();

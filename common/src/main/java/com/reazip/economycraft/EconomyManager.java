@@ -5,6 +5,7 @@ import com.google.gson.reflect.TypeToken;
 import com.reazip.economycraft.orders.OrderManager;
 import com.reazip.economycraft.shop.ShopManager;
 import com.reazip.economycraft.util.AsyncFileWriter;
+import com.reazip.economycraft.util.EconomyPaths;
 import com.reazip.economycraft.util.IdentityCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -53,9 +54,7 @@ public class EconomyManager {
 
     public EconomyManager(MinecraftServer server) {
         this.server = server;
-        Path dir = server.getFile("config/economycraft");
-        Path dataDir = dir.resolve("data");
-        try { Files.createDirectories(dataDir); } catch (IOException ignored) {}
+        Path dataDir = EconomyPaths.dataDir(server);
 
         this.file = dataDir.resolve("balances.json");
         this.dailyFile = dataDir.resolve("daily.json");
@@ -75,6 +74,10 @@ public class EconomyManager {
 
     public MinecraftServer getServer() {
         return server;
+    }
+
+    public void detach() {
+        teardownObjective(server.getScoreboard());
     }
 
     private synchronized void ensureDiskUserCacheLoaded() {
