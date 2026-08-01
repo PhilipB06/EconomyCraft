@@ -23,7 +23,7 @@ allprojects {
 // safely forward-reference an ext value defined later in the file.
 ext.mcTargets = [
         [ mc: "26.1.2", fabricApi: "0.154.0+26.1.2", architecturyVer: "20.0.7", neoforge: "26.1.2.76", neoforgeLineLo: "26.1", neoforgeLineHi: "26.2", textPlaceholderApi: "3.0.0+26.1", placeholderApiNeoForge: "3.0.0+26.1+neoforge" ],
-        [ mc: "26.2", fabricApi: "0.154.0+26.2", architecturyVer: "21.0.2", neoforge: "26.2.0.7-beta", neoforgeLineLo: "26.2", neoforgeLineHi: "26.3", textPlaceholderApi: "3.1.0-beta.1+26.2", placeholderApiNeoForge: "3.1.0-beta.1+26.2+neoforge" ],
+        [ mc: "26.2", fabricApi: "0.156.0+26.2", architecturyVer: "21.0.2", neoforge: "26.2.0.7-beta", neoforgeLineLo: "26.2", neoforgeLineHi: "26.3", textPlaceholderApi: "3.1.0-beta.1+26.2", placeholderApiNeoForge: "3.1.0-beta.1+26.2+neoforge" ],
         // 1.21.11 is the last obfuscated Minecraft version, so it needs real remapping (Mojang
         // official mappings) instead of loom-no-remap, and runs on Java 21 instead of 25.
         [ mc: "1.21.11", fabricApi: "0.141.4+1.21.11", architecturyVer: "19.0.1", neoforge: "21.11.42", neoforgeLineLo: "21.11", neoforgeLineHi: "21.12", textPlaceholderApi: "2.8.2+1.21.10", placeholderApiNeoForge: "2.9.0+1.21.11+neoforge", obfuscated: true, javaVersion: 21 ],
