@@ -11,9 +11,10 @@ architectury {
 
 configurations {
     common { canBeResolved = true; canBeConsumed = false }
-    compileClasspath.extendsFrom common
-    runtimeClasspath.extendsFrom common
-    developmentNeoForge.extendsFrom common
+    apiModule { canBeResolved = true; canBeConsumed = false }
+    compileClasspath.extendsFrom common, apiModule
+    runtimeClasspath.extendsFrom common, apiModule
+    developmentNeoForge.extendsFrom common, apiModule
     shadowBundle { canBeResolved = true; canBeConsumed = false }
 }
 
@@ -57,13 +58,16 @@ dependencies {
         // Link common module — namedElements is the remap-aware configuration Loom needs when
         // common was compiled against Mojang official mappings and must be remapped here too.
         common(project(path: ":common", configuration: "namedElements")) { transitive = false }
+        apiModule(project(path: ":api", configuration: "namedElements")) { transitive = false }
     } else {
         api "dev.architectury:architectury-neoforge:${rootProject.findProperty('architectury_version_plain') ?: tgt.architecturyVer}"
 
         // Link common module
         common(project(path: ":common")) { transitive = false }
+        apiModule(project(path: ":api")) { transitive = false }
     }
     shadowBundle project(path: ":common", configuration: "transformProductionNeoForge")
+    shadowBundle project(path: ":api", configuration: "transformProductionNeoForge")
 
     compileOnly "eu.pb4:placeholder-api-neoforge:${rootProject.findProperty('placeholder_api_neoforge_version') ?: tgt.placeholderApiNeoForge}"
 

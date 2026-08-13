@@ -338,7 +338,8 @@ public final class EconomyCommands {
             return 0;
         }
 
-        if (manager.pay(from.getUUID(), toId, amount)) {
+        var payment = manager.pay(from.getUUID(), toId, amount, EconomySources.PLAYER_PAYMENT);
+        if (payment.successful()) {
 
             ServerPlayer executor = tryGetPlayer(source);
 
@@ -354,7 +355,10 @@ public final class EconomyCommands {
                 );
             }
         } else {
-            source.sendFailure(Component.literal("Not enough balance").withStyle(ChatFormatting.RED));
+            String message = payment.status() == com.reazip.economycraft.api.v1.BalanceMutationStatus.MAX_BALANCE_EXCEEDED
+                    ? "Recipient cannot receive that much money"
+                    : "Not enough balance";
+            source.sendFailure(Component.literal(message).withStyle(ChatFormatting.RED));
         }
         return 1;
     }
@@ -412,7 +416,12 @@ public final class EconomyCommands {
 
         if (profiles.size() == 1) {
             var p = profiles.iterator().next();
-            manager.addMoney(p.id(), amount);
+            var result = manager.addMoney(p.id(), amount, EconomySources.ADMIN_ADD);
+            if (!result.successful()) {
+                source.sendFailure(Component.literal("Could not add money: maximum balance exceeded")
+                        .withStyle(ChatFormatting.RED));
+                return 0;
+            }
 
             Component msg = Component.literal(
                             "Added " + EconomyCraft.formatMoney(amount) + " to " + p.name() + "'s balance.")
@@ -423,11 +432,16 @@ public final class EconomyCommands {
             return 1;
         }
 
+        int count = 0;
         for (var p : profiles) {
-            manager.addMoney(p.id(), amount);
+            if (manager.addMoney(p.id(), amount, EconomySources.ADMIN_ADD).successful()) count++;
         }
 
-        int count = profiles.size();
+        if (count == 0) {
+            source.sendFailure(Component.literal("Could not add money: all target balances would exceed the maximum")
+                    .withStyle(ChatFormatting.RED));
+            return 0;
+        }
 
         Component msg = Component.literal(
                         "Added " + EconomyCraft.formatMoney(amount) + " to " + count + " player" + (count > 1 ? "s" : ""))
@@ -449,7 +463,7 @@ public final class EconomyCommands {
 
         if (profiles.size() == 1) {
             var p = profiles.iterator().next();
-            manager.setMoney(p.id(), amount);
+            manager.setMoney(p.id(), amount, EconomySources.ADMIN_SET);
 
             Component msg = Component.literal(
                             "Set balance of " + p.name() + " to " + EconomyCraft.formatMoney(amount))
@@ -461,7 +475,7 @@ public final class EconomyCommands {
         }
 
         for (var p : profiles) {
-            manager.setMoney(p.id(), amount);
+            manager.setMoney(p.id(), amount, EconomySources.ADMIN_SET);
         }
 
         int count = profiles.size();
@@ -497,7 +511,7 @@ public final class EconomyCommands {
                             .withStyle(ChatFormatting.RED));
                     return 1;
                 }
-                manager.setMoney(id, 0L);
+                manager.setMoney(id, 0L, EconomySources.ADMIN_REMOVE);
                 Component msg = Component.literal(
                                 "Removed all money from " + p.name() + "'s balance.")
                         .withStyle(ChatFormatting.GREEN);
@@ -505,7 +519,7 @@ public final class EconomyCommands {
                 return 1;
             }
 
-            if (!manager.removeMoney(id, amount)) {
+            if (!manager.removeMoney(id, amount, EconomySources.ADMIN_REMOVE).successful()) {
                 source.sendFailure(Component.literal(
                                 "Failed to remove " + EconomyCraft.formatMoney(amount) + " from " + p.name() + "'s balance due to insufficient funds.")
                         .withStyle(ChatFormatting.RED));
@@ -528,10 +542,10 @@ public final class EconomyCommands {
                             .withStyle(ChatFormatting.RED));
                     continue;
                 }
-                manager.setMoney(id, 0L);
+                manager.setMoney(id, 0L, EconomySources.ADMIN_REMOVE);
                 success++;
             } else {
-                if (manager.removeMoney(id, amount)) {
+                if (manager.removeMoney(id, amount, EconomySources.ADMIN_REMOVE).successful()) {
                     success++;
                 } else {
                     source.sendFailure(Component.literal(
@@ -851,12 +865,16 @@ public final class EconomyCommands {
 
     private static int daily(ServerPlayer player, CommandSourceStack source) {
         EconomyManager manager = EconomyCraft.getManager(source.getServer());
+        boolean alreadyClaimed = manager.hasClaimedDailyToday(player.getUUID());
         if (manager.claimDaily(player.getUUID())) {
             Component msg = Component.literal("Claimed " + EconomyCraft.formatMoney(EconomyConfig.get().dailyAmount))
                     .withStyle(ChatFormatting.GREEN);
             player.sendSystemMessage(msg);
-        } else {
+        } else if (alreadyClaimed) {
             source.sendFailure(Component.literal("Already claimed today").withStyle(ChatFormatting.RED));
+        } else {
+            source.sendFailure(Component.literal("Daily reward could not be added to your balance")
+                    .withStyle(ChatFormatting.RED));
         }
         return 1;
     }

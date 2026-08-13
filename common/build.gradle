@@ -27,6 +27,7 @@ sourceSets {
 dependencies {
     // Required Minecraft jar for Loom
     minecraft "com.mojang:minecraft:${mcCoord}"
+    implementation project(":api")
 
     if (tgt.obfuscated) {
         // 1.21.11 is obfuscated; common compiles against Mojang's official mappings and gets

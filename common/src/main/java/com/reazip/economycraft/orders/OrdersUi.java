@@ -427,6 +427,7 @@ public final class OrdersUi {
                                             .withStyle(ChatFormatting.GREEN));
                         }
                         case REQUESTER_CANT_PAY -> serverPlayer.sendSystemMessage(Component.literal("Requester can't pay").withStyle(ChatFormatting.RED));
+                        case FULFILLER_CANT_RECEIVE -> serverPlayer.sendSystemMessage(Component.literal("Your balance is too high to receive this payout").withStyle(ChatFormatting.RED));
                         case OWN_ORDER -> serverPlayer.sendSystemMessage(Component.literal("You cannot fulfill your own request").withStyle(ChatFormatting.RED));
                         default -> serverPlayer.sendSystemMessage(Component.literal("Request no longer available").withStyle(ChatFormatting.RED));
                     }

@@ -12,3 +12,5 @@
 **/bin/
 /.vscode/
 /.claude/
+/api/.gradle/
+/api/build/

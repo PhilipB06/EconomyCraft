@@ -11,9 +11,10 @@ architectury {
 
 configurations {
     common { canBeResolved = true; canBeConsumed = false }
-    compileClasspath.extendsFrom common
-    runtimeClasspath.extendsFrom common
-    developmentFabric.extendsFrom common
+    apiModule { canBeResolved = true; canBeConsumed = false }
+    compileClasspath.extendsFrom common, apiModule
+    runtimeClasspath.extendsFrom common, apiModule
+    developmentFabric.extendsFrom common, apiModule
     shadowBundle { canBeResolved = true; canBeConsumed = false }
 }
 
@@ -55,7 +56,9 @@ dependencies {
         // Link common module — namedElements is the remap-aware configuration Loom needs to
         // remap common's official-mappings output into this project's own mapped classpath.
         common(project(path: ":common", configuration: "namedElements")) { transitive = false }
+        apiModule(project(path: ":api", configuration: "namedElements")) { transitive = false }
         shadowBundle project(path: ":common", configuration: "transformProductionFabric")
+        shadowBundle project(path: ":api", configuration: "transformProductionFabric")
 
         modCompileOnly "eu.pb4:placeholder-api:${rootProject.findProperty('text_placeholder_api_version') ?: tgt.textPlaceholderApi}"
     } else {
@@ -66,7 +69,9 @@ dependencies {
 
         // Link common module
         common(project(path: ":common")) { transitive = false }
+        apiModule(project(path: ":api")) { transitive = false }
         shadowBundle project(path: ":common", configuration: "transformProductionFabric")
+        shadowBundle project(path: ":api", configuration: "transformProductionFabric")
 
         compileOnly "eu.pb4:placeholder-api:${rootProject.findProperty('text_placeholder_api_version') ?: tgt.textPlaceholderApi}"
     }

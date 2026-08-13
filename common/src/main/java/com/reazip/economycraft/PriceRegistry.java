@@ -7,11 +7,13 @@ import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import com.reazip.economycraft.util.EconomyPaths;
 import com.reazip.economycraft.util.IdentifierCompat;
 import com.reazip.economycraft.util.MenuUiSupport;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.resources.RegistryOps;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -165,6 +167,119 @@ public final class PriceRegistry {
                 if (p.customItem() == null) return p;
             }
         }
+        return null;
+    }
+
+    /** Creates a detached representative stack for internal display and API snapshots. */
+    public ItemStack createPrototype(PriceEntry entry) {
+        if (entry == null) return ItemStack.EMPTY;
+        if (entry.customItem() != null) return entry.customItem().copy();
+
+        Optional<?> item = IdentifierCompat.registryGetOptional(BuiltInRegistries.ITEM, entry.id());
+        if (item.isPresent()) {
+            Item resolved = resolveItemValue(item.get());
+            return resolved == null || resolved == Items.AIR ? ItemStack.EMPTY : new ItemStack(resolved);
+        }
+
+        String path = entry.id().path();
+        return path.startsWith("enchanted_book_")
+                ? createEnchantedBookPrototype(entry.id())
+                : createPotionPrototype(entry.id());
+    }
+
+    private ItemStack createEnchantedBookPrototype(IdentifierCompat.Id key) {
+        String suffix = key.path().substring("enchanted_book_".length());
+        int lastUnderscore = suffix.lastIndexOf('_');
+        if (lastUnderscore <= 0 || lastUnderscore >= suffix.length() - 1) return ItemStack.EMPTY;
+
+        String enchantPath = suffix.substring(0, lastUnderscore);
+        int level;
+        try {
+            level = Integer.parseInt(suffix.substring(lastUnderscore + 1));
+        } catch (NumberFormatException ignored) {
+            return ItemStack.EMPTY;
+        }
+        if (enchantPath.equals("curse_of_binding")) enchantPath = "binding_curse";
+        else if (enchantPath.equals("curse_of_vanishing")) enchantPath = "vanishing_curse";
+
+        IdentifierCompat.Id enchantId = IdentifierCompat.fromNamespaceAndPath(key.namespace(), enchantPath);
+        ResourceKey<Enchantment> resourceKey = enchantId == null
+                ? null : IdentifierCompat.createResourceKey(Registries.ENCHANTMENT, enchantId);
+        if (resourceKey == null) return ItemStack.EMPTY;
+
+        HolderLookup.RegistryLookup<Enchantment> lookup = registryAccess.lookupOrThrow(Registries.ENCHANTMENT);
+        Optional<Holder.Reference<Enchantment>> holder = lookup.get(resourceKey);
+        if (holder.isEmpty()) return ItemStack.EMPTY;
+
+        ItemStack stack = new ItemStack(Items.ENCHANTED_BOOK);
+        ItemEnchantments.Mutable enchantments = new ItemEnchantments.Mutable(ItemEnchantments.EMPTY);
+        enchantments.set(holder.get(), level);
+        stack.set(DataComponents.STORED_ENCHANTMENTS, enchantments.toImmutable());
+        return stack;
+    }
+
+    private static ItemStack createPotionPrototype(IdentifierCompat.Id key) {
+        String path = key.path();
+        Item baseItem = Items.POTION;
+        String working = path;
+        if (path.startsWith("splash_")) {
+            baseItem = Items.SPLASH_POTION;
+            working = path.substring("splash_".length());
+        } else if (path.startsWith("lingering_")) {
+            baseItem = Items.LINGERING_POTION;
+            working = path.substring("lingering_".length());
+        } else if (path.startsWith("arrow_of_")) {
+            baseItem = Items.TIPPED_ARROW;
+            working = path.substring("arrow_of_".length());
+        }
+        if (working.startsWith("potion_of_")) working = working.substring("potion_of_".length());
+        if (working.endsWith("_splash_potion")) {
+            baseItem = Items.SPLASH_POTION;
+            working = working.substring(0, working.length() - "_splash_potion".length());
+        } else if (working.endsWith("_lingering_potion")) {
+            baseItem = Items.LINGERING_POTION;
+            working = working.substring(0, working.length() - "_lingering_potion".length());
+        } else if (working.endsWith("_potion")) {
+            working = working.substring(0, working.length() - "_potion".length());
+        }
+
+        String potionPath;
+        if (working.equals("water_bottle") || working.equals("water")) {
+            potionPath = "water";
+        } else {
+            String effect = working;
+            String strength = "";
+            if (effect.endsWith("_extended")) {
+                effect = effect.substring(0, effect.length() - "_extended".length());
+                strength = "long_";
+            } else if (effect.endsWith("_2")) {
+                effect = effect.substring(0, effect.length() - 2);
+                strength = "strong_";
+            } else if (effect.endsWith("_1")) {
+                effect = effect.substring(0, effect.length() - 2);
+            }
+            if (effect.equals("the_turtle_master")) effect = "turtle_master";
+            potionPath = strength + effect;
+        }
+
+        IdentifierCompat.Id potionId = IdentifierCompat.fromNamespaceAndPath(key.namespace(), potionPath);
+        if (potionId == null) return ItemStack.EMPTY;
+        Optional<?> potion = IdentifierCompat.registryGetOptional(BuiltInRegistries.POTION, potionId);
+        if (potion.isEmpty()) return ItemStack.EMPTY;
+        Holder<Potion> holder = resolvePotionHolder(potion.get());
+        return holder == null ? ItemStack.EMPTY : PotionContents.createItemStack(baseItem, holder);
+    }
+
+    private static Item resolveItemValue(Object value) {
+        if (value instanceof Item item) return item;
+        if (value instanceof Holder<?> holder && holder.value() instanceof Item item) return item;
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Holder<Potion> resolvePotionHolder(Object value) {
+        if (value instanceof Potion potion) return BuiltInRegistries.POTION.wrapAsHolder(potion);
+        if (value instanceof Holder<?> holder && holder.value() instanceof Potion) return (Holder<Potion>) holder;
         return null;
     }
 

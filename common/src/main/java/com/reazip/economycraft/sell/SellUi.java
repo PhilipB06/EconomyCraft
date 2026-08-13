@@ -3,6 +3,7 @@ package com.reazip.economycraft.sell;
 import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyManager;
+import com.reazip.economycraft.EconomySources;
 import com.reazip.economycraft.HubUi;
 import com.reazip.economycraft.PriceRegistry;
 import com.reazip.economycraft.SellService;
@@ -137,6 +138,7 @@ public final class SellUi {
             int serverSoldTotal = 0;
             long serverPayoutTotal = 0;
             int limitBlockedTotal = 0;
+            int balanceBlockedTotal = 0;
 
             for (int i = 0; i < DEPOSIT_SLOTS; i++) {
                 ItemStack stack = depositContainer.getItem(i);
@@ -151,13 +153,21 @@ public final class SellUi {
 
                 Long potential = split.serverRemaining() > 0 ? safeMultiply(unitSell, split.serverRemaining()) : null;
                 if (potential != null) {
-                    if (EconomyConfig.get().dailySellLimit > 0 && manager.tryRecordDailySell(player.getUUID(), potential)) {
+                    if (EconomyConfig.get().dailySellLimit > 0
+                            && potential > manager.getDailySellRemaining(player.getUUID())) {
                         limitBlockedTotal += split.serverRemaining();
                     } else {
-                        serverSoldTotal += split.serverRemaining();
-                        serverPayoutTotal += potential;
-                        stack.shrink(split.serverRemaining());
-                        manager.addMoney(player.getUUID(), potential);
+                        var result = manager.addMoney(player.getUUID(), potential, EconomySources.SERVER_SHOP_SALE);
+                        if (!result.successful()) {
+                            balanceBlockedTotal += split.serverRemaining();
+                        } else {
+                            if (EconomyConfig.get().dailySellLimit > 0) {
+                                manager.tryRecordDailySell(player.getUUID(), potential);
+                            }
+                            serverSoldTotal += split.serverRemaining();
+                            serverPayoutTotal += potential;
+                            stack.shrink(split.serverRemaining());
+                        }
                     }
                 }
 
@@ -178,6 +188,13 @@ public final class SellUi {
                 player.sendSystemMessage(Component.literal(limitBlockedTotal + " item" + (limitBlockedTotal == 1 ? "" : "s") +
                                 " was not sold: daily sell limit reached" +
                                 (remaining > 0 ? " (" + EconomyCraft.formatMoney(remaining) + " left today)." : "."))
+                        .withStyle(ChatFormatting.RED));
+            }
+
+            if (balanceBlockedTotal > 0) {
+                player.sendSystemMessage(Component.literal(balanceBlockedTotal + " item"
+                                + (balanceBlockedTotal == 1 ? " was" : "s were")
+                                + " not sold: your balance is too high to receive the payout.")
                         .withStyle(ChatFormatting.RED));
             }
 

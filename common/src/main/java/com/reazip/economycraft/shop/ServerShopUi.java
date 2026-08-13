@@ -3,6 +3,7 @@ package com.reazip.economycraft.shop;
 import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyManager;
+import com.reazip.economycraft.EconomySources;
 import com.reazip.economycraft.HubUi;
 import com.reazip.economycraft.PriceRegistry;
 import com.reazip.economycraft.SellService;
@@ -550,7 +551,7 @@ public final class ServerShopUi {
                 return;
             }
 
-            if (!eco.removeMoney(viewer.getUUID(), total)) {
+            if (!eco.removeMoney(viewer.getUUID(), total, EconomySources.SERVER_SHOP_PURCHASE).successful()) {
                 viewer.sendSystemMessage(Component.literal("Not enough balance.")
                         .withStyle(ChatFormatting.RED));
                 return;
@@ -590,18 +591,27 @@ public final class ServerShopUi {
                 return;
             }
 
-            if (EconomyConfig.get().dailySellLimit > 0 && eco.tryRecordDailySell(viewer.getUUID(), total)) {
-                long remaining = eco.getDailySellRemaining(viewer.getUUID());
+            long remaining = eco.getDailySellRemaining(viewer.getUUID());
+            if (EconomyConfig.get().dailySellLimit > 0 && total > remaining) {
                 viewer.sendSystemMessage(Component.literal(remaining <= 0
                         ? "Daily sell limit reached. Try again tomorrow."
                         : "That exceeds your daily sell limit.").withStyle(ChatFormatting.RED));
                 return;
             }
 
+            var result = eco.addMoney(viewer.getUUID(), total, EconomySources.SERVER_SHOP_SALE);
+            if (!result.successful()) {
+                viewer.sendSystemMessage(Component.literal("Your balance is too high to receive this sale.")
+                        .withStyle(ChatFormatting.RED));
+                return;
+            }
+            if (EconomyConfig.get().dailySellLimit > 0) {
+                eco.tryRecordDailySell(viewer.getUUID(), total);
+            }
+
             ItemStack disp = ShopDisplay.createDisplayStack(entry, viewer);
             String name = disp.isEmpty() ? entry.id().path() : disp.getHoverName().getString();
             SellService.removeMatching(viewer, prices, entry, toSell, excludeEnchanted);
-            eco.addMoney(viewer.getUUID(), total);
 
             viewer.sendSystemMessage(Component.literal("Sold " + toSell + "x " + name + " for " + EconomyCraft.formatMoney(total))
                     .withStyle(ChatFormatting.GREEN));

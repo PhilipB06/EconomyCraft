@@ -81,7 +81,8 @@ public final class HubUi {
 
     private static void pay(ServerPlayer player, PlayerPickerUi.Target target, long amount) {
         EconomyManager eco = EconomyCraft.getManager(player.level().getServer());
-        if (eco.pay(player.getUUID(), target.id(), amount)) {
+        var payment = eco.pay(player.getUUID(), target.id(), amount, EconomySources.PLAYER_PAYMENT);
+        if (payment.successful()) {
             player.sendSystemMessage(Component.literal("Paid " + EconomyCraft.formatMoney(amount) + " to " + target.name())
                     .withStyle(ChatFormatting.GREEN));
             ServerPlayer online = player.level().getServer().getPlayerList().getPlayer(target.id());
@@ -90,7 +91,10 @@ public final class HubUi {
                         + EconomyCraft.formatMoney(amount)).withStyle(ChatFormatting.GREEN));
             }
         } else {
-            player.sendSystemMessage(MenuUiSupport.line("Not enough balance.", ChatFormatting.RED));
+            String message = payment.status() == com.reazip.economycraft.api.v1.BalanceMutationStatus.MAX_BALANCE_EXCEEDED
+                    ? "That player cannot receive this much money."
+                    : "Not enough balance.";
+            player.sendSystemMessage(MenuUiSupport.line(message, ChatFormatting.RED));
         }
         open(player);
     }
@@ -270,12 +274,16 @@ public final class HubUi {
                     }
                 }
                 case DAILY -> {
+                    boolean alreadyClaimed = eco.hasClaimedDailyToday(viewer.getUUID());
                     if (eco.claimDaily(viewer.getUUID())) {
                         viewer.sendSystemMessage(Component.literal("Claimed "
                                 + EconomyCraft.formatMoney(config.dailyAmount)).withStyle(ChatFormatting.GREEN));
-                    } else {
+                    } else if (alreadyClaimed) {
                         viewer.sendSystemMessage(MenuUiSupport.line("Already claimed today. Come back tomorrow.",
                                 ChatFormatting.RED));
+                    } else {
+                        viewer.sendSystemMessage(MenuUiSupport.line(
+                                "Daily reward could not be added to your balance.", ChatFormatting.RED));
                     }
                     render();
                 }

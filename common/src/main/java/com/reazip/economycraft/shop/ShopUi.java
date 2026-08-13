@@ -3,6 +3,7 @@ package com.reazip.economycraft.shop;
 import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyManager;
+import com.reazip.economycraft.EconomySources;
 import com.reazip.economycraft.HubUi;
 import com.reazip.economycraft.orders.OrdersUi;
 import com.reazip.economycraft.util.ChatCompat;
@@ -460,10 +461,14 @@ public final class ShopUi {
                     long tax = Math.round(cost * EconomyConfig.get().taxRate);
                     long total = cost + tax;
 
-                    if (!eco.removeMoney(player.getUUID(), total)) {
-                        sp.sendSystemMessage(Component.literal("Not enough balance").withStyle(ChatFormatting.RED));
+                    var payment = eco.transferMoney(player.getUUID(), current.seller, total, cost,
+                            EconomySources.PLAYER_SHOP_PURCHASE);
+                    if (!payment.successful()) {
+                        String message = payment.status() == com.reazip.economycraft.api.v1.BalanceMutationStatus.MAX_BALANCE_EXCEEDED
+                                ? "Seller cannot receive this payment"
+                                : "Not enough balance";
+                        sp.sendSystemMessage(Component.literal(message).withStyle(ChatFormatting.RED));
                     } else {
-                        eco.addMoney(current.seller, cost);
                         ShopListing sold = shop.removeListing(current.id);
                         if (sold != null) {
                             shop.notifySellerSale(sold, sp);

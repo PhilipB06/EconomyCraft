@@ -39,12 +39,12 @@ Each screen also has a command: `/bal`, `/bal top`, `/pay`, `/daily`, `/shop`, `
 
 Browse categories and click an item to change it.
 
-- **Category editor** — right-click a category to change its displayed name, color, icon, or visibility. Deleting a category moves all of its items to `misc` and sets their buy prices to `0`.
-- **Add item** — select any item in the game or one from the inventory. Custom names, enchantments and container contents are stored with the entry.
-- **Buy Price / Sell Price** — the price of one item. `0` disables that direction.
-- **Bulk Amount** — how many a shift-click buys or sells.
-- **Category** — which page of the shop the item appears on. `blocks.wood` creates a sub-page.
-- **Delete** — removes the entry.
+- **Category editor**: right-click a category to change its displayed name, color, icon, or visibility. Deleting a category moves all of its items to `misc` and sets their buy prices to `0`.
+- **Add item**: select any item in the game or one from the inventory. Custom names, enchantments and container contents are stored with the entry.
+- **Buy Price / Sell Price**: the price of one item. `0` disables that direction.
+- **Bulk Amount**: how many a shift-click buys or sells.
+- **Category**: which page of the shop the item appears on. `blocks.wood` creates a sub-page.
+- **Delete**: removes the entry.
 
 ### Settings
 
@@ -107,6 +107,16 @@ Two further keys are written by the editor:
 
 - `components` holds NBT for custom items such as a name, enchantments or shulker contents. JSON keys must be unique, so a second variant of the same item takes a `#label` suffix, e.g.: `minecraft:shulker_box#loot_rare`. The suffix is stripped on load and is not shown to players.
 - `"removed": true` marks a bundled default that was deleted, so it is not restored on the next start. Delete the entry to restore it.
+
+---
+
+## Developer API
+
+The normal EconomyCraft jar includes API v1 for server-side addon mods. There is no separate runtime API mod to install.
+
+The API covers balances and payments, official money formatting, read-only item prices, leaderboard data and successful balance-change events. Public classes are under `com.reazip.economycraft.api.v1`.
+
+See the [Developer API wiki](https://github.com/PhilipB06/EconomyCraft/wiki) for setup, examples, behavior rules and the complete reference.
 
 ---
 

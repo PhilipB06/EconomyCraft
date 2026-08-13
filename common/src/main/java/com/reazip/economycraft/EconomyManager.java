@@ -3,6 +3,10 @@ package com.reazip.economycraft;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.mojang.logging.LogUtils;
+import com.reazip.economycraft.api.v1.BalanceEvents;
+import com.reazip.economycraft.api.v1.BalanceMutationResult;
+import com.reazip.economycraft.api.v1.MutationSource;
+import com.reazip.economycraft.api.v1.PaymentResult;
 import com.reazip.economycraft.orders.OrderManager;
 import com.reazip.economycraft.shop.ShopManager;
 import com.reazip.economycraft.util.AsyncFileWriter;
@@ -51,6 +55,8 @@ public class EconomyManager {
     private final Map<UUID, Long> lastDaily = new ConcurrentHashMap<>();
     private final Map<UUID, DailySellData> dailySells = new ConcurrentHashMap<>();
     private final PriceRegistry prices;
+    private final BalanceEventDispatcher balanceEvents;
+    private final BalanceMutationEngine balanceMutations;
 
     private Objective objective;
     private final DeliveryManager deliveries;
@@ -65,6 +71,7 @@ public class EconomyManager {
 
     public EconomyManager(MinecraftServer server) {
         this.server = server;
+        this.balanceEvents = BalanceEventDispatcher.forServer(server);
         Path dataDir = EconomyPaths.dataDir(server);
 
         this.file = dataDir.resolve("balances.json");
@@ -74,6 +81,17 @@ public class EconomyManager {
         load();
         loadDaily();
         loadDailySells();
+
+        this.balanceMutations = new BalanceMutationEngine(
+                balances,
+                () -> EconomyConfig.get().startingBalance,
+                this::updateLeaderboard,
+                () -> {
+                    updateLeaderboard();
+                    save();
+                },
+                balanceEvents
+        );
 
         this.deliveries = new DeliveryManager(server);
         this.shop = new ShopManager(server, deliveries);
@@ -95,6 +113,7 @@ public class EconomyManager {
 
     public void deactivate() {
         active = false;
+        BalanceEventDispatcher.release(server);
     }
 
     private @Nullable String resolveName(MinecraftServer server, UUID id) {
@@ -249,47 +268,54 @@ public class EconomyManager {
     }
 
     public Long getBalance(UUID player, boolean newBalanceIfNonExistent) {
-        if (!balances.containsKey(player)) {
-            if (newBalanceIfNonExistent) {
-                long balance = clamp(EconomyConfig.get().startingBalance);
-                balances.put(player, balance);
-                updateLeaderboard();
-                return balance;
-            } else {
-                return null;
-            }
-        }
-        return balances.get(player);
+        if (!newBalanceIfNonExistent) return balances.get(player);
+        return balanceMutations.getBalance(player);
     }
 
     public void addMoney(UUID player, long amount) {
-        balances.put(player, clamp(getBalance(player, true) + amount));
-        updateLeaderboard();
-        save();
+        addMoney(player, amount, null);
+    }
+
+    public BalanceMutationResult addMoney(UUID player, long amount, @Nullable MutationSource source) {
+        requireServerThread();
+        return balanceMutations.add(player, amount, source);
     }
 
     public void setMoney(UUID player, long amount) {
-        balances.put(player, clamp(amount));
-        updateLeaderboard();
-        save();
+        setMoney(player, amount, null);
+    }
+
+    public BalanceMutationResult setMoney(UUID player, long amount, @Nullable MutationSource source) {
+        requireServerThread();
+        return balanceMutations.set(player, amount, source);
     }
 
     public boolean removeMoney(UUID player, long amount) {
-        if (amount < 0) return false;
-        long balance = getBalance(player, true);
-        if (balance < amount) return false;
-        balances.put(player, clamp(balance - amount));
-        updateLeaderboard();
-        save();
-        return true;
+        return removeMoney(player, amount, null).successful();
+    }
+
+    public BalanceMutationResult removeMoney(UUID player, long amount, @Nullable MutationSource source) {
+        requireServerThread();
+        return balanceMutations.remove(player, amount, source);
     }
 
     public boolean pay(UUID from, UUID to, long amount) {
-        Long balance = getBalance(from, false);
-        if (balance == null || balance < amount) return false;
-        if (!removeMoney(from, amount)) return false;
-        addMoney(to, amount);
-        return true;
+        return pay(from, to, amount, null).successful();
+    }
+
+    public PaymentResult pay(UUID from, UUID to, long amount, @Nullable MutationSource source) {
+        requireServerThread();
+        return balanceMutations.pay(from, to, amount, source);
+    }
+
+    public PaymentResult transferMoney(UUID from, UUID to, long debitAmount, long creditAmount,
+                                       MutationSource source) {
+        requireServerThread();
+        return balanceMutations.transfer(from, to, debitAmount, creditAmount, source);
+    }
+
+    public BalanceEvents getBalanceEvents() {
+        return balanceEvents;
     }
 
     public void load() {
@@ -492,21 +518,27 @@ public class EconomyManager {
     }
 
     public Map<UUID, Long> getBalances() {
-        return balances;
+        return Map.copyOf(balances);
+    }
+
+    public Map<UUID, Long> getBalancesSnapshot() {
+        requireServerThread();
+        return Map.copyOf(balances);
     }
 
     public void removePlayer(UUID id) {
-        balances.remove(id);
-        updateLeaderboard();
-        save();
+        requireServerThread();
+        balanceMutations.delete(id);
     }
 
     public boolean claimDaily(UUID player) {
         long today = LocalDate.now().toEpochDay();
         long last = lastDaily.getOrDefault(player, -1L);
         if (last == today) return false;
+        BalanceMutationResult result = addMoney(player, EconomyConfig.get().dailyAmount, EconomySources.DAILY_REWARD);
+        if (!result.successful()) return false;
         lastDaily.put(player, today);
-        addMoney(player, EconomyConfig.get().dailyAmount);
+        save();
         return true;
     }
 
@@ -525,6 +557,7 @@ public class EconomyManager {
         }
 
         dailySells.put(player, new DailySellData(data.day(), newTotal));
+        save();
         return false;
     }
 
@@ -557,9 +590,8 @@ public class EconomyManager {
 
         long loss = Math.min((long)Math.floor(pct * victimBal), victimBal);
         if (loss <= 0L) return;
-        if (!removeMoney(victim.getUUID(), loss)) return;
-
-        addMoney(killer.getUUID(), loss);
+        PaymentResult result = pay(victim.getUUID(), killer.getUUID(), loss, EconomySources.PVP_REWARD);
+        if (!result.successful()) return;
 
         victim.sendSystemMessage(Component.literal(
                 "You lost " + EconomyCraft.formatMoney(loss) + " for being killed by " + killer.getName().getString())
@@ -572,6 +604,12 @@ public class EconomyManager {
 
     private long clamp(long value) {
         return Math.clamp(value, 0, MAX);
+    }
+
+    public void requireServerThread() {
+        if (!server.isSameThread()) {
+            throw new IllegalStateException("EconomyCraft API must be called from the server thread");
+        }
     }
 
     private record DailySellData(long day, long amount) {}

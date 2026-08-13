@@ -2,6 +2,7 @@ package com.reazip.economycraft;
 
 import com.mojang.logging.LogUtils;
 import com.reazip.economycraft.util.AsyncFileWriter;
+import com.reazip.economycraft.api.v1.EconomyCraftApiBootstrap;
 import com.reazip.economycraft.util.ChatCompat;
 import com.reazip.economycraft.util.EconomyPaths;
 import dev.architectury.event.events.common.CommandRegistrationEvent;
@@ -26,6 +27,9 @@ public final class EconomyCraft {
     private static MinecraftServer lastServer;
 
     public static void registerEvents() {
+        if (EconomyCraftApiBootstrap.INITIALIZED == null) {
+            throw new IllegalStateException("EconomyCraft API bootstrap failed");
+        }
         LifecycleEvent.SERVER_STARTING.register(EconomyConfig::load);
 
         CommandRegistrationEvent.EVENT.register((dispatcher, registry, selection) -> {

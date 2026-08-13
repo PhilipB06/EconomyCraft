@@ -2,6 +2,7 @@ package com.reazip.economycraft.orders;
 
 import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyManager;
+import com.reazip.economycraft.EconomySources;
 import com.reazip.economycraft.PriceRegistry;
 import com.reazip.economycraft.SellService;
 import com.reazip.economycraft.util.ChatCompat;
@@ -20,7 +21,8 @@ public final class OrderFulfillment {
     private OrderFulfillment() {}
 
     public enum Status {
-        OK, ORDER_GONE, OWN_ORDER, INVALID_AMOUNT, NOT_ENOUGH_ITEMS, REQUESTER_CANT_PAY
+        OK, ORDER_GONE, OWN_ORDER, INVALID_AMOUNT, NOT_ENOUGH_ITEMS, REQUESTER_CANT_PAY,
+        FULFILLER_CANT_RECEIVE
     }
 
     public record Result(Status status, int given, long payout, int remaining, ItemStack item, UUID requester) {
@@ -58,14 +60,19 @@ public final class OrderFulfillment {
         ItemStack itemProto = order.item.copy();
         UUID requester = order.requester;
 
-        if (!eco.removeMoney(requester, payment)) {
-            return new Result(Status.REQUESTER_CANT_PAY, 0, 0, order.amount, itemProto, order.requester);
+        long tax = Math.round(payment * EconomyConfig.get().taxRate);
+        long payout = payment - tax;
+        if (payment > 0) {
+            var transfer = eco.transferMoney(requester, fulfiller.getUUID(), payment, payout,
+                    EconomySources.ORDER_FULFILLMENT);
+            if (!transfer.successful()) {
+                Status status = transfer.status() == com.reazip.economycraft.api.v1.BalanceMutationStatus.MAX_BALANCE_EXCEEDED
+                        ? Status.FULFILLER_CANT_RECEIVE : Status.REQUESTER_CANT_PAY;
+                return new Result(status, 0, 0, order.amount, itemProto, order.requester);
+            }
         }
 
         removeItems(fulfiller, itemProto, give, excludeArmor);
-        long tax = Math.round(payment * EconomyConfig.get().taxRate);
-        long payout = payment - tax;
-        eco.addMoney(fulfiller.getUUID(), payout);
 
         deliver(orders, requester, itemProto, give);
 
@@ -108,14 +115,19 @@ public final class OrderFulfillment {
         ItemStack itemProto = order.item.copy();
         UUID requester = order.requester;
 
-        if (!eco.removeMoney(requester, payment)) {
-            return new Result(Status.REQUESTER_CANT_PAY, 0, 0, order.amount, itemProto, order.requester);
+        long tax = Math.round(payment * EconomyConfig.get().taxRate);
+        long payout = payment - tax;
+        if (payment > 0) {
+            var transfer = eco.transferMoney(requester, fulfiller.getUUID(), payment, payout,
+                    EconomySources.ORDER_FULFILLMENT);
+            if (!transfer.successful()) {
+                Status status = transfer.status() == com.reazip.economycraft.api.v1.BalanceMutationStatus.MAX_BALANCE_EXCEEDED
+                        ? Status.FULFILLER_CANT_RECEIVE : Status.REQUESTER_CANT_PAY;
+                return new Result(status, 0, 0, order.amount, itemProto, order.requester);
+            }
         }
 
         sourceStack.shrink(give);
-        long tax = Math.round(payment * EconomyConfig.get().taxRate);
-        long payout = payment - tax;
-        eco.addMoney(fulfiller.getUUID(), payout);
 
         deliver(orders, requester, itemProto, give);
 

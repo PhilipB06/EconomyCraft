@@ -2,6 +2,7 @@ package com.reazip.economycraft.admin;
 
 import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyManager;
+import com.reazip.economycraft.EconomySources;
 import com.reazip.economycraft.util.ClickKind;
 import com.reazip.economycraft.util.CompatMenu;
 import com.reazip.economycraft.util.ConfirmUi;
@@ -111,15 +112,19 @@ public final class AdminPlayersUi {
                 case GIVE -> NumberInputUi.openMoney(viewer, "Give to " + target.name(), subject(), "Amount",
                         100, 1, EconomyManager.MAX,
                         (p, amount) -> {
-                            eco.addMoney(target.id(), amount);
-                            announce(p, "Gave " + EconomyCraft.formatMoney(amount) + " to " + target.name());
+                            if (eco.addMoney(target.id(), amount, EconomySources.ADMIN_ADD).successful()) {
+                                announce(p, "Gave " + EconomyCraft.formatMoney(amount) + " to " + target.name());
+                            } else {
+                                p.sendSystemMessage(MenuUiSupport.line(target.name() + " cannot receive that much.",
+                                        ChatFormatting.RED));
+                            }
                             openTarget(p, eco, target);
                         },
                         p -> openTarget(p, eco, target));
                 case TAKE -> NumberInputUi.openMoney(viewer, "Take from " + target.name(), subject(), "Amount",
                         Math.min(100, Math.max(1, balance)), 1, Math.max(1, balance),
                         (p, amount) -> {
-                            if (eco.removeMoney(target.id(), amount)) {
+                            if (eco.removeMoney(target.id(), amount, EconomySources.ADMIN_REMOVE).successful()) {
                                 announce(p, "Took " + EconomyCraft.formatMoney(amount) + " from " + target.name());
                             } else {
                                 p.sendSystemMessage(MenuUiSupport.line(target.name() + " does not have that much.",
@@ -131,7 +136,7 @@ public final class AdminPlayersUi {
                 case SET -> NumberInputUi.openMoney(viewer, "Set " + target.name() + "'s balance", subject(), "Balance",
                         balance, 0, EconomyManager.MAX,
                         (p, amount) -> {
-                            eco.setMoney(target.id(), amount);
+                            eco.setMoney(target.id(), amount, EconomySources.ADMIN_SET);
                             announce(p, "Set " + target.name() + "'s balance to " + EconomyCraft.formatMoney(amount));
                             openTarget(p, eco, target);
                         },
