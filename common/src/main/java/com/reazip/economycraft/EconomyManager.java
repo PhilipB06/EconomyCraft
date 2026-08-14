@@ -8,7 +8,7 @@ import com.reazip.economycraft.api.v1.BalanceMutationResult;
 import com.reazip.economycraft.api.v1.MutationSource;
 import com.reazip.economycraft.api.v1.PaymentResult;
 import com.reazip.economycraft.orders.OrderManager;
-import com.reazip.economycraft.shop.ShopManager;
+import com.reazip.economycraft.auction.AuctionManager;
 import com.reazip.economycraft.util.AsyncFileWriter;
 import com.reazip.economycraft.util.EconomyPaths;
 import com.reazip.economycraft.util.IdentityCompat;
@@ -60,7 +60,7 @@ public class EconomyManager {
 
     private Objective objective;
     private final DeliveryManager deliveries;
-    private final ShopManager shop;
+    private final AuctionManager auctions;
     private final OrderManager orders;
     private final Map<UUID, String> displayed = new ConcurrentHashMap<>();
     private final Set<UUID> scheduledProfileLookups = ConcurrentHashMap.newKeySet();
@@ -94,7 +94,7 @@ public class EconomyManager {
         );
 
         this.deliveries = new DeliveryManager(server);
-        this.shop = new ShopManager(server, deliveries);
+        this.auctions = new AuctionManager(server, deliveries);
         this.orders = new OrderManager(server, deliveries);
         this.prices = new PriceRegistry(server);
 
@@ -498,8 +498,8 @@ public class EconomyManager {
         return EconomyConfig.get().scoreboardEnabled;
     }
 
-    public ShopManager getShop() {
-        return shop;
+    public AuctionManager getAuctions() {
+        return auctions;
     }
 
     public OrderManager getOrders() {

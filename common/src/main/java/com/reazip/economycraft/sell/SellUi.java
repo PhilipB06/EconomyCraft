@@ -157,7 +157,7 @@ public final class SellUi {
                             && potential > manager.getDailySellRemaining(player.getUUID())) {
                         limitBlockedTotal += split.serverRemaining();
                     } else {
-                        var result = manager.addMoney(player.getUUID(), potential, EconomySources.SERVER_SHOP_SALE);
+                        var result = manager.addMoney(player.getUUID(), potential, EconomySources.SHOP_SALE);
                         if (!result.successful()) {
                             balanceBlockedTotal += split.serverRemaining();
                         } else {

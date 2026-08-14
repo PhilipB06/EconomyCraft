@@ -27,6 +27,7 @@ public final class EconomyPaths {
             "daily.json",
             "daily_sells.json",
             "deliveries.json",
+            "auctions.json",
             "shop.json",
             "orders.json"
     );

@@ -30,10 +30,10 @@ import org.slf4j.Logger;
 import java.util.*;
 
 import java.util.concurrent.CompletableFuture;
-import com.reazip.economycraft.shop.ShopManager;
-import com.reazip.economycraft.shop.ShopListing;
+import com.reazip.economycraft.auction.AuctionListing;
+import com.reazip.economycraft.auction.AuctionManager;
+import com.reazip.economycraft.auction.AuctionUi;
 import com.reazip.economycraft.shop.ShopUi;
-import com.reazip.economycraft.shop.ServerShopUi;
 import com.reazip.economycraft.orders.OrderManager;
 import com.reazip.economycraft.orders.OrderRequest;
 import com.reazip.economycraft.orders.OrdersUi;
@@ -61,7 +61,9 @@ public final class EconomyCommands {
         dispatcher.register(buildBalance().requires(s -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(buildPay().requires(s -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(SellCommand.register().requires(s -> EconomyConfig.get().standaloneCommands && EconomyConfig.get().sellEnabled));
-        dispatcher.register(buildShop().requires(s -> EconomyConfig.get().standaloneCommands));
+        registerStandalone(dispatcher, buildAuction("ah"));
+        registerStandalone(dispatcher, buildAuction("auction"));
+        registerStandalone(dispatcher, buildShop());
         dispatcher.register(buildOrders(buildContext).requires(s -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(buildDaily().requires(s -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(WorthCommand.register(buildContext).requires(s ->
@@ -95,12 +97,12 @@ public final class EconomyCommands {
                 )
         );
 
-        var serverShop = buildServerShop();
-        serverShop.requires(
-                serverShop.getRequirement()
-                        .and(src -> EconomyConfig.get().standaloneCommands)
-        );
-        dispatcher.register(serverShop);
+    }
+
+    private static void registerStandalone(CommandDispatcher<CommandSourceStack> dispatcher,
+                                           LiteralArgumentBuilder<CommandSourceStack> command) {
+        command.requires(command.getRequirement().and(src -> EconomyConfig.get().standaloneCommands));
+        dispatcher.register(command);
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildRoot(
@@ -121,6 +123,8 @@ public final class EconomyCommands {
         root.then(buildBalance());
         root.then(buildPay());
         root.then(SellCommand.register().requires(s -> EconomyConfig.get().sellEnabled));
+        root.then(buildAuction("ah"));
+        root.then(buildAuction("auction"));
         root.then(buildShop());
         root.then(buildOrders(buildContext));
         root.then(buildDaily());
@@ -130,8 +134,6 @@ public final class EconomyCommands {
         root.then(setMoney);
         root.then(removeMoney);
         root.then(removePlayer);
-
-        root.then(buildServerShop());
 
         if (selection != Commands.CommandSelection.DEDICATED) {
             root.then(literal("import")
@@ -609,62 +611,62 @@ public final class EconomyCommands {
         return count;
     }
 
-    private static LiteralArgumentBuilder<CommandSourceStack> buildShop() {
-        return literal("shop")
-                .requires(src -> EconomyConfig.get().shopEnabled)
-                .executes(ctx -> openShop(ctx.getSource().getPlayerOrException(), ctx.getSource()))
+    private static LiteralArgumentBuilder<CommandSourceStack> buildAuction(String command) {
+        return literal(command)
+                .requires(src -> EconomyConfig.get().auctionEnabled)
+                .executes(ctx -> openAuction(ctx.getSource().getPlayerOrException(), ctx.getSource()))
                 .then(literal("list")
-                        .executes(ctx -> usage(ctx.getSource(), "/shop list <price> [<amount>]"))
+                        .executes(ctx -> usage(ctx.getSource(), "/" + command + " list <price> [<amount>]"))
                         .then(argument("price", LongArgumentType.longArg(1, EconomyManager.MAX))
-                                .executes(ctx -> listItem(ctx.getSource().getPlayerOrException(),
-                                        LongArgumentType.getLong(ctx, "price"), -1,
-                                        ctx.getSource()))
+                                .executes(ctx -> listAuctionItem(ctx.getSource().getPlayerOrException(),
+                                         LongArgumentType.getLong(ctx, "price"), -1,
+                                         ctx.getSource()))
                                 .then(argument("amount", IntegerArgumentType.integer(1))
-                                        .executes(ctx -> listItem(ctx.getSource().getPlayerOrException(),
-                                                LongArgumentType.getLong(ctx, "price"),
-                                                IntegerArgumentType.getInteger(ctx, "amount"),
-                                                ctx.getSource())))))
+                                        .executes(ctx -> listAuctionItem(ctx.getSource().getPlayerOrException(),
+                                                 LongArgumentType.getLong(ctx, "price"),
+                                                 IntegerArgumentType.getInteger(ctx, "amount"),
+                                                 ctx.getSource())))))
                 .then(literal("search")
-                        .executes(ctx -> usage(ctx.getSource(), "/shop search <query>"))
+                        .executes(ctx -> usage(ctx.getSource(), "/" + command + " search <query>"))
                         .then(argument("query", StringArgumentType.greedyString())
-                                .executes(ctx -> searchShop(ctx.getSource().getPlayerOrException(),
-                                        StringArgumentType.getString(ctx, "query"),
-                                        ctx.getSource()))));
+                                .executes(ctx -> searchAuction(ctx.getSource().getPlayerOrException(),
+                                         StringArgumentType.getString(ctx, "query"),
+                                         ctx.getSource()))));
     }
 
-    private static int openShop(ServerPlayer player, CommandSourceStack source) {
-        if (!EconomyConfig.get().shopEnabled) {
-            source.sendFailure(Component.literal("The player shop is disabled.").withStyle(ChatFormatting.RED));
+    private static int openAuction(ServerPlayer player, CommandSourceStack source) {
+        if (!EconomyConfig.get().auctionEnabled) {
+            source.sendFailure(Component.literal("The auction house is disabled.").withStyle(ChatFormatting.RED));
             return 0;
         }
         try {
-            ShopUi.open(player, EconomyCraft.getManager(source.getServer()).getShop());
+            AuctionUi.open(player, EconomyCraft.getManager(source.getServer()).getAuctions());
             return 1;
         } catch (Exception e) {
-            LOGGER.error("[EconomyCraft] Failed to open /shop for {}", player.getDisplayName().getString(), e);
-            source.sendFailure(Component.literal("Failed to open shop. Check server logs."));
+            LOGGER.error("[EconomyCraft] Failed to open the auction house for {}", player.getDisplayName().getString(), e);
+            source.sendFailure(Component.literal("Failed to open auction house. Check server logs."));
             return 0;
         }
     }
 
-    private static int searchShop(ServerPlayer player, String query, CommandSourceStack source) {
-        if (!EconomyConfig.get().shopEnabled) {
-            source.sendFailure(Component.literal("The player shop is disabled.").withStyle(ChatFormatting.RED));
+    private static int searchAuction(ServerPlayer player, String query, CommandSourceStack source) {
+        if (!EconomyConfig.get().auctionEnabled) {
+            source.sendFailure(Component.literal("The auction house is disabled.").withStyle(ChatFormatting.RED));
             return 0;
         }
         try {
-            ShopUi.openSearch(player, EconomyCraft.getManager(source.getServer()).getShop(), query);
+            AuctionUi.openSearch(player, EconomyCraft.getManager(source.getServer()).getAuctions(), query);
             return 1;
         } catch (Exception e) {
-            LOGGER.error("[EconomyCraft] Failed to search /shop for {}", player.getDisplayName().getString(), e);
-            source.sendFailure(Component.literal("Failed to open shop. Check server logs."));
+            LOGGER.error("[EconomyCraft] Failed to search the auction house for {}", player.getDisplayName().getString(), e);
+            source.sendFailure(Component.literal("Failed to open auction house. Check server logs."));
             return 0;
         }
     }
 
-    private static int listItem(ServerPlayer player, long price, int amount, CommandSourceStack source) {
-        if (!EconomyConfig.get().shopEnabled) {
-            source.sendFailure(Component.literal("The player shop is disabled.").withStyle(ChatFormatting.RED));
+    private static int listAuctionItem(ServerPlayer player, long price, int amount, CommandSourceStack source) {
+        if (!EconomyConfig.get().auctionEnabled) {
+            source.sendFailure(Component.literal("The auction house is disabled.").withStyle(ChatFormatting.RED));
             return 0;
         }
         ItemStack hand = player.getMainHandItem();
@@ -679,13 +681,13 @@ public final class EconomyCommands {
             return 0;
         }
 
-        ShopManager shop = EconomyCraft.getManager(source.getServer()).getShop();
-        ShopListing listing = new ShopListing();
+        AuctionManager auctions = EconomyCraft.getManager(source.getServer()).getAuctions();
+        AuctionListing listing = new AuctionListing();
         listing.seller = player.getUUID();
         listing.price = price;
         listing.item = hand.copyWithCount(count);
         hand.shrink(count);
-        shop.addListing(listing);
+        auctions.addListing(listing);
 
         long tax = Math.round(price * EconomyConfig.get().taxRate);
 
@@ -698,53 +700,53 @@ public final class EconomyCommands {
         return 1;
     }
 
-    private static LiteralArgumentBuilder<CommandSourceStack> buildServerShop() {
-        return literal("servershop")
-                .requires(src -> EconomyConfig.get().serverShopEnabled)
-                .executes(ctx -> openServerShop(ctx.getSource().getPlayerOrException(), ctx.getSource(), null))
+    private static LiteralArgumentBuilder<CommandSourceStack> buildShop() {
+        return literal("shop")
+                .requires(src -> EconomyConfig.get().shopEnabled)
+                .executes(ctx -> openShop(ctx.getSource().getPlayerOrException(), ctx.getSource(), null))
                 .then(argument("category", StringArgumentType.greedyString())
-                        .suggests((ctx, builder) -> suggestServerShopCategories(ctx.getSource(), builder))
-                        .executes(ctx -> openServerShop(
+                        .suggests((ctx, builder) -> suggestShopCategories(ctx.getSource(), builder))
+                        .executes(ctx -> openShop(
                                 ctx.getSource().getPlayerOrException(),
                                 ctx.getSource(),
                                 StringArgumentType.getString(ctx, "category")
                         )))
                 .then(literal("search")
-                        .executes(ctx -> usage(ctx.getSource(), "/servershop search <query>"))
+                        .executes(ctx -> usage(ctx.getSource(), "/shop search <query>"))
                         .then(argument("query", StringArgumentType.greedyString())
-                                .executes(ctx -> searchServerShop(ctx.getSource().getPlayerOrException(),
+                                .executes(ctx -> searchShop(ctx.getSource().getPlayerOrException(),
                                         StringArgumentType.getString(ctx, "query"),
                                         ctx.getSource()))));
     }
 
-    private static int openServerShop(ServerPlayer player, CommandSourceStack source, @Nullable String category) {
-        if (!EconomyConfig.get().serverShopEnabled) {
-            source.sendFailure(Component.literal("Server shop is disabled.").withStyle(ChatFormatting.RED));
+    private static int openShop(ServerPlayer player, CommandSourceStack source, @Nullable String category) {
+        if (!EconomyConfig.get().shopEnabled) {
+            source.sendFailure(Component.literal("Shop is disabled.").withStyle(ChatFormatting.RED));
             return 0;
         }
         EconomyManager manager = EconomyCraft.getManager(source.getServer());
         try {
-            ServerShopUi.open(player, manager, category);
+            ShopUi.open(player, manager, category);
             return 1;
         } catch (Exception e) {
-            LOGGER.error("[EconomyCraft] Failed to open /servershop for {} (category={})",
+            LOGGER.error("[EconomyCraft] Failed to open /shop for {} (category={})",
                     player.getDisplayName().getString(), category, e);
-            source.sendFailure(Component.literal("Failed to open server shop. Check server logs."));
+            source.sendFailure(Component.literal("Failed to open shop. Check server logs."));
             return 0;
         }
     }
 
-    private static int searchServerShop(ServerPlayer player, String query, CommandSourceStack source) {
-        if (!EconomyConfig.get().serverShopEnabled) {
-            source.sendFailure(Component.literal("Server shop is disabled.").withStyle(ChatFormatting.RED));
+    private static int searchShop(ServerPlayer player, String query, CommandSourceStack source) {
+        if (!EconomyConfig.get().shopEnabled) {
+            source.sendFailure(Component.literal("Shop is disabled.").withStyle(ChatFormatting.RED));
             return 0;
         }
         try {
-            ServerShopUi.openSearch(player, EconomyCraft.getManager(source.getServer()), query);
+            ShopUi.openSearch(player, EconomyCraft.getManager(source.getServer()), query);
             return 1;
         } catch (Exception e) {
-            LOGGER.error("[EconomyCraft] Failed to search /servershop for {}", player.getDisplayName().getString(), e);
-            source.sendFailure(Component.literal("Failed to open server shop. Check server logs."));
+            LOGGER.error("[EconomyCraft] Failed to search /shop for {}", player.getDisplayName().getString(), e);
+            source.sendFailure(Component.literal("Failed to open shop. Check server logs."));
             return 0;
         }
     }
@@ -903,7 +905,7 @@ public final class EconomyCommands {
         return builder.buildFuture();
     }
 
-    private static CompletableFuture<Suggestions> suggestServerShopCategories(CommandSourceStack source, SuggestionsBuilder builder) {
+    private static CompletableFuture<Suggestions> suggestShopCategories(CommandSourceStack source, SuggestionsBuilder builder) {
         PriceRegistry prices = EconomyCraft.getManager(source.getServer()).getPrices();
         for (String cat : prices.buyCategories()) {
             builder.suggest(cat);

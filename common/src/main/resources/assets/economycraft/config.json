@@ -7,10 +7,10 @@
   "standalone_commands": true,
   "standalone_admin_commands": false,
   "scoreboard_enabled": true,
-  "server_shop_enabled": true,
+  "shop_enabled": true,
+  "auction_enabled": true,
   "sell_enabled": true,
   "worth_enabled": true,
-  "shop_enabled": true,
   "orders_enabled": true,
   "balance_separator": "."
 }

@@ -1,9 +1,9 @@
 package com.reazip.economycraft;
 
 import com.reazip.economycraft.admin.AdminUi;
+import com.reazip.economycraft.auction.AuctionUi;
 import com.reazip.economycraft.orders.OrdersUi;
 import com.reazip.economycraft.sell.SellUi;
-import com.reazip.economycraft.shop.ServerShopUi;
 import com.reazip.economycraft.shop.ShopUi;
 import com.reazip.economycraft.util.ClickKind;
 import com.reazip.economycraft.util.CompatMenu;
@@ -33,8 +33,8 @@ public final class HubUi {
 
     private static final int SIZE = 45;
     private static final int BALANCE = 4;
-    private static final int SERVER_SHOP = 10;
-    private static final int PLAYER_SHOP = 12;
+    private static final int SHOP = 10;
+    private static final int AUCTION = 12;
     private static final int SELL = 14;
     private static final int ORDERS = 16;
     private static final int DAILY = 19;
@@ -162,14 +162,14 @@ public final class HubUi {
             balance.set(DataComponents.LORE, new ItemLore(balanceLore));
             container.setItem(BALANCE, balance);
 
-            if (config.serverShopEnabled) {
-                container.setItem(SERVER_SHOP, MenuUiSupport.button(Items.EMERALD, "Server Shop", ChatFormatting.GREEN,
+            if (config.shopEnabled) {
+                container.setItem(SHOP, MenuUiSupport.button(Items.EMERALD, "Shop", ChatFormatting.GREEN,
                         MenuUiSupport.hint("Buy and sell at fixed prices."),
                         MenuUiSupport.hint("Stock never runs out.")));
             }
 
-            if (config.shopEnabled) {
-                container.setItem(PLAYER_SHOP, MenuUiSupport.button(Items.CHEST, "Player Shop", ChatFormatting.GOLD,
+            if (config.auctionEnabled) {
+                container.setItem(AUCTION, MenuUiSupport.button(Items.CHEST, "Auction House", ChatFormatting.GOLD,
                         MenuUiSupport.hint("Buy from other players,"),
                         MenuUiSupport.hint("or put your own items up for sale.")));
             }
@@ -238,14 +238,14 @@ public final class HubUi {
 
             EconomyConfig config = EconomyConfig.get();
             switch (slot) {
-                case SERVER_SHOP -> {
-                    if (config.serverShopEnabled) {
-                        ServerShopUi.open(viewer, eco);
+                case SHOP -> {
+                    if (config.shopEnabled) {
+                        ShopUi.open(viewer, eco);
                     }
                 }
-                case PLAYER_SHOP -> {
-                    if (config.shopEnabled) {
-                        ShopUi.open(viewer, eco.getShop());
+                case AUCTION -> {
+                    if (config.auctionEnabled) {
+                        AuctionUi.open(viewer, eco.getAuctions());
                     }
                 }
                 case SELL -> {

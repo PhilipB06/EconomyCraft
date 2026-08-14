@@ -1,4 +1,4 @@
-package com.reazip.economycraft.shop;
+package com.reazip.economycraft.auction;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -9,7 +9,7 @@ import net.minecraft.world.item.ItemStack;
 
 import java.util.UUID;
 
-public class ShopListing {
+public class AuctionListing {
     public int id;
     public UUID seller;
     public ItemStack item;
@@ -25,8 +25,8 @@ public class ShopListing {
         return obj;
     }
 
-    public static ShopListing load(JsonObject obj, HolderLookup.Provider provider) {
-        ShopListing l = new ShopListing();
+    public static AuctionListing load(JsonObject obj, HolderLookup.Provider provider) {
+        AuctionListing l = new AuctionListing();
         l.id = obj.get("id").getAsInt();
         if (obj.has("seller")) l.seller = UUID.fromString(obj.get("seller").getAsString());
         l.price = obj.get("price").getAsLong();

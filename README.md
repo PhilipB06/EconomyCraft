@@ -17,25 +17,25 @@ Default configuration works without manual changes.
 
 ## The `/eco` menu
 
-| Button           | Description                                                                                                                                   |
-|------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
-| **Server Shop**  | Buy and sell at fixed prices with unlimited stock. Left click buys, right click sells, shift-click uses the bulk amount.                      |
-| **Player Shop**  | Buy items other players have listed. **Sell an item** walks through picking an item and setting a price.                                      |
-| **Sell Items**   | Put items in the slots, check the total, confirm. Items without a sell price will not fit, and closing without confirming returns everything. |
-| **Orders**       | **New request** picks any item in the game, an amount and a price. Other players fill the request and get paid.                               |
-| **Daily Reward** | Claims the daily payout, once per day.                                                                                                        |
-| **Pay a Player** | Select a player and an amount.                                                                                                                |
-| **Top Balances** | The richest players on the server.                                                                                                            |
-| **Item Value**   | The buy and sell price of any item.                                                                                                           |
-| **Deliveries**   | Items bought while the inventory was full or orders that have been completed while being offline.                                             |
+| Button            | Description                                                                                                                                   |
+|-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
+| **Shop**          | Buy and sell at fixed prices with unlimited stock. Left click buys, right click sells, shift-click uses the bulk amount.                      |
+| **Auction House** | Buy items other players have listed. **Sell an item** walks through picking an item and setting a price.                                      |
+| **Sell Items**    | Put items in the slots, check the total, confirm. Items without a sell price will not fit, and closing without confirming returns everything. |
+| **Orders**        | **New request** picks any item in the game, an amount and a price. Other players fill the request and get paid.                               |
+| **Daily Reward**  | Claims the daily payout, once per day.                                                                                                        |
+| **Pay a Player**  | Select a player and an amount.                                                                                                                |
+| **Top Balances**  | The richest players on the server.                                                                                                            |
+| **Item Value**    | The buy and sell price of any item.                                                                                                           |
+| **Deliveries**    | Items bought while the inventory was full or orders that have been completed while being offline.                                             |
 
-Each screen also has a command: `/bal`, `/bal top`, `/pay`, `/daily`, `/shop`, `/servershop`, `/sell`, `/worth`, `/orders`, `/orders claim`.
+Each screen also has a command: `/bal`, `/bal top`, `/pay`, `/daily`, `/shop`, `/ah`, `/auction`, `/sell`, `/worth`, `/orders`, `/orders claim`.
 
 ---
 
 ## The Admin menu
 
-### Server Shop editor
+### Shop editor
 
 Browse categories and click an item to change it.
 
@@ -48,7 +48,7 @@ Browse categories and click an item to change it.
 
 ### Settings
 
-Covers every option in `config.json`: starting balance, daily reward, daily sell limit, tax rate, PvP money loss, thousands separator, and switches for the server shop, player shop, orders, selling, the balance sidebar and the short command aliases.
+Covers every option in `config.json`: starting balance, daily reward, daily sell limit, tax rate, PvP money loss, thousands separator, and switches for the shop, auction house, orders, selling, the balance sidebar and the short command aliases.
 
 ### Players
 
@@ -62,7 +62,7 @@ Select any player, online or not, to give, take or set their balance, or remove 
 
 ## Config files
 
-On a server, config and player data are stored in `config/economycraft/`: `config.json` and `prices.json` at the top, balances, shops, orders and deliveries under `data/`.
+On a server, config and player data are stored in `config/economycraft/`: `config.json` and `prices.json` at the top, balances, auctions, orders and deliveries under `data/`.
 
 In singleplayer each world gets that same folder inside its own save, at `saves/<world>/economycraft/`.
 
@@ -79,8 +79,8 @@ In singleplayer each world gets that same folder inside its own save, at `saves/
 | `standalone_commands`         | `true`   | Allow `/pay`, `/daily` and similar without the `/eco` prefix.                   |
 | `standalone_admin_commands`   | `false`  | Allow `/addmoney`, `/setmoney` and similar without the `/eco` prefix.           |
 | `scoreboard_enabled`          | `true`   | Show the balance sidebar.                                                       |
-| `server_shop_enabled`         | `true`   | Enable the server shop.                                                         |
-| `shop_enabled`                | `true`   | Enable the player shop.                                                         |
+| `shop_enabled`                | `true`   | Enable the fixed-price shop.                                                    |
+| `auction_enabled`             | `true`   | Enable the auction house.                                                       |
 | `orders_enabled`              | `true`   | Enable the orders board. Collecting deliveries works either way.                |
 | `sell_enabled`                | `true`   | Enable selling.                                                                 |
 | `worth_enabled`               | `true`   | Enable item value lookups through `/worth` and the `/eco` menu.                  |
@@ -88,7 +88,7 @@ In singleplayer each world gets that same folder inside its own save, at `saves/
 
 ### `prices.json`
 
-One entry per server shop item, keyed by item id:
+One entry per shop item, keyed by item id:
 
 ```json
 {

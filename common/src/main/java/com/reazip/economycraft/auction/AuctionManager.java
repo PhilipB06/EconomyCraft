@@ -1,4 +1,4 @@
-package com.reazip.economycraft.shop;
+package com.reazip.economycraft.auction;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -21,42 +21,64 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class ShopManager {
+public class AuctionManager {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Gson GSON = new Gson();
     private final MinecraftServer server;
     private final Path file;
-    private final Map<Integer, ShopListing> listings = new ConcurrentHashMap<>();
+    private final Map<Integer, AuctionListing> listings = new ConcurrentHashMap<>();
     private final DeliveryManager deliveries;
     private final List<Runnable> listeners = new ArrayList<>();
     private int nextId = 1;
 
-    public ShopManager(MinecraftServer server, DeliveryManager deliveries) {
+    public AuctionManager(MinecraftServer server, DeliveryManager deliveries) {
         this.server = server;
-        this.file = EconomyPaths.dataDir(server).resolve("shop.json");
+        this.file = prepareAuctionFile(EconomyPaths.dataDir(server));
         this.deliveries = deliveries;
         load();
     }
 
-    public List<ShopListing> getListings() {
-        List<ShopListing> out = new ArrayList<>(listings.values());
+    private static Path prepareAuctionFile(Path dataDir) {
+        Path file = dataDir.resolve("auctions.json");
+        Path legacy = dataDir.resolve("shop.json");
+        if (Files.exists(file)) {
+            if (Files.exists(legacy)) {
+                LOGGER.warn("[EconomyCraft] Both {} and {} exist; using {} and ignoring {}.",
+                        file, legacy, file, legacy);
+            }
+            return file;
+        }
+        if (Files.notExists(legacy)) return file;
+
+        try {
+            Files.move(legacy, file);
+            LOGGER.info("[EconomyCraft] Migrated auction listings from {} to {}.", legacy, file);
+            return file;
+        } catch (Exception ex) {
+            LOGGER.error("[EconomyCraft] Failed to rename legacy auction file {}; using it for now.", legacy, ex);
+            return legacy;
+        }
+    }
+
+    public List<AuctionListing> getListings() {
+        List<AuctionListing> out = new ArrayList<>(listings.values());
         out.sort((a, b) -> Integer.compare(b.id, a.id));
         return out;
     }
 
-    public ShopListing getListing(int id) {
+    public AuctionListing getListing(int id) {
         return listings.get(id);
     }
 
-    public void addListing(ShopListing listing) {
+    public void addListing(AuctionListing listing) {
         listing.id = nextId++;
         listings.put(listing.id, listing);
         notifyListeners();
         save();
     }
 
-    public ShopListing removeListing(int id) {
-        ShopListing l = listings.remove(id);
+    public AuctionListing removeListing(int id) {
+        AuctionListing l = listings.remove(id);
         if (l != null) {
             notifyListeners();
             save();
@@ -64,7 +86,7 @@ public class ShopManager {
         return l;
     }
 
-    public void notifySellerSale(ShopListing listing, ServerPlayer buyer) {
+    public void notifySellerSale(AuctionListing listing, ServerPlayer buyer) {
         if (listing == null || buyer == null) return;
 
         UUID sellerId = listing.seller;
@@ -110,14 +132,14 @@ public class ShopManager {
                         : new JsonArray();
                 for (var el : savedListings) {
                     try {
-                        ShopListing l = ShopListing.load(el.getAsJsonObject(), server.registryAccess());
+                        AuctionListing l = AuctionListing.load(el.getAsJsonObject(), server.registryAccess());
                         if (l.item == null || l.item.isEmpty()) {
-                            LOGGER.error("[EconomyCraft] Dropping shop listing {} with an unreadable item in {}", l.id, file);
+                            LOGGER.error("[EconomyCraft] Dropping auction listing {} with an unreadable item in {}", l.id, file);
                             continue;
                         }
                         listings.put(l.id, l);
                     } catch (Exception ex) {
-                        LOGGER.error("[EconomyCraft] Dropping an unreadable shop listing in {}", file, ex);
+                        LOGGER.error("[EconomyCraft] Dropping an unreadable auction listing in {}", file, ex);
                     }
                 }
             } catch (Exception ex) {
@@ -130,7 +152,7 @@ public class ShopManager {
         JsonObject root = new JsonObject();
         root.addProperty("nextId", nextId);
         JsonArray listArr = new JsonArray();
-        for (ShopListing l : listings.values()) {
+        for (AuctionListing l : listings.values()) {
             listArr.add(l.save(server.registryAccess()));
         }
         root.add("listings", listArr);

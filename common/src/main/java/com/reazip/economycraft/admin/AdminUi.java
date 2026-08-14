@@ -57,7 +57,7 @@ public final class AdminUi {
         private void render() {
             container.clearContent();
 
-            container.setItem(SHOP, MenuUiSupport.button(Items.EMERALD, "Server Shop", ChatFormatting.GREEN,
+            container.setItem(SHOP, MenuUiSupport.button(Items.EMERALD, "Shop", ChatFormatting.GREEN,
                     MenuUiSupport.hint("Add, price and remove items."),
                     MenuUiSupport.labeledValue("Items", String.valueOf(eco.getPrices().allEntries().size()),
                             MenuUiSupport.LABEL_PRIMARY_COLOR)));

@@ -39,7 +39,7 @@ public final class ShopDisplay {
     public static final List<Integer> STAR_SLOT_ORDER = buildStarSlotOrder(5);
 
     public static String formatCategoryTitle(String category) {
-        if (category == null || category.isBlank()) return "Server Shop";
+        if (category == null || category.isBlank()) return "Shop";
         String[] parts = category.replace('.', '_').split("_");
         StringBuilder sb = new StringBuilder();
         for (String part : parts) {
@@ -69,7 +69,7 @@ public final class ShopDisplay {
     public static ItemStack createDisplayStack(PriceRegistry.PriceEntry entry, ServerPlayer viewer) {
         ItemStack stack = buildDisplayStack(entry, viewer);
         if (stack.isEmpty() && LOGGED_UNAVAILABLE.add(entry.id().asString())) {
-            LogUtils.getLogger().warn("[EconomyCraft] Server shop entry '{}' (category '{}') could not be built; it is hidden and shows as unavailable.",
+            LogUtils.getLogger().warn("[EconomyCraft] Shop entry '{}' (category '{}') could not be built; it is hidden and shows as unavailable.",
                     entry.id().asString(), entry.category());
         }
         return stack;

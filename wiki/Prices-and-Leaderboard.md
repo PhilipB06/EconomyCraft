@@ -28,7 +28,7 @@ The API does not check:
 - Player balance.
 - Daily sell limits.
 - Item damage or container-content sell restrictions.
-- Whether the Server Shop or selling is enabled.
+- Whether the shop or selling is enabled.
 - Category visibility or menu navigation.
 
 ---

@@ -32,14 +32,14 @@ public class EconomyConfig {
     public boolean standaloneAdminCommands;
     @SerializedName("scoreboard_enabled")
     public boolean scoreboardEnabled;
-    @SerializedName("server_shop_enabled")
-    public boolean serverShopEnabled = true;
+    @SerializedName("shop_enabled")
+    public boolean shopEnabled = true;
+    @SerializedName("auction_enabled")
+    public boolean auctionEnabled = true;
     @SerializedName("sell_enabled")
     public boolean sellEnabled = true;
     @SerializedName("worth_enabled")
     public boolean worthEnabled = true;
-    @SerializedName("shop_enabled")
-    public boolean shopEnabled = true;
     @SerializedName("orders_enabled")
     public boolean ordersEnabled = true;
     @SerializedName("balance_separator")
@@ -151,16 +151,40 @@ public class EconomyConfig {
             throw new IllegalStateException("[EconomyCraft] Failed to read/parse user config.json for merge at " + file, ex);
         }
 
+        boolean migratedShopSettings = migrateShopSettings(userRoot, defaults);
         int[] added = new int[]{0};
         addMissingRecursive(userRoot, defaults, added);
 
-        if (added[0] > 0) {
+        if (migratedShopSettings || added[0] > 0) {
             try {
                 Files.writeString(file, GSON.toJson(userRoot), StandardCharsets.UTF_8);
             } catch (IOException ex) {
                 throw new IllegalStateException("[EconomyCraft] Failed to write merged config.json at " + file, ex);
             }
         }
+    }
+
+    private static boolean migrateShopSettings(JsonObject target, JsonObject defaults) {
+        JsonElement legacyShop = target.remove("server_shop_enabled");
+        if (legacyShop != null) {
+            JsonElement legacyAuction = target.get("shop_enabled");
+            if (!target.has("auction_enabled") && legacyAuction != null) {
+                target.add("auction_enabled", legacyAuction.deepCopy());
+            }
+            target.add("shop_enabled", legacyShop.deepCopy());
+            LOGGER.info("[EconomyCraft] Migrated shop settings to shop_enabled and auction_enabled.");
+            return true;
+        }
+
+        if (!target.has("auction_enabled") && target.has("shop_enabled")) {
+            JsonElement legacyAuction = target.get("shop_enabled");
+            target.add("auction_enabled", legacyAuction.deepCopy());
+            JsonElement defaultShop = defaults.get("shop_enabled");
+            if (defaultShop != null) target.add("shop_enabled", defaultShop.deepCopy());
+            LOGGER.info("[EconomyCraft] Migrated shop_enabled to auction_enabled.");
+            return true;
+        }
+        return false;
     }
 
     private static JsonObject readBundledDefaultJson() {

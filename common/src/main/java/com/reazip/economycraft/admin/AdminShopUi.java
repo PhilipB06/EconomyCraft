@@ -7,7 +7,7 @@ import com.reazip.economycraft.shop.ShopDisplay;
 import com.reazip.economycraft.util.ClickKind;
 import com.reazip.economycraft.util.CompatMenu;
 import com.reazip.economycraft.util.ConfirmUi;
-import com.reazip.economycraft.shop.ServerShopUi;
+import com.reazip.economycraft.shop.ShopUi;
 import com.reazip.economycraft.util.IdentifierCompat;
 import com.reazip.economycraft.util.ItemPickerUi;
 import com.reazip.economycraft.util.ItemsCompat;
@@ -45,7 +45,7 @@ public final class AdminShopUi {
 
     public enum Origin {
         ADMIN,
-        SERVER_SHOP
+        SHOP
     }
 
     public record Draft(String key, ItemStack display, @Nullable ItemStack customItem, String category,
@@ -96,8 +96,8 @@ public final class AdminShopUi {
     }
 
     private static void exit(ServerPlayer player, EconomyManager eco, Origin origin) {
-        if (origin == Origin.SERVER_SHOP) {
-            ServerShopUi.open(player, eco);
+        if (origin == Origin.SHOP) {
+            ShopUi.open(player, eco);
         } else {
             AdminUi.open(player, eco);
         }
@@ -165,7 +165,7 @@ public final class AdminShopUi {
                         return;
                     }
                     picker.sendSystemMessage(Component.literal("Added " + prototype.getHoverName().getString()
-                            + " to the server shop.").withStyle(ChatFormatting.GREEN));
+                            + " to the shop.").withStyle(ChatFormatting.GREEN));
                     openEditor(picker, eco, origin, draft, category);
                 },
                 p -> openList(p, eco, origin, category, null, 0));
@@ -904,7 +904,7 @@ public final class AdminShopUi {
                     boolean ok = eco.getPrices().delete(draft.key());
                     p.sendSystemMessage(ok
                             ? Component.literal("Removed " + draft.display().getHoverName().getString()
-                                    + " from the server shop.").withStyle(ChatFormatting.GREEN)
+                                    + " from the shop.").withStyle(ChatFormatting.GREEN)
                             : MenuUiSupport.line("Could not write prices.json. Check the server log.", ChatFormatting.RED));
                     openList(p, eco, origin, returnCategory, null, 0);
                 },

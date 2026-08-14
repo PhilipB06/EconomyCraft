@@ -4,6 +4,7 @@
 
 ### Improvements
 - Removed the scoreboard toggle command (UI-only now).
+- Renamed the player shop to the auction house (`/ah`, `/auction`) and moved the server-shop to `/shop`.
 
 ### Fixes
 - Fixed name suggestions not filtering as you type.

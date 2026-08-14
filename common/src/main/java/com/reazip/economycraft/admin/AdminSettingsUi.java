@@ -53,13 +53,13 @@ public final class AdminSettingsUi {
         PVP_LOSS(14, "PvP Money Loss", "Share of the balance a killer takes."),
         SEPARATOR(15, "Number Separator", "Thousands separator shown in prices.",
                 "Type \"space\" for a blank one."),
-        SERVER_SHOP(19, "Server Shop", "The built-in shop with fixed prices."),
-        SHOP(20, "Player Shop", "The marketplace players list their own items on."),
+        SHOP(19, "Shop", "The built-in shop with fixed prices."),
+        AUCTION(20, "Auction House", "The marketplace players list their own items on."),
         ORDERS(21, "Orders", "The request board players post wanted items on."),
         SELL(22, "Selling", "The /sell menu and right-click selling."),
         WORTH(23, "Item Values", "The /worth command and Item Value menu."),
         SCOREBOARD(16, "Balance Sidebar", "The balance leaderboard on the right."),
-        STANDALONE(24, "Short Commands", "Allow /pay and /shop without the /eco prefix."),
+        STANDALONE(24, "Short Commands", "Allow /pay, /shop and /ah without the /eco prefix."),
         STANDALONE_ADMIN(25, "Short Admin Commands", "Allow /addmoney without the /eco prefix.");
 
         final int slot;
@@ -116,8 +116,8 @@ public final class AdminSettingsUi {
             value(Setting.SEPARATOR, Items.NAME_TAG, "\"" + config.balanceSeparator + "\" gives "
                     + EconomyCraft.formatMoney(1234567));
 
-            toggle(Setting.SERVER_SHOP, config.serverShopEnabled);
             toggle(Setting.SHOP, config.shopEnabled);
+            toggle(Setting.AUCTION, config.auctionEnabled);
             toggle(Setting.ORDERS, config.ordersEnabled);
             toggle(Setting.SELL, config.sellEnabled);
             toggle(Setting.WORTH, config.worthEnabled);
@@ -213,13 +213,13 @@ public final class AdminSettingsUi {
                                 save(p);
                                 open(p, eco);
                             });
-                    case SERVER_SHOP -> {
-                        config.serverShopEnabled = !config.serverShopEnabled;
+                    case SHOP -> {
+                        config.shopEnabled = !config.shopEnabled;
                         save(viewer);
                         render();
                     }
-                    case SHOP -> {
-                        config.shopEnabled = !config.shopEnabled;
+                    case AUCTION -> {
+                        config.auctionEnabled = !config.auctionEnabled;
                         save(viewer);
                         render();
                     }
