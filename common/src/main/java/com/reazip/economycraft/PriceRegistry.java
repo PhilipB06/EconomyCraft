@@ -10,6 +10,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import com.reazip.economycraft.util.EconomyPaths;
 import com.reazip.economycraft.util.IdentifierCompat;
+import com.reazip.economycraft.util.ItemsCompat;
 import com.reazip.economycraft.util.MenuUiSupport;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.resources.RegistryOps;
@@ -61,6 +62,7 @@ public final class PriceRegistry {
         } else {
             mergeNewDefaultsFromBundledDefault();
         }
+        addMissingModdedItems();
 
         reload();
     }
@@ -609,6 +611,7 @@ public final class PriceRegistry {
         JsonObject root = readUserJson();
         if (root == null) root = new JsonObject();
         edit.accept(root);
+        moveCategoryOverridesToBottom(root);
         try {
             Files.writeString(file, GSON.toJson(root), StandardCharsets.UTF_8);
         } catch (IOException ex) {
@@ -642,6 +645,11 @@ public final class PriceRegistry {
         JsonObject created = new JsonObject();
         root.add(CATEGORY_OVERRIDES_KEY, created);
         return created;
+    }
+
+    private static void moveCategoryOverridesToBottom(JsonObject root) {
+        JsonElement categories = root.remove(CATEGORY_OVERRIDES_KEY);
+        if (categories != null) root.add(CATEGORY_OVERRIDES_KEY, categories);
     }
 
     private static String normalizeCategory(@Nullable String category) {
@@ -711,6 +719,11 @@ public final class PriceRegistry {
             }
 
             Files.copy(in, file, StandardCopyOption.REPLACE_EXISTING);
+            JsonObject created = readUserJson();
+            if (created != null && created.has(CATEGORY_OVERRIDES_KEY)) {
+                moveCategoryOverridesToBottom(created);
+                Files.writeString(file, GSON.toJson(created), StandardCharsets.UTF_8);
+            }
             LOGGER.info("[EconomyCraft] Created {} from bundled default {}", file, DEFAULT_RESOURCE_PATH);
         } catch (IOException e) {
             LOGGER.error("[EconomyCraft] Failed to create prices.json at {}", file, e);
@@ -778,6 +791,7 @@ public final class PriceRegistry {
             }
         }
 
+        moveCategoryOverridesToBottom(merged);
         String after = GSON.toJson(merged);
         if (!after.equals(before)) {
             try {
@@ -786,6 +800,44 @@ public final class PriceRegistry {
             } catch (IOException ex) {
                 LOGGER.error("[EconomyCraft] Failed to write merged prices.json at {}", file, ex);
             }
+        }
+    }
+
+    private void addMissingModdedItems() {
+        JsonObject root = readUserJson();
+        if (root == null) return;
+
+        Map<String, SortedMap<String, Item>> missingByMod = new TreeMap<>();
+        for (Item item : ItemsCompat.allItems()) {
+            IdentifierCompat.Id id = IdentifierCompat.wrap(BuiltInRegistries.ITEM.getKey(item));
+            if (id == null || "minecraft".equals(id.namespace()) || root.has(id.asString())) continue;
+
+            missingByMod.computeIfAbsent(id.namespace(), ignored -> new TreeMap<>())
+                    .put(id.asString(), item);
+        }
+        if (missingByMod.isEmpty()) return;
+
+        for (Map.Entry<String, SortedMap<String, Item>> mod : missingByMod.entrySet()) {
+            for (Map.Entry<String, Item> entry : mod.getValue().entrySet()) {
+                JsonObject price = new JsonObject();
+                price.addProperty("category", mod.getKey());
+                price.addProperty("stack", Math.max(1, new ItemStack(entry.getValue()).getMaxStackSize()));
+                price.addProperty("unit_buy", 0);
+                price.addProperty("unit_sell", 0);
+                root.add(entry.getKey(), price);
+            }
+        }
+        moveCategoryOverridesToBottom(root);
+
+        try {
+            Files.writeString(file, GSON.toJson(root), StandardCharsets.UTF_8);
+            for (Map.Entry<String, SortedMap<String, Item>> mod : missingByMod.entrySet()) {
+                int count = mod.getValue().size();
+                LOGGER.info("[EconomyCraft] Added {} new {} from mod '{}' to prices.json.",
+                        count, count == 1 ? "item" : "items", mod.getKey());
+            }
+        } catch (IOException ex) {
+            LOGGER.error("[EconomyCraft] Failed to add modded items to prices.json at {}", file, ex);
         }
     }
 

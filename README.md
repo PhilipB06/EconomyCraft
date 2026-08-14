@@ -103,6 +103,8 @@ One entry per server shop item, keyed by item id:
 
 `category` accepts `top.sub` for a sub-page. `stack` is the shift-click bulk amount. `unit_buy` and `unit_sell` are the price of one item, and `0` disables that direction.
 
+Items from installed mods are added automatically with their mod ID as the category and both prices set to `0`.
+
 Two further keys are written by the editor:
 
 - `components` holds NBT for custom items such as a name, enchantments or shulker contents. JSON keys must be unique, so a second variant of the same item takes a `#label` suffix, e.g.: `minecraft:shulker_box#loot_rare`. The suffix is stripped on load and is not shown to players.
