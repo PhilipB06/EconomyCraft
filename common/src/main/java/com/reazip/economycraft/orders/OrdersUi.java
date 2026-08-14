@@ -58,12 +58,27 @@ public final class OrdersUi {
         MenuUiSupport.openMenu(player, "Deliveries", (id, inv) -> new ClaimMenu(id, inv, eco, player.getUUID(), page));
     }
 
-    private static Component createRewardLore(long reward, long tax) {
+    private static Component createRewardLore(String label, long reward, long tax) {
         StringBuilder value = new StringBuilder(EconomyCraft.formatMoney(reward));
         if (tax > 0) {
             value.append(" (-").append(EconomyCraft.formatMoney(tax)).append(" tax)");
         }
-        return MenuUiSupport.labeledValue("Reward", value.toString(), MenuUiSupport.LABEL_PRIMARY_COLOR);
+        return MenuUiSupport.labeledValue(label, value.toString(), MenuUiSupport.LABEL_PRIMARY_COLOR);
+    }
+
+    private static Component createRewardLore(long reward, long tax) {
+        return createRewardLore("Reward", reward, tax);
+    }
+
+    private static void addRewardLore(List<Component> lore, long reward, long tax, int amount) {
+        lore.add(createRewardLore(reward, tax));
+        if (amount > 1) {
+            long rewardPerItem = OrderFulfillment.rewardPerItem(reward, amount);
+            if (rewardPerItem > 0) {
+                long taxPerItem = Math.round(rewardPerItem * EconomyConfig.get().taxRate);
+                lore.add(createRewardLore("Reward per item", rewardPerItem, taxPerItem));
+            }
+        }
     }
 
     public static void startRequest(ServerPlayer player, EconomyManager eco) {
@@ -95,9 +110,7 @@ public final class OrdersUi {
         List<Component> lore = new ArrayList<>();
         lore.add(MenuUiSupport.labeledValue("Amount", String.valueOf(amount), MenuUiSupport.LABEL_PRIMARY_COLOR));
         lore.add(MenuUiSupport.labeledValue("You pay", EconomyCraft.formatMoney(price), MenuUiSupport.LABEL_PRIMARY_COLOR));
-        lore.add(MenuUiSupport.labeledValue("Per item", EconomyCraft.formatMoney(price / Math.max(1, amount)),
-                MenuUiSupport.LABEL_PRIMARY_COLOR));
-        lore.add(createRewardLore(price, tax));
+        addRewardLore(lore, price, tax, amount);
         lore.add(MenuUiSupport.hint("You are charged as the order is filled."));
         if (balance < price) {
             lore.add(MenuUiSupport.line("Your balance (" + EconomyCraft.formatMoney(balance) + ") is lower than this.",
@@ -224,12 +237,12 @@ public final class OrdersUi {
                 String reqName = MenuUiSupport.resolvePlayerName(server, r.requester);
 
                 long tax = Math.round(r.price * EconomyConfig.get().taxRate);
-                List<Component> lore = new ArrayList<>(List.of(
-                        createRewardLore(r.price, tax),
-                        MenuUiSupport.labeledValue("Amount", String.valueOf(r.amount), MenuUiSupport.LABEL_PRIMARY_COLOR),
-                        MenuUiSupport.labeledValue("Requester", mine ? "you" : reqName, MenuUiSupport.LABEL_PRIMARY_COLOR),
-                        MenuUiSupport.labeledValue("Click", mine ? "Cancel this request" : "Fulfill it",
-                                MenuUiSupport.LABEL_SECONDARY_COLOR)));
+                List<Component> lore = new ArrayList<>();
+                addRewardLore(lore, r.price, tax, r.amount);
+                lore.add(MenuUiSupport.labeledValue("Amount", String.valueOf(r.amount), MenuUiSupport.LABEL_PRIMARY_COLOR));
+                lore.add(MenuUiSupport.labeledValue("Requester", mine ? "you" : reqName, MenuUiSupport.LABEL_PRIMARY_COLOR));
+                lore.add(MenuUiSupport.labeledValue("Click", mine ? "Cancel request" : "Fulfill it",
+                        MenuUiSupport.LABEL_SECONDARY_COLOR));
                 if (MenuUiSupport.hasContainerContents(r.item)) {
                     lore.add(MenuUiSupport.labeledValue("Ctrl+Q", "Preview contents", MenuUiSupport.LABEL_SECONDARY_COLOR));
                 }
@@ -251,7 +264,7 @@ public final class OrdersUi {
 
             container.setItem(navRowStart + 1, MenuUiSupport.button(Items.HOPPER, "Sort",
                     MenuUiSupport.LABEL_PRIMARY_COLOR,
-                    Component.literal("Click to cycle").withStyle(s -> s.withItalic(true).withColor(ChatFormatting.GRAY)),
+                    MenuUiSupport.italicHint("Click to cycle"),
                     MenuUiSupport.toggleOption("Recently Listed", !mineOnly && sort == SortMode.DEFAULT),
                     MenuUiSupport.toggleOption("Lowest Reward", !mineOnly && sort == SortMode.PRICE_ASC),
                     MenuUiSupport.toggleOption("Highest Reward", !mineOnly && sort == SortMode.PRICE_DESC),
@@ -291,11 +304,15 @@ public final class OrdersUi {
                 int index = page * itemsPerPage + slot;
                 if (index < requests.size()) {
                     OrderRequest req = requests.get(index);
+                    int held = OrderFulfillment.countHeld(viewer, req.item);
                     if (req.requester.equals(viewer.getUUID())) {
                         openRemove(viewer, req);
-                    } else if (OrderFulfillment.countHeld(viewer, req.item) <= 0) {
+                    } else if (held <= 0) {
                         viewer.sendSystemMessage(Component.literal("You have no " + req.item.getHoverName().getString() +
                                 " to fulfill this.").withStyle(ChatFormatting.RED));
+                    } else if (OrderFulfillment.requiresCompleteFulfillment(req) && held < req.amount) {
+                        viewer.sendSystemMessage(Component.literal("This request must be fulfilled all at once.")
+                                .withStyle(ChatFormatting.RED));
                     } else {
                         openConfirm(viewer, req);
                     }
@@ -374,10 +391,10 @@ public final class OrdersUi {
             String requesterName = MenuUiSupport.resolvePlayerName(server, req.requester);
             long tax = Math.round(req.price * EconomyConfig.get().taxRate);
             item.setCount(1);
-            List<Component> itemLore = new ArrayList<>(List.of(
-                    createRewardLore(req.price, tax),
-                    MenuUiSupport.labeledValue("Amount", String.valueOf(req.amount), MenuUiSupport.LABEL_PRIMARY_COLOR),
-                    MenuUiSupport.labeledValue("Requester", requesterName, MenuUiSupport.LABEL_PRIMARY_COLOR)));
+            List<Component> itemLore = new ArrayList<>();
+            addRewardLore(itemLore, req.price, tax, req.amount);
+            itemLore.add(MenuUiSupport.labeledValue("Amount", String.valueOf(req.amount), MenuUiSupport.LABEL_PRIMARY_COLOR));
+            itemLore.add(MenuUiSupport.labeledValue("Requester", requesterName, MenuUiSupport.LABEL_PRIMARY_COLOR));
             if (MenuUiSupport.hasContainerContents(req.item)) {
                 itemLore.add(MenuUiSupport.labeledValue("Ctrl+Q", "Preview contents", MenuUiSupport.LABEL_SECONDARY_COLOR));
             }
@@ -429,6 +446,7 @@ public final class OrdersUi {
                         case REQUESTER_CANT_PAY -> serverPlayer.sendSystemMessage(Component.literal("Requester can't pay").withStyle(ChatFormatting.RED));
                         case FULFILLER_CANT_RECEIVE -> serverPlayer.sendSystemMessage(Component.literal("Your balance is too high to receive this payout").withStyle(ChatFormatting.RED));
                         case OWN_ORDER -> serverPlayer.sendSystemMessage(Component.literal("You cannot fulfill your own request").withStyle(ChatFormatting.RED));
+                        case FULL_AMOUNT_REQUIRED -> serverPlayer.sendSystemMessage(Component.literal("This request must be fulfilled all at once.").withStyle(ChatFormatting.RED));
                         default -> serverPlayer.sendSystemMessage(Component.literal("Request no longer available").withStyle(ChatFormatting.RED));
                     }
                 }
@@ -462,10 +480,11 @@ public final class OrdersUi {
 
             ItemStack item = req.item.copy();
             long tax = Math.round(req.price * EconomyConfig.get().taxRate);
-            item.set(DataComponents.LORE, new ItemLore(List.of(
-                    createRewardLore(req.price, tax),
-                    MenuUiSupport.labeledValue("Amount", String.valueOf(req.amount), MenuUiSupport.LABEL_PRIMARY_COLOR),
-                    MenuUiSupport.line("This will remove the request", ChatFormatting.RED))));
+            List<Component> itemLore = new ArrayList<>();
+            addRewardLore(itemLore, req.price, tax, req.amount);
+            itemLore.add(MenuUiSupport.labeledValue("Amount", String.valueOf(req.amount), MenuUiSupport.LABEL_PRIMARY_COLOR));
+            itemLore.add(MenuUiSupport.line("This will remove the request", ChatFormatting.RED));
+            item.set(DataComponents.LORE, new ItemLore(itemLore));
             container.setItem(MenuUiSupport.ROW_SUBJECT, item);
 
             container.setItem(MenuUiSupport.ROW_CANCEL, MenuUiSupport.cancelButton());

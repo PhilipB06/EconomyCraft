@@ -122,9 +122,9 @@ public final class NumberInputUi {
 
             for (int i = 0; i < steps.length && i < 4; i++) {
                 container.setItem(i, MenuUiSupport.button(ItemsCompat.redStainedGlassPane(),
-                        "-" + steps[i], ChatFormatting.RED, MenuUiSupport.hint("Shift-click for x10")));
+                        "-" + steps[i], ChatFormatting.RED, MenuUiSupport.italicHint("Shift-click for x10")));
                 container.setItem(8 - i, MenuUiSupport.button(ItemsCompat.limeStainedGlassPane(),
-                        "+" + steps[i], ChatFormatting.GREEN, MenuUiSupport.hint("Shift-click for x10")));
+                        "+" + steps[i], ChatFormatting.GREEN, MenuUiSupport.italicHint("Shift-click for x10")));
             }
 
             ItemStack display = subject.copy();

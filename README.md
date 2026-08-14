@@ -56,7 +56,7 @@ Select any player, online or not, to give, take or set their balance, or remove 
 
 ### Admin commands
 
-`/eco addmoney`, `/eco setmoney`, `/eco removemoney`, `/eco removeplayer`, `/eco toggleScoreboard`.
+`/eco addmoney`, `/eco setmoney`, `/eco removemoney`, `/eco removeplayer`.
 
 ---
 

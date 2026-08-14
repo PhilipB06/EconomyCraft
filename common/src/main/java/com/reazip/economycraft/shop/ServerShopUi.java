@@ -452,7 +452,7 @@ public final class ServerShopUi {
 
             container.setItem(navRowStart + 1, MenuUiSupport.button(Items.HOPPER, "Sort",
                     MenuUiSupport.LABEL_PRIMARY_COLOR,
-                    Component.literal("Click to cycle").withStyle(s -> s.withItalic(true).withColor(ChatFormatting.GRAY)),
+                    MenuUiSupport.italicHint("Click to cycle"),
                     MenuUiSupport.toggleOption("Default", sort == SortMode.DEFAULT),
                     MenuUiSupport.toggleOption("Lowest Price", sort == SortMode.PRICE_ASC),
                     MenuUiSupport.toggleOption("Highest Price", sort == SortMode.PRICE_DESC)));

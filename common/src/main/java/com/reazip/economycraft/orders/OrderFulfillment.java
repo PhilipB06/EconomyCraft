@@ -22,7 +22,7 @@ public final class OrderFulfillment {
 
     public enum Status {
         OK, ORDER_GONE, OWN_ORDER, INVALID_AMOUNT, NOT_ENOUGH_ITEMS, REQUESTER_CANT_PAY,
-        FULFILLER_CANT_RECEIVE
+        FULFILLER_CANT_RECEIVE, FULL_AMOUNT_REQUIRED
     }
 
     public record Result(Status status, int given, long payout, int remaining, ItemStack item, UUID requester) {
@@ -48,6 +48,9 @@ public final class OrderFulfillment {
         int give = requestedAmount <= 0 ? order.amount : Math.min(requestedAmount, order.amount);
         if (give <= 0) {
             return new Result(Status.INVALID_AMOUNT, 0, 0, order.amount, order.item.copy(), order.requester);
+        }
+        if (requiresCompleteFulfillment(order) && give < order.amount) {
+            return new Result(Status.FULL_AMOUNT_REQUIRED, 0, 0, order.amount, order.item.copy(), order.requester);
         }
 
         if (countHeld(fulfiller, order.item, excludeArmor) < give) {
@@ -107,6 +110,9 @@ public final class OrderFulfillment {
         give = Math.min(give, sourceStack.getCount());
         if (give <= 0) {
             return new Result(Status.INVALID_AMOUNT, 0, 0, order.amount, order.item.copy(), order.requester);
+        }
+        if (requiresCompleteFulfillment(order) && give < order.amount) {
+            return new Result(Status.FULL_AMOUNT_REQUIRED, 0, 0, order.amount, order.item.copy(), order.requester);
         }
 
         long payment = order.amount <= 0 ? 0 : Math.round((double) order.price * give / order.amount);
@@ -190,6 +196,14 @@ public final class OrderFulfillment {
         long payment = Math.min(Math.round((double) order.price * give / order.amount), order.price);
         long tax = Math.round(payment * EconomyConfig.get().taxRate);
         return payment - tax;
+    }
+
+    public static long rewardPerItem(long reward, int amount) {
+        return amount <= 0 ? 0 : Math.round((double) reward / amount);
+    }
+
+    public static boolean requiresCompleteFulfillment(OrderRequest order) {
+        return order != null && order.amount > 1 && rewardPerItem(order.price, order.amount) == 0;
     }
 
     private static double netRatePerUnit(OrderRequest order) {

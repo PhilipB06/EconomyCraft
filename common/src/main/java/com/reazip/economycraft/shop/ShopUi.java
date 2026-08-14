@@ -285,7 +285,7 @@ public final class ShopUi {
                 List<Component> lore = new ArrayList<>();
                 lore.add(createPriceLore(l.price, tax));
                 lore.add(MenuUiSupport.labeledValue("Seller", mine ? "you" : sellerName, MenuUiSupport.LABEL_PRIMARY_COLOR));
-                lore.add(MenuUiSupport.labeledValue("Click", mine ? "Take it back" : "Buy it", MenuUiSupport.LABEL_SECONDARY_COLOR));
+                lore.add(MenuUiSupport.labeledValue("Click", mine ? "Remove listing" : "Buy it", MenuUiSupport.LABEL_SECONDARY_COLOR));
                 if (MenuUiSupport.hasContainerContents(l.item)) {
                     lore.add(MenuUiSupport.labeledValue("Ctrl+Q", "Preview contents", MenuUiSupport.LABEL_SECONDARY_COLOR));
                 }
@@ -305,7 +305,7 @@ public final class ShopUi {
 
             container.setItem(navRowStart + 1, MenuUiSupport.button(Items.HOPPER, "Sort",
                     MenuUiSupport.LABEL_PRIMARY_COLOR,
-                    Component.literal("Click to cycle").withStyle(s -> s.withItalic(true).withColor(ChatFormatting.GRAY)),
+                    MenuUiSupport.italicHint("Click to cycle"),
                     MenuUiSupport.toggleOption("Recently Listed", !mineOnly && sort == SortMode.DEFAULT),
                     MenuUiSupport.toggleOption("Lowest Price", !mineOnly && sort == SortMode.PRICE_ASC),
                     MenuUiSupport.toggleOption("Highest Price", !mineOnly && sort == SortMode.PRICE_DESC),

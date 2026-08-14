@@ -55,8 +55,7 @@ public final class EconomyCommands {
                 buildAddMoney(),
                 buildSetMoney(),
                 buildRemoveMoney(),
-                buildRemovePlayer(),
-                buildToggleScoreboard()
+                buildRemovePlayer()
         ));
 
         dispatcher.register(buildBalance().requires(s -> EconomyConfig.get().standaloneCommands));
@@ -96,13 +95,6 @@ public final class EconomyCommands {
                 )
         );
 
-        dispatcher.register(
-                buildToggleScoreboard().requires(src ->
-                        PermissionCompat.gamemaster().test(src)
-                                && EconomyConfig.get().standaloneAdminCommands
-                )
-        );
-
         var serverShop = buildServerShop();
         serverShop.requires(
                 serverShop.getRequirement()
@@ -117,8 +109,7 @@ public final class EconomyCommands {
             LiteralArgumentBuilder<CommandSourceStack> addMoney,
             LiteralArgumentBuilder<CommandSourceStack> setMoney,
             LiteralArgumentBuilder<CommandSourceStack> removeMoney,
-            LiteralArgumentBuilder<CommandSourceStack> removePlayer,
-            LiteralArgumentBuilder<CommandSourceStack> toggleScoreboard
+            LiteralArgumentBuilder<CommandSourceStack> removePlayer
     ) {
         LiteralArgumentBuilder<CommandSourceStack> root = literal("eco");
 
@@ -139,7 +130,6 @@ public final class EconomyCommands {
         root.then(setMoney);
         root.then(removeMoney);
         root.then(removePlayer);
-        root.then(toggleScoreboard);
 
         root.then(buildServerShop());
 
@@ -220,15 +210,9 @@ public final class EconomyCommands {
                 .then(literal("top")
                         .executes(ctx -> balTop(ctx.getSource())))
                 .executes(ctx -> showBalance(IdentityCompat.of(ctx.getSource().getPlayerOrException()), ctx.getSource()))
-                .then(argument("target", GameProfileArgument.gameProfile())
-                        .executes(ctx -> {
-                            var refs = IdentityCompat.getArgAsPlayerRefs(ctx, "target");
-                            if (refs.size() != 1) {
-                                ctx.getSource().sendFailure(Component.literal("Please specify exactly one player").withStyle(ChatFormatting.RED));
-                                return 0;
-                            }
-                            return showBalance(refs.iterator().next(), ctx.getSource());
-                        }));
+                .then(argument("target", StringArgumentType.word())
+                        .suggests((ctx, builder) -> suggestPlayers(ctx.getSource(), builder))
+                        .executes(ctx -> showBalance(StringArgumentType.getString(ctx, "target"), ctx.getSource())));
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildPay() {
@@ -271,6 +255,23 @@ public final class EconomyCommands {
         reply(source, executor, msg, false);
 
         return 1;
+    }
+
+    private static int showBalance(String targetName, CommandSourceStack source) {
+        EconomyManager manager = EconomyCraft.getManager(source.getServer());
+        UUID targetId = manager.tryResolveUuidByName(targetName);
+        if (targetId == null) {
+            source.sendFailure(Component.literal("Unknown player").withStyle(ChatFormatting.RED));
+            return 0;
+        }
+        if (manager.getBalance(targetId, false) == null) {
+            source.sendFailure(Component.literal("Unknown player").withStyle(ChatFormatting.RED));
+            return 0;
+        }
+
+        String resolvedName = manager.getBestName(targetId);
+        return showBalance(new IdentityCompat.PlayerRef(targetId,
+                resolvedName == null || resolvedName.isBlank() ? targetName : resolvedName), source);
     }
 
     private static int balTop(CommandSourceStack source) {
@@ -608,24 +609,6 @@ public final class EconomyCommands {
         return count;
     }
 
-    private static LiteralArgumentBuilder<CommandSourceStack> buildToggleScoreboard() {
-        return literal("toggleScoreboard").requires(PermissionCompat.gamemaster())
-                .executes(ctx -> toggleScoreboard(ctx.getSource()));
-    }
-
-    private static int toggleScoreboard(CommandSourceStack source) {
-        boolean enabled = EconomyCraft.getManager(source.getServer()).toggleScoreboard();
-
-        ServerPlayer executor = tryGetPlayer(source);
-
-        Component msg = Component.literal("Scoreboard " + (enabled ? "enabled" : "disabled"))
-                .withStyle(enabled ? ChatFormatting.GREEN : ChatFormatting.RED);
-
-        reply(source, executor, msg, false);
-
-        return 1;
-    }
-
     private static LiteralArgumentBuilder<CommandSourceStack> buildShop() {
         return literal("shop")
                 .requires(src -> EconomyConfig.get().shopEnabled)
@@ -912,7 +895,11 @@ public final class EconomyCommands {
             }
         }
 
-        suggestions.forEach(builder::suggest);
+        String typed = builder.getRemainingLowerCase();
+        suggestions.stream()
+                .filter(name -> name.toLowerCase(Locale.ROOT).startsWith(typed))
+                .sorted(String.CASE_INSENSITIVE_ORDER)
+                .forEach(builder::suggest);
         return builder.buildFuture();
     }
 

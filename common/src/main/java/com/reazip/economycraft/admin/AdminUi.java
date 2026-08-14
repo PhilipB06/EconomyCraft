@@ -71,7 +71,7 @@ public final class AdminUi {
 
             container.setItem(RELOAD, MenuUiSupport.button(Items.CLOCK, "Reload from disk", ChatFormatting.YELLOW,
                     MenuUiSupport.hint("Re-reads config.json and prices.json."),
-                    MenuUiSupport.hint("Only needed if you edited them by hand.")));
+                    MenuUiSupport.italicHint("Only needed after editing those files directly.")));
 
             container.setItem(BACK, MenuUiSupport.button(Items.NETHER_STAR, "Main menu", ChatFormatting.YELLOW));
 

@@ -828,13 +828,13 @@ public final class AdminShopUi {
                     MenuUiSupport.hint("What players pay for one."),
                     MenuUiSupport.labeledValue("Now", draft.unitBuy() > 0
                             ? EconomyCraft.formatMoney(draft.unitBuy()) : "not for sale", MenuUiSupport.LABEL_PRIMARY_COLOR),
-                    MenuUiSupport.hint("Set to 0 to hide it from the shop.")));
+                    MenuUiSupport.italicHint("Set to 0 to hide it from the shop.")));
 
             container.setItem(SELL, MenuUiSupport.button(Items.EMERALD, "Sell Price", ChatFormatting.GREEN,
                     MenuUiSupport.hint("What players get for one."),
                     MenuUiSupport.labeledValue("Now", draft.unitSell() > 0
                             ? EconomyCraft.formatMoney(draft.unitSell()) : "not sellable", MenuUiSupport.LABEL_PRIMARY_COLOR),
-                    MenuUiSupport.hint("Set to 0 to stop players selling it.")));
+                    MenuUiSupport.italicHint("Set to 0 to stop players selling it.")));
 
             container.setItem(STACK, MenuUiSupport.button(Items.CHEST, "Bulk Amount", ChatFormatting.AQUA,
                     MenuUiSupport.hint("How many a shift-click buys or sells."),

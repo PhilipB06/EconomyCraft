@@ -166,10 +166,7 @@ public class EconomyManager {
         for (UUID id : balances.keySet()) {
             String resolved = resolveCachedName(cache, id);
             if (resolved == null) resolved = getNeoForgeCachedName(id);
-            if (resolved == null) {
-                scheduleProfileLookup(id);
-                continue;
-            }
+            if (resolved == null) continue;
             if (!name.equalsIgnoreCase(resolved)) continue;
             if (match != null && !match.equals(id)) return null;
             match = id;
