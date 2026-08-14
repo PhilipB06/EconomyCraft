@@ -5,6 +5,7 @@ import com.reazip.economycraft.EconomyManager;
 import com.reazip.economycraft.HubUi;
 import com.reazip.economycraft.util.ClickKind;
 import com.reazip.economycraft.util.CompatMenu;
+import com.reazip.economycraft.util.EconomySounds;
 import com.reazip.economycraft.util.MenuUiSupport;
 import com.reazip.economycraft.util.PermissionCompat;
 import net.minecraft.ChatFormatting;
@@ -29,6 +30,7 @@ public final class AdminUi {
 
     public static void open(ServerPlayer player, EconomyManager eco) {
         if (!PermissionCompat.isAdmin(player)) {
+            EconomySounds.failure(player);
             player.sendSystemMessage(MenuUiSupport.line("You need to be an operator for that.", ChatFormatting.RED));
             return;
         }
@@ -84,10 +86,20 @@ public final class AdminUi {
             if (kind != ClickKind.PICKUP && kind != ClickKind.QUICK_MOVE) return true;
 
             switch (slot) {
-                case SHOP -> AdminShopUi.open(viewer, eco, AdminShopUi.Origin.ADMIN);
-                case SETTINGS -> AdminSettingsUi.open(viewer, eco);
-                case PLAYERS -> AdminPlayersUi.open(viewer, eco);
+                case SHOP -> {
+                    EconomySounds.click(viewer);
+                    AdminShopUi.open(viewer, eco, AdminShopUi.Origin.ADMIN);
+                }
+                case SETTINGS -> {
+                    EconomySounds.click(viewer);
+                    AdminSettingsUi.open(viewer, eco);
+                }
+                case PLAYERS -> {
+                    EconomySounds.click(viewer);
+                    AdminPlayersUi.open(viewer, eco);
+                }
                 case RELOAD -> {
+                    EconomySounds.click(viewer);
                     EconomyConfig.load(viewer.level().getServer());
                     eco.getPrices().reload();
                     AdminSettingsUi.applyRuntimeSettings(viewer.level().getServer());
@@ -95,7 +107,10 @@ public final class AdminUi {
                             .withStyle(ChatFormatting.GREEN));
                     render();
                 }
-                case BACK -> HubUi.open(viewer);
+                case BACK -> {
+                    EconomySounds.click(viewer);
+                    HubUi.open(viewer);
+                }
                 default -> {
                 }
             }

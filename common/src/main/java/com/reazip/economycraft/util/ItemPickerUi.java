@@ -201,6 +201,7 @@ public final class ItemPickerUi {
             if (slot < gridSlots) {
                 int index = page * gridSlots + slot;
                 if (index < choices.size()) {
+                    EconomySounds.click(viewer);
                     viewer.closeContainer();
                     onPick.accept(viewer, choices.get(index));
                 }
@@ -208,21 +209,25 @@ public final class ItemPickerUi {
             }
 
             if (slot == nav) {
+                EconomySounds.click(viewer);
                 viewer.closeContainer();
                 if (onCancel != null) onCancel.accept(viewer);
                 return true;
             }
             if (slot == nav + 3 && page > 0) {
+                EconomySounds.page(viewer);
                 page--;
                 render();
                 return true;
             }
             if (slot == nav + 5 && (page + 1) * gridSlots < choices.size()) {
+                EconomySounds.page(viewer);
                 page++;
                 render();
                 return true;
             }
             if (slot == nav + 8) {
+                EconomySounds.click(viewer);
                 if (searching()) {
                     open(viewer, title, source, filter, null, 0, onPick, onCancel);
                 } else {

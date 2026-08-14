@@ -12,6 +12,7 @@ import com.mojang.logging.LogUtils;
 import com.reazip.economycraft.admin.AdminUi;
 import com.reazip.economycraft.util.AsyncFileWriter;
 import com.reazip.economycraft.util.EconomyPaths;
+import com.reazip.economycraft.util.EconomySounds;
 import com.reazip.economycraft.util.IdentityCompat;
 import com.reazip.economycraft.util.ItemArgumentCompat;
 import com.reazip.economycraft.util.PermissionCompat;
@@ -321,22 +322,26 @@ public final class EconomyCommands {
         }
 
         if (toId == null) {
+            EconomySounds.failure(from);
             source.sendFailure(Component.literal("Unknown player").withStyle(ChatFormatting.RED));
             return 0;
         }
 
         if (from.getUUID().equals(toId)) {
+            EconomySounds.failure(from);
             source.sendFailure(Component.literal("You cannot pay yourself").withStyle(ChatFormatting.RED));
             return 0;
         }
 
         if (!manager.getBalances().containsKey(toId)) {
+            EconomySounds.failure(from);
             source.sendFailure(Component.literal("Unknown player").withStyle(ChatFormatting.RED));
             return 0;
         }
 
         String displayName = toOnline != null ? IdentityCompat.of(toOnline).name() : manager.getBestName(toId);
         if (displayName == null || displayName.isBlank()) {
+            EconomySounds.failure(from);
             source.sendFailure(Component.literal("Unknown player").withStyle(ChatFormatting.RED));
             return 0;
         }
@@ -345,6 +350,7 @@ public final class EconomyCommands {
         if (payment.successful()) {
 
             ServerPlayer executor = tryGetPlayer(source);
+            if (executor != null) EconomySounds.success(executor);
 
             Component msg = Component.literal("Paid " + EconomyCraft.formatMoney(amount) + " to " + displayName)
                     .withStyle(ChatFormatting.GREEN);
@@ -352,12 +358,14 @@ public final class EconomyCommands {
             reply(source, executor, msg, false);
 
             if (toOnline != null) {
+                EconomySounds.moneyReceived(toOnline);
                 toOnline.sendSystemMessage(
                         Component.literal(from.getName().getString() + " sent you " + EconomyCraft.formatMoney(amount))
                                 .withStyle(ChatFormatting.GREEN)
                 );
             }
         } else {
+            EconomySounds.failure(from);
             String message = payment.status() == com.reazip.economycraft.api.v1.BalanceMutationStatus.MAX_BALANCE_EXCEEDED
                     ? "Recipient cannot receive that much money"
                     : "Not enough balance";
@@ -666,17 +674,20 @@ public final class EconomyCommands {
 
     private static int listAuctionItem(ServerPlayer player, long price, int amount, CommandSourceStack source) {
         if (!EconomyConfig.get().auctionEnabled) {
+            EconomySounds.failure(player);
             source.sendFailure(Component.literal("The auction house is disabled.").withStyle(ChatFormatting.RED));
             return 0;
         }
         ItemStack hand = player.getMainHandItem();
         if (hand.isEmpty()) {
+            EconomySounds.failure(player);
             source.sendFailure(Component.literal("Hold the item to list in your hand").withStyle(ChatFormatting.RED));
             return 0;
         }
 
         int count = amount > 0 ? amount : Math.min(hand.getCount(), hand.getMaxStackSize());
         if (count > hand.getCount()) {
+            EconomySounds.failure(player);
             source.sendFailure(Component.literal("You only have " + hand.getCount() + ".").withStyle(ChatFormatting.RED));
             return 0;
         }
@@ -695,6 +706,7 @@ public final class EconomyCommands {
                         (tax > 0 ? " (buyers pay " + EconomyCraft.formatMoney(price + tax) + ")" : ""))
                 .withStyle(ChatFormatting.GREEN);
 
+        EconomySounds.success(player);
         player.sendSystemMessage(msg);
 
         return 1;
@@ -798,6 +810,7 @@ public final class EconomyCommands {
         try {
             item = ItemArgumentCompat.createItemStack(input, 1);
         } catch (CommandSyntaxException e) {
+            EconomySounds.failure(player);
             source.sendFailure(Component.literal("Invalid item").withStyle(ChatFormatting.RED));
             return 0;
         }
@@ -808,6 +821,7 @@ public final class EconomyCommands {
         r.item = item;
         int maxAmount = MAIN_INVENTORY_SLOTS * r.item.getMaxStackSize();
         if (amount > maxAmount) {
+            EconomySounds.failure(player);
             source.sendFailure(Component.literal("Amount exceeds " + MAIN_INVENTORY_SLOTS + " stacks (max " + maxAmount + ")").withStyle(ChatFormatting.RED));
             return 0;
         }
@@ -818,6 +832,7 @@ public final class EconomyCommands {
         Component msg = Component.literal("Created request" +
                 (tax > 0 ? " (fulfiller receives " + EconomyCraft.formatMoney(price - tax) + ")" : ""))
                 .withStyle(ChatFormatting.GREEN);
+        EconomySounds.success(player);
         player.sendSystemMessage(msg);
 
         return 1;
@@ -852,12 +867,15 @@ public final class EconomyCommands {
         EconomyManager manager = EconomyCraft.getManager(source.getServer());
         boolean alreadyClaimed = manager.hasClaimedDailyToday(player.getUUID());
         if (manager.claimDaily(player.getUUID())) {
+            EconomySounds.dailyReward(player);
             Component msg = Component.literal("Claimed " + EconomyCraft.formatMoney(EconomyConfig.get().dailyAmount))
                     .withStyle(ChatFormatting.GREEN);
             player.sendSystemMessage(msg);
         } else if (alreadyClaimed) {
+            EconomySounds.failure(player);
             source.sendFailure(Component.literal("Already claimed today").withStyle(ChatFormatting.RED));
         } else {
+            EconomySounds.failure(player);
             source.sendFailure(Component.literal("Daily reward could not be added to your balance")
                     .withStyle(ChatFormatting.RED));
         }

@@ -70,6 +70,7 @@ public final class ConfirmUi {
                 return true;
             }
             if (slot == CANCEL_SLOT) {
+                EconomySounds.click(viewer);
                 viewer.closeContainer();
                 if (onCancel != null) onCancel.accept(viewer);
                 return true;

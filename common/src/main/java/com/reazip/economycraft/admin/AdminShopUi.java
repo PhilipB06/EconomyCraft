@@ -7,6 +7,7 @@ import com.reazip.economycraft.shop.ShopDisplay;
 import com.reazip.economycraft.util.ClickKind;
 import com.reazip.economycraft.util.CompatMenu;
 import com.reazip.economycraft.util.ConfirmUi;
+import com.reazip.economycraft.util.EconomySounds;
 import com.reazip.economycraft.shop.ShopUi;
 import com.reazip.economycraft.util.IdentifierCompat;
 import com.reazip.economycraft.util.ItemPickerUi;
@@ -137,6 +138,7 @@ public final class AdminShopUi {
                     ItemStack prototype = choice.prototype().copyWithCount(1);
                     IdentifierCompat.Id id = IdentifierCompat.wrap(BuiltInRegistries.ITEM.getKey(prototype.getItem()));
                     if (id == null) {
+                        EconomySounds.failure(picker);
                         picker.sendSystemMessage(MenuUiSupport.line("That item has no id and cannot be priced.",
                                 ChatFormatting.RED));
                         openList(picker, eco, origin, category, null, 0);
@@ -175,6 +177,7 @@ public final class AdminShopUi {
         boolean ok = eco.getPrices().upsert(draft.key(), draft.category(), draft.stack(),
                 draft.unitBuy(), draft.unitSell(), draft.customItem());
         if (!ok) {
+            EconomySounds.failure(player);
             player.sendSystemMessage(MenuUiSupport.line("Could not write prices.json. Check the server log.",
                     ChatFormatting.RED));
         }
@@ -240,6 +243,7 @@ public final class AdminShopUi {
                 draft.color() != null ? draft.color().name().toLowerCase(Locale.ROOT) : null,
                 draft.icon(), draft.enabled());
         if (!ok) {
+            EconomySounds.failure(player);
             player.sendSystemMessage(MenuUiSupport.line("Could not write prices.json. Check the server log.",
                     ChatFormatting.RED));
         }
@@ -380,6 +384,7 @@ public final class AdminShopUi {
             if (slot < GRID_SLOTS) {
                 int index = slotToIndex[slot];
                 if (index >= 0 && index < categories.size()) {
+                    EconomySounds.click(viewer);
                     String category = categories.get(index);
                     if (dragType == 1) {
                         openCategoryEditor(viewer, eco, origin, category, page);
@@ -390,21 +395,25 @@ public final class AdminShopUi {
                 return true;
             }
             if (slot == NAV) {
+                EconomySounds.click(viewer);
                 exit(viewer, eco, origin);
                 return true;
             }
             if (slot == NAV + 1) {
+                EconomySounds.click(viewer);
                 viewer.closeContainer();
                 startAdd(viewer, eco, origin, null);
                 return true;
             }
-            if (slot == NAV + 3 && page > 0) { page--; render(); return true; }
-            if (slot == NAV + 5 && (page + 1) * GRID_SLOTS < categories.size()) { page++; render(); return true; }
+            if (slot == NAV + 3 && page > 0) { EconomySounds.page(viewer); page--; render(); return true; }
+            if (slot == NAV + 5 && (page + 1) * GRID_SLOTS < categories.size()) { EconomySounds.page(viewer); page++; render(); return true; }
             if (slot == NAV + 7) {
+                EconomySounds.click(viewer);
                 openList(viewer, eco, origin, null, null, 0);
                 return true;
             }
             if (slot == NAV + 8) {
+                EconomySounds.click(viewer);
                 TextInputUi.openSearch(viewer, "Search shop items", (p, q) -> openList(p, eco, origin, null, q, 0));
                 return true;
             }
@@ -501,22 +510,26 @@ public final class AdminShopUi {
             if (slot < GRID_SLOTS) {
                 int index = page * GRID_SLOTS + slot;
                 if (index < entries.size()) {
+                    EconomySounds.click(viewer);
                     openEditor(viewer, eco, origin, toDraft(entries.get(index), viewer), category);
                 }
                 return true;
             }
             if (slot == NAV) {
+                EconomySounds.click(viewer);
                 openRoot(viewer, eco, origin, 0);
                 return true;
             }
             if (slot == NAV + 1) {
+                EconomySounds.click(viewer);
                 viewer.closeContainer();
                 startAdd(viewer, eco, origin, category);
                 return true;
             }
-            if (slot == NAV + 3 && page > 0) { page--; render(); return true; }
-            if (slot == NAV + 5 && (page + 1) * GRID_SLOTS < entries.size()) { page++; render(); return true; }
+            if (slot == NAV + 3 && page > 0) { EconomySounds.page(viewer); page--; render(); return true; }
+            if (slot == NAV + 5 && (page + 1) * GRID_SLOTS < entries.size()) { EconomySounds.page(viewer); page++; render(); return true; }
             if (slot == NAV + 8) {
+                EconomySounds.click(viewer);
                 if (query != null) {
                     openList(viewer, eco, origin, category, null, 0);
                 } else {
@@ -651,30 +664,44 @@ public final class AdminShopUi {
             if (kind != ClickKind.PICKUP && kind != ClickKind.QUICK_MOVE) return true;
 
             switch (slot) {
-                case NAME -> TextInputUi.open(viewer, "Category name", categoryDraftName(draft), Items.NAME_TAG,
-                        "Use: ", "Type a name",
-                        (p, text) -> updateCategory(p, eco, origin, draft.withName(text), returnPage));
-                case COLOR -> MenuUiSupport.openMenu(viewer, "Category Color",
-                        (id, inv) -> new CategoryColorMenu(id, inv, viewer, eco, origin, draft, returnPage));
+                case NAME -> {
+                    EconomySounds.click(viewer);
+                    TextInputUi.open(viewer, "Category name", categoryDraftName(draft), Items.NAME_TAG,
+                            "Use: ", "Type a name",
+                            (p, text) -> updateCategory(p, eco, origin, draft.withName(text), returnPage));
+                }
+                case COLOR -> {
+                    EconomySounds.click(viewer);
+                    MenuUiSupport.openMenu(viewer, "Category Color",
+                            (id, inv) -> new CategoryColorMenu(id, inv, viewer, eco, origin, draft, returnPage));
+                }
                 case ICON -> {
+                    EconomySounds.click(viewer);
                     if (dragType == 1 && draft.icon() != null) {
                         updateCategory(viewer, eco, origin, draft.withIcon(null), returnPage);
                     } else {
                         editIcon();
                     }
                 }
-                case ENABLED -> updateCategory(viewer, eco, origin,
-                        draft.withEnabled(!draft.enabled()), returnPage);
+                case ENABLED -> {
+                    EconomySounds.click(viewer);
+                    updateCategory(viewer, eco, origin, draft.withEnabled(!draft.enabled()), returnPage);
+                }
                 case DELETE -> {
                     if ("misc".equalsIgnoreCase(draft.key())) {
+                        EconomySounds.failure(viewer);
                         viewer.sendSystemMessage(MenuUiSupport.line("The misc category cannot be deleted.",
                                 ChatFormatting.RED));
                         render();
                     } else {
+                        EconomySounds.click(viewer);
                         confirmCategoryDelete(viewer, eco, origin, draft, returnPage);
                     }
                 }
-                case BACK -> openRoot(viewer, eco, origin, returnPage);
+                case BACK -> {
+                    EconomySounds.click(viewer);
+                    openRoot(viewer, eco, origin, returnPage);
+                }
                 default -> {
                 }
             }
@@ -737,16 +764,19 @@ public final class AdminShopUi {
             if (kind != ClickKind.PICKUP && kind != ClickKind.QUICK_MOVE) return true;
 
             if (slot == 0) {
+                EconomySounds.click(viewer);
                 updateCategory(viewer, eco, origin, draft.withColor(null), returnPage);
                 return true;
             }
             int colorIndex = slot - 1;
             if (colorIndex >= 0 && colorIndex < ShopDisplay.CATEGORY_COLORS.size()) {
+                EconomySounds.click(viewer);
                 updateCategory(viewer, eco, origin,
                         draft.withColor(ShopDisplay.CATEGORY_COLORS.get(colorIndex)), returnPage);
                 return true;
             }
             if (slot == BACK) {
+                EconomySounds.click(viewer);
                 openCategoryEditor(viewer, eco, origin, draft.key(), returnPage);
                 return true;
             }
@@ -769,6 +799,7 @@ public final class AdminShopUi {
         ConfirmUi.open(player, "Delete category?", subject, "Delete category", lore,
                 p -> {
                     boolean ok = eco.getPrices().deleteCategory(draft.key());
+                    if (ok) EconomySounds.click(p); else EconomySounds.failure(p);
                     p.sendSystemMessage(ok
                             ? Component.literal("Deleted " + categoryDraftName(draft) + " and moved " + itemCount
                                     + " item" + (itemCount == 1 ? "" : "s") + " to misc.")
@@ -859,6 +890,7 @@ public final class AdminShopUi {
 
         private void update(Draft next) {
             if (store(viewer, eco, next)) {
+                EconomySounds.click(viewer);
                 openEditor(viewer, eco, origin, next, returnCategory);
             } else {
                 back(viewer);
@@ -871,22 +903,40 @@ public final class AdminShopUi {
             if (kind != ClickKind.PICKUP && kind != ClickKind.QUICK_MOVE) return true;
 
             switch (slot) {
-                case BUY -> NumberInputUi.openMoney(viewer, "Buy price", draft.display(), "Buy price",
-                        draft.unitBuy(), 0, EconomyManager.MAX,
-                        (p, value) -> update(draft.withBuy(value)),
-                        p -> openEditor(p, eco, origin, draft, returnCategory));
-                case SELL -> NumberInputUi.openMoney(viewer, "Sell price", draft.display(), "Sell price",
-                        draft.unitSell(), 0, EconomyManager.MAX,
-                        (p, value) -> update(draft.withSell(value)),
-                        p -> openEditor(p, eco, origin, draft, returnCategory));
-                case STACK -> NumberInputUi.openCount(viewer, "Bulk amount", draft.display(), "Bulk amount",
-                        draft.stack(), 1, 64,
-                        (p, value) -> update(draft.withStack(value.intValue())),
-                        p -> openEditor(p, eco, origin, draft, returnCategory));
-                case CATEGORY -> MenuUiSupport.openMenu(viewer, "Pick a category",
-                        (id, inv) -> new CategoryPickerMenu(id, inv, viewer, eco, origin, draft, returnCategory));
-                case DELETE -> confirmDelete(viewer, eco, origin, draft, returnCategory);
-                case BACK -> back(viewer);
+                case BUY -> {
+                    EconomySounds.click(viewer);
+                    NumberInputUi.openMoney(viewer, "Buy price", draft.display(), "Buy price",
+                            draft.unitBuy(), 0, EconomyManager.MAX,
+                            (p, value) -> update(draft.withBuy(value)),
+                            p -> openEditor(p, eco, origin, draft, returnCategory));
+                }
+                case SELL -> {
+                    EconomySounds.click(viewer);
+                    NumberInputUi.openMoney(viewer, "Sell price", draft.display(), "Sell price",
+                            draft.unitSell(), 0, EconomyManager.MAX,
+                            (p, value) -> update(draft.withSell(value)),
+                            p -> openEditor(p, eco, origin, draft, returnCategory));
+                }
+                case STACK -> {
+                    EconomySounds.click(viewer);
+                    NumberInputUi.openCount(viewer, "Bulk amount", draft.display(), "Bulk amount",
+                            draft.stack(), 1, 64,
+                            (p, value) -> update(draft.withStack(value.intValue())),
+                            p -> openEditor(p, eco, origin, draft, returnCategory));
+                }
+                case CATEGORY -> {
+                    EconomySounds.click(viewer);
+                    MenuUiSupport.openMenu(viewer, "Pick a category",
+                            (id, inv) -> new CategoryPickerMenu(id, inv, viewer, eco, origin, draft, returnCategory));
+                }
+                case DELETE -> {
+                    EconomySounds.click(viewer);
+                    confirmDelete(viewer, eco, origin, draft, returnCategory);
+                }
+                case BACK -> {
+                    EconomySounds.click(viewer);
+                    back(viewer);
+                }
                 default -> {
                 }
             }
@@ -902,6 +952,7 @@ public final class AdminShopUi {
         ConfirmUi.open(player, "Delete this item?", draft.display(), "Delete it", lore,
                 p -> {
                     boolean ok = eco.getPrices().delete(draft.key());
+                    if (ok) EconomySounds.click(p); else EconomySounds.failure(p);
                     p.sendSystemMessage(ok
                             ? Component.literal("Removed " + draft.display().getHoverName().getString()
                                     + " from the shop.").withStyle(ChatFormatting.GREEN)
@@ -994,17 +1045,20 @@ public final class AdminShopUi {
             if (slot < GRID_SLOTS) {
                 int index = page * GRID_SLOTS + slot;
                 if (index < categories.size()) {
+                    EconomySounds.click(viewer);
                     choose(viewer, categories.get(index));
                 }
                 return true;
             }
             if (slot == NAV) {
+                EconomySounds.click(viewer);
                 openEditor(viewer, eco, origin, draft, returnCategory);
                 return true;
             }
-            if (slot == NAV + 3 && page > 0) { page--; render(); return true; }
-            if (slot == NAV + 5 && (page + 1) * GRID_SLOTS < categories.size()) { page++; render(); return true; }
+            if (slot == NAV + 3 && page > 0) { EconomySounds.page(viewer); page--; render(); return true; }
+            if (slot == NAV + 5 && (page + 1) * GRID_SLOTS < categories.size()) { EconomySounds.page(viewer); page++; render(); return true; }
             if (slot == NAV + 8) {
+                EconomySounds.click(viewer);
                 TextInputUi.open(viewer, "New category", draft.category(), Items.NAME_TAG, "Use: ", "Type a name",
                         (p, text) -> choose(p, sanitize(text)));
                 return true;

@@ -96,6 +96,7 @@ public final class TextInputUi {
             serverPlayer.connection.send(new ClientboundSetExperiencePacket(
                     serverPlayer.experienceProgress, serverPlayer.totalExperience, serverPlayer.experienceLevel));
             if (value != null && !value.isBlank()) {
+                EconomySounds.click(serverPlayer);
                 onConfirm.accept(serverPlayer, value.trim());
             }
         }

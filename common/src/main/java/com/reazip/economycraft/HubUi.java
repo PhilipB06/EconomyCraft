@@ -7,6 +7,7 @@ import com.reazip.economycraft.sell.SellUi;
 import com.reazip.economycraft.shop.ShopUi;
 import com.reazip.economycraft.util.ClickKind;
 import com.reazip.economycraft.util.CompatMenu;
+import com.reazip.economycraft.util.EconomySounds;
 import com.reazip.economycraft.util.ItemPickerUi;
 import com.reazip.economycraft.util.MenuUiSupport;
 import com.reazip.economycraft.util.NumberInputUi;
@@ -60,6 +61,7 @@ public final class HubUi {
                 (picker, target) -> {
                     long balance = eco.getBalance(picker.getUUID(), true);
                     if (balance <= 0) {
+                        EconomySounds.failure(picker);
                         picker.sendSystemMessage(MenuUiSupport.line("You have no money to send.", ChatFormatting.RED));
                         open(picker);
                         return;
@@ -83,14 +85,17 @@ public final class HubUi {
         EconomyManager eco = EconomyCraft.getManager(player.level().getServer());
         var payment = eco.pay(player.getUUID(), target.id(), amount, EconomySources.PLAYER_PAYMENT);
         if (payment.successful()) {
+            EconomySounds.success(player);
             player.sendSystemMessage(Component.literal("Paid " + EconomyCraft.formatMoney(amount) + " to " + target.name())
                     .withStyle(ChatFormatting.GREEN));
             ServerPlayer online = player.level().getServer().getPlayerList().getPlayer(target.id());
             if (online != null) {
+                EconomySounds.moneyReceived(online);
                 online.sendSystemMessage(Component.literal(player.getName().getString() + " sent you "
                         + EconomyCraft.formatMoney(amount)).withStyle(ChatFormatting.GREEN));
             }
         } else {
+            EconomySounds.failure(player);
             String message = payment.status() == com.reazip.economycraft.api.v1.BalanceMutationStatus.MAX_BALANCE_EXCEEDED
                     ? "That player cannot receive this much money."
                     : "Not enough balance.";
@@ -240,35 +245,45 @@ public final class HubUi {
             switch (slot) {
                 case SHOP -> {
                     if (config.shopEnabled) {
+                        EconomySounds.click(viewer);
                         ShopUi.open(viewer, eco);
                     }
                 }
                 case AUCTION -> {
                     if (config.auctionEnabled) {
+                        EconomySounds.click(viewer);
                         AuctionUi.open(viewer, eco.getAuctions());
                     }
                 }
                 case SELL -> {
                     if (config.sellEnabled) {
+                        EconomySounds.click(viewer);
                         SellUi.open(viewer, eco);
                     }
                 }
                 case ORDERS -> {
                     if (config.ordersEnabled) {
+                        EconomySounds.click(viewer);
                         OrdersUi.open(viewer, eco);
                     }
                 }
                 case DELIVERIES -> {
+                    EconomySounds.click(viewer);
                     viewer.closeContainer();
                     OrdersUi.openClaims(viewer, eco);
                 }
-                case TOP -> openTop(viewer);
+                case TOP -> {
+                    EconomySounds.click(viewer);
+                    openTop(viewer);
+                }
                 case PAY -> {
+                    EconomySounds.click(viewer);
                     viewer.closeContainer();
                     startPay(viewer);
                 }
                 case WORTH -> {
                     if (config.worthEnabled) {
+                        EconomySounds.click(viewer);
                         viewer.closeContainer();
                         startWorth(viewer);
                     }
@@ -276,12 +291,15 @@ public final class HubUi {
                 case DAILY -> {
                     boolean alreadyClaimed = eco.hasClaimedDailyToday(viewer.getUUID());
                     if (eco.claimDaily(viewer.getUUID())) {
+                        EconomySounds.dailyReward(viewer);
                         viewer.sendSystemMessage(Component.literal("Claimed "
                                 + EconomyCraft.formatMoney(config.dailyAmount)).withStyle(ChatFormatting.GREEN));
                     } else if (alreadyClaimed) {
+                        EconomySounds.failure(viewer);
                         viewer.sendSystemMessage(MenuUiSupport.line("Already claimed today. Come back tomorrow.",
                                 ChatFormatting.RED));
                     } else {
+                        EconomySounds.failure(viewer);
                         viewer.sendSystemMessage(MenuUiSupport.line(
                                 "Daily reward could not be added to your balance.", ChatFormatting.RED));
                     }
@@ -289,10 +307,14 @@ public final class HubUi {
                 }
                 case ADMIN -> {
                     if (PermissionCompat.isAdmin(viewer)) {
+                        EconomySounds.click(viewer);
                         AdminUi.open(viewer, eco);
                     }
                 }
-                case CLOSE -> viewer.closeContainer();
+                case CLOSE -> {
+                    EconomySounds.click(viewer);
+                    viewer.closeContainer();
+                }
                 default -> {
                 }
             }
@@ -349,6 +371,7 @@ public final class HubUi {
         protected boolean onClick(int slot, int dragType, ClickKind kind, Player player) {
             if (slot < 0 || slot >= 27) return false;
             if (kind == ClickKind.PICKUP && slot == 22) {
+                EconomySounds.click(viewer);
                 HubUi.open(viewer);
             }
             return true;

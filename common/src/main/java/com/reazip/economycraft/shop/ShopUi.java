@@ -12,6 +12,7 @@ import com.reazip.economycraft.util.ChatCompat;
 import com.reazip.economycraft.util.ClickKind;
 import com.reazip.economycraft.util.CompatMenu;
 import com.reazip.economycraft.util.ContainerPreviewUi;
+import com.reazip.economycraft.util.EconomySounds;
 import com.reazip.economycraft.util.MenuUiSupport;
 import com.reazip.economycraft.util.PermissionCompat;
 import com.reazip.economycraft.util.SortMode;
@@ -196,6 +197,7 @@ public final class ShopUi {
             if (slot >= 0 && slot < navRowStart) {
                 int index = slotToIndex[slot];
                 if (index >= 0 && index < categories.size()) {
+                    EconomySounds.click(viewer);
                     String cat = categories.get(index);
                     if (prices.buySubcategories(cat).isEmpty()) {
                         openItems(viewer, eco, cat);
@@ -205,17 +207,20 @@ public final class ShopUi {
                     return true;
                 }
             }
-            if (slot == navRowStart + 3 && page > 0) { page--; updatePage(); return true; }
-            if (slot == navRowStart + 5 && (page + 1) * itemsPerPage < categories.size()) { page++; updatePage(); return true; }
+            if (slot == navRowStart + 3 && page > 0) { EconomySounds.page(viewer); page--; updatePage(); return true; }
+            if (slot == navRowStart + 5 && (page + 1) * itemsPerPage < categories.size()) { EconomySounds.page(viewer); page++; updatePage(); return true; }
             if (slot == navRowStart + 1 && PermissionCompat.isAdmin(viewer)) {
+                EconomySounds.click(viewer);
                 AdminShopUi.open(viewer, eco, AdminShopUi.Origin.SHOP);
                 return true;
             }
             if (slot == navRowStart + 7) {
+                EconomySounds.click(viewer);
                 HubUi.open(viewer);
                 return true;
             }
             if (slot == navRowStart + 8) {
+                EconomySounds.click(viewer);
                 TextInputUi.openSearch(viewer, "Search Shop", (p, q) -> ShopUi.openSearch(p, eco, q));
                 return true;
             }
@@ -306,14 +311,15 @@ public final class ShopUi {
             if (slot >= 0 && slot < navRowStart) {
                 int index = page * itemsPerPage + slot;
                 if (index < subcategories.size()) {
+                    EconomySounds.click(viewer);
                     String sub = subcategories.get(index);
                     openItems(viewer, eco, topCategory + "." + sub, sub);
                     return true;
                 }
             }
-            if (slot == navRowStart + 3 && page > 0) { page--; updatePage(); return true; }
-            if (slot == navRowStart + 5 && (page + 1) * itemsPerPage < subcategories.size()) { page++; updatePage(); return true; }
-            if (slot == navRowStart + 8) { openRoot(viewer, eco); return true; }
+            if (slot == navRowStart + 3 && page > 0) { EconomySounds.page(viewer); page--; updatePage(); return true; }
+            if (slot == navRowStart + 5 && (page + 1) * itemsPerPage < subcategories.size()) { EconomySounds.page(viewer); page++; updatePage(); return true; }
+            if (slot == navRowStart + 8) { EconomySounds.click(viewer); openRoot(viewer, eco); return true; }
             return false;
         }
     }
@@ -495,13 +501,15 @@ public final class ShopUi {
                     return true;
                 }
             }
-            if (slot == navRowStart + 3 && page > 0) { page--; updatePage(); return true; }
-            if (slot == navRowStart + 5 && (page + 1) * itemsPerPage < entries.size()) { page++; updatePage(); return true; }
+            if (slot == navRowStart + 3 && page > 0) { EconomySounds.page(viewer); page--; updatePage(); return true; }
+            if (slot == navRowStart + 5 && (page + 1) * itemsPerPage < entries.size()) { EconomySounds.page(viewer); page++; updatePage(); return true; }
             if (slot == navRowStart + 7 && !searching()) {
+                EconomySounds.click(viewer);
                 TextInputUi.openSearch(viewer, "Search Shop", (p, q) -> ShopUi.openSearchResults(p, eco, category, q, 0, sort));
                 return true;
             }
             if (slot == navRowStart + 1) {
+                EconomySounds.click(viewer);
                 sort = sort.next();
                 entries = applySort(resolveEntries(eco, category, searchQuery), sort);
                 page = 0;
@@ -509,6 +517,7 @@ public final class ShopUi {
                 return true;
             }
             if (slot == navRowStart + 8) {
+                EconomySounds.click(viewer);
                 if (category != null && category.contains(".")) {
                     openSubcategories(viewer, eco, category.substring(0, category.indexOf('.')));
                 } else {
@@ -525,6 +534,7 @@ public final class ShopUi {
 
         private void handlePurchase(PriceRegistry.PriceEntry entry, int amount) {
             if (entry.unitBuy() <= 0 || !prices.isCategoryEnabled(entry.category())) {
+                EconomySounds.failure(viewer);
                 viewer.sendSystemMessage(Component.literal("This item cannot be purchased.")
                         .withStyle(ChatFormatting.RED));
                 return;
@@ -532,6 +542,7 @@ public final class ShopUi {
 
             ItemStack base = ShopDisplay.createDisplayStack(entry, viewer);
             if (base.isEmpty()) {
+                EconomySounds.failure(viewer);
                 viewer.sendSystemMessage(Component.literal("Item unavailable.")
                         .withStyle(ChatFormatting.RED));
                 return;
@@ -539,6 +550,7 @@ public final class ShopUi {
 
             Long total = ShopDisplay.safeMultiply(entry.unitBuy(), amount);
             if (total == null) {
+                EconomySounds.failure(viewer);
                 viewer.sendSystemMessage(Component.literal("Price too large.")
                         .withStyle(ChatFormatting.RED));
                 return;
@@ -546,12 +558,14 @@ public final class ShopUi {
 
             long balance = eco.getBalance(viewer.getUUID(), true);
             if (balance < total) {
+                EconomySounds.failure(viewer);
                 viewer.sendSystemMessage(Component.literal("Not enough balance.")
                         .withStyle(ChatFormatting.RED));
                 return;
             }
 
             if (!eco.removeMoney(viewer.getUUID(), total, EconomySources.SHOP_PURCHASE).successful()) {
+                EconomySounds.failure(viewer);
                 viewer.sendSystemMessage(Component.literal("Not enough balance.")
                         .withStyle(ChatFormatting.RED));
                 return;
@@ -559,6 +573,7 @@ public final class ShopUi {
 
             boolean stored = giveToPlayer(base, amount);
 
+            EconomySounds.success(viewer);
             viewer.sendSystemMessage(Component.literal(
                             "Purchased " + amount + "x " + base.getHoverName().getString() +
                                     " for " + EconomyCraft.formatMoney(total))
@@ -573,6 +588,7 @@ public final class ShopUi {
 
         private void handleSell(PriceRegistry.PriceEntry entry, int amount) {
             if (!EconomyConfig.get().sellEnabled || entry.unitSell() <= 0) {
+                EconomySounds.failure(viewer);
                 viewer.sendSystemMessage(Component.literal("This item cannot be sold.").withStyle(ChatFormatting.RED));
                 return;
             }
@@ -580,6 +596,7 @@ public final class ShopUi {
             boolean excludeEnchanted = entry.customItem() == null;
             int have = SellService.countMatching(viewer, prices, entry, excludeEnchanted);
             if (have <= 0) {
+                EconomySounds.failure(viewer);
                 viewer.sendSystemMessage(Component.literal("You have none to sell.").withStyle(ChatFormatting.RED));
                 return;
             }
@@ -587,12 +604,14 @@ public final class ShopUi {
             int toSell = Math.min(amount, have);
             Long total = ShopDisplay.safeMultiply(entry.unitSell(), toSell);
             if (total == null) {
+                EconomySounds.failure(viewer);
                 viewer.sendSystemMessage(Component.literal("Price too large.").withStyle(ChatFormatting.RED));
                 return;
             }
 
             long remaining = eco.getDailySellRemaining(viewer.getUUID());
             if (EconomyConfig.get().dailySellLimit > 0 && total > remaining) {
+                EconomySounds.failure(viewer);
                 viewer.sendSystemMessage(Component.literal(remaining <= 0
                         ? "Daily sell limit reached. Try again tomorrow."
                         : "That exceeds your daily sell limit.").withStyle(ChatFormatting.RED));
@@ -601,6 +620,7 @@ public final class ShopUi {
 
             var result = eco.addMoney(viewer.getUUID(), total, EconomySources.SHOP_SALE);
             if (!result.successful()) {
+                EconomySounds.failure(viewer);
                 viewer.sendSystemMessage(Component.literal("Your balance is too high to receive this sale.")
                         .withStyle(ChatFormatting.RED));
                 return;
@@ -613,6 +633,7 @@ public final class ShopUi {
             String name = disp.isEmpty() ? entry.id().path() : disp.getHoverName().getString();
             SellService.removeMatching(viewer, prices, entry, toSell, excludeEnchanted);
 
+            EconomySounds.success(viewer);
             viewer.sendSystemMessage(Component.literal("Sold " + toSell + "x " + name + " for " + EconomyCraft.formatMoney(total))
                     .withStyle(ChatFormatting.GREEN));
             updatePage();

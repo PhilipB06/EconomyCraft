@@ -167,16 +167,19 @@ public final class NumberInputUi {
 
             for (int i = 0; i < steps.length && i < 4; i++) {
                 if (slot == i) {
+                    EconomySounds.click(serverPlayer);
                     apply(-steps[i] * multiplier);
                     return true;
                 }
                 if (slot == 8 - i) {
+                    EconomySounds.click(serverPlayer);
                     apply(steps[i] * multiplier);
                     return true;
                 }
             }
 
             if (slot == TYPE_SLOT) {
+                EconomySounds.click(serverPlayer);
                 TextInputUi.open(serverPlayer, "Enter a value", String.valueOf(value), Items.NAME_TAG,
                         "Use: ", "Type a number", (p, text) -> {
                             Long parsed = parse(text);
@@ -191,6 +194,7 @@ public final class NumberInputUi {
             }
 
             if (slot == CANCEL_SLOT) {
+                EconomySounds.click(serverPlayer);
                 serverPlayer.closeContainer();
                 if (onCancel != null) onCancel.accept(serverPlayer);
                 return true;

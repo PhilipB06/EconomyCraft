@@ -9,6 +9,7 @@ import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.util.AsyncFileWriter;
 import com.reazip.economycraft.util.EconomyPaths;
 import com.reazip.economycraft.util.IdentityCompat;
+import com.reazip.economycraft.util.EconomySounds;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -110,6 +111,7 @@ public class AuctionManager {
                         " for " + EconomyCraft.formatMoney(price)
         ).withStyle(ChatFormatting.GREEN);
 
+        EconomySounds.moneyReceived(seller);
         seller.sendSystemMessage(msg);
     }
 

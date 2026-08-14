@@ -10,6 +10,7 @@ import com.reazip.economycraft.util.ChatCompat;
 import com.reazip.economycraft.util.ClickKind;
 import com.reazip.economycraft.util.CompatMenu;
 import com.reazip.economycraft.util.ContainerPreviewUi;
+import com.reazip.economycraft.util.EconomySounds;
 import com.reazip.economycraft.util.ItemPickerUi;
 import com.reazip.economycraft.util.MenuUiSupport;
 import com.reazip.economycraft.util.NumberInputUi;
@@ -84,6 +85,7 @@ public final class AuctionUi {
         ItemStack prototype = choice.prototype();
         int max = Math.min(choice.heldCount(), prototype.getMaxStackSize());
         if (max <= 0) {
+            EconomySounds.failure(player);
             player.sendSystemMessage(MenuUiSupport.line("You no longer have that item.", ChatFormatting.RED));
             open(player, auctions);
             return;
@@ -128,6 +130,7 @@ public final class AuctionUi {
 
     private static void createListing(ServerPlayer player, AuctionManager auctions, ItemStack prototype, int amount, long price) {
         if (!takeFromInventory(player, prototype, amount)) {
+            EconomySounds.failure(player);
             player.sendSystemMessage(MenuUiSupport.line("You no longer have " + amount + "x "
                     + prototype.getHoverName().getString() + ".", ChatFormatting.RED));
             open(player, auctions);
@@ -141,6 +144,7 @@ public final class AuctionUi {
         auctions.addListing(listing);
 
         long tax = Math.round(price * EconomyConfig.get().taxRate);
+        EconomySounds.success(player);
         player.sendSystemMessage(Component.literal("Listed " + amount + "x " + prototype.getHoverName().getString()
                         + " for " + EconomyCraft.formatMoney(price)
                         + (tax > 0 ? " (buyers pay " + EconomyCraft.formatMoney(price + tax) + ")" : ""))
@@ -346,39 +350,47 @@ public final class AuctionUi {
                 if (index < listings.size()) {
                     AuctionListing listing = listings.get(index);
                     if (listing.seller.equals(viewer.getUUID())) {
+                        EconomySounds.click(viewer);
                         openRemove(viewer, auctions, listing, query, sort, mineOnly);
                     } else if (!canAfford(viewer, listing.price)) {
+                        EconomySounds.failure(viewer);
                         viewer.sendSystemMessage(Component.literal("Not enough balance").withStyle(ChatFormatting.RED));
                     } else {
+                        EconomySounds.click(viewer);
                         openConfirm(viewer, auctions, listing, query, sort, mineOnly);
                     }
                     return true;
                 }
             }
-            if (slot == navRowStart + 3 && page > 0) { page--; updatePage(); return true; }
-            if (slot == navRowStart + 5 && (page + 1) * itemsPerPage < listings.size()) { page++; updatePage(); return true; }
+            if (slot == navRowStart + 3 && page > 0) { EconomySounds.page(viewer); page--; updatePage(); return true; }
+            if (slot == navRowStart + 5 && (page + 1) * itemsPerPage < listings.size()) { EconomySounds.page(viewer); page++; updatePage(); return true; }
             if (slot == navRowStart + 1) {
+                EconomySounds.click(viewer);
                 cycleSort();
                 page = 0;
                 updatePage();
                 return true;
             }
             if (slot == navRowStart + 2) {
+                EconomySounds.click(viewer);
                 viewer.closeContainer();
                 startListing(viewer, auctions);
                 return true;
             }
             if (slot == navRowStart + 6) {
+                EconomySounds.click(viewer);
                 viewer.closeContainer();
                 OrdersUi.openClaims(viewer, EconomyCraft.getManager(viewer.level().getServer()));
                 return true;
             }
             if (slot == navRowStart + 7) {
+                EconomySounds.click(viewer);
                 viewer.closeContainer();
                 HubUi.open(viewer);
                 return true;
             }
             if (slot == navRowStart + 8) {
+                EconomySounds.click(viewer);
                 if (query != null && !query.isBlank()) {
                     AuctionUi.open(viewer, auctions, 0, null, sort, mineOnly);
                 } else {
@@ -454,6 +466,7 @@ public final class AuctionUi {
                 var server = sp.level().getServer();
 
                 if (current == null) {
+                    EconomySounds.failure(sp);
                     sp.sendSystemMessage(Component.literal("Listing no longer available").withStyle(ChatFormatting.RED));
                 } else {
                     EconomyManager eco = EconomyCraft.getManager(server);
@@ -464,6 +477,7 @@ public final class AuctionUi {
                     var payment = eco.transferMoney(player.getUUID(), current.seller, total, cost,
                             EconomySources.AUCTION_PURCHASE);
                     if (!payment.successful()) {
+                        EconomySounds.failure(sp);
                         String message = payment.status() == com.reazip.economycraft.api.v1.BalanceMutationStatus.MAX_BALANCE_EXCEEDED
                                 ? "Seller cannot receive this payment"
                                 : "Not enough balance";
@@ -478,6 +492,7 @@ public final class AuctionUi {
                         Component name = stack.getHoverName();
 
                         String sellerName = MenuUiSupport.resolvePlayerName(server, current.seller);
+                        EconomySounds.success(sp);
 
                         if (!player.getInventory().add(stack)) {
                             auctions.addDelivery(player.getUUID(), stack);
@@ -496,6 +511,7 @@ public final class AuctionUi {
             }
 
             if (slot == MenuUiSupport.ROW_CANCEL) {
+                EconomySounds.click((ServerPlayer) player);
                 player.closeContainer();
                 AuctionUi.open((ServerPlayer) player, auctions, 0, query, sort, mineOnly);
                 return true;
@@ -551,6 +567,7 @@ public final class AuctionUi {
             if (slot == MenuUiSupport.ROW_CONFIRM) {
                 AuctionListing removed = auctions.removeListing(listing.id);
                 if (removed != null) {
+                    EconomySounds.itemPickedUp(viewer);
                     ItemStack stack = removed.item.copy();
                     if (!player.getInventory().add(stack)) {
                         auctions.addDelivery(player.getUUID(), stack);
@@ -559,6 +576,7 @@ public final class AuctionUi {
                         viewer.sendSystemMessage(Component.literal("Listing removed"));
                     }
                 } else {
+                    EconomySounds.failure(viewer);
                     viewer.sendSystemMessage(Component.literal("Listing no longer available"));
                 }
                 player.closeContainer();
@@ -566,6 +584,7 @@ public final class AuctionUi {
                 return true;
             }
             if (slot == MenuUiSupport.ROW_CANCEL) {
+                EconomySounds.click((ServerPlayer) player);
                 player.closeContainer();
                 AuctionUi.open((ServerPlayer) player, auctions, 0, query, sort, mineOnly);
                 return true;

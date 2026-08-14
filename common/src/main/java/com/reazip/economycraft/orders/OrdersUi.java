@@ -8,6 +8,7 @@ import com.reazip.economycraft.SellService;
 import com.reazip.economycraft.util.ClickKind;
 import com.reazip.economycraft.util.CompatMenu;
 import com.reazip.economycraft.util.ContainerPreviewUi;
+import com.reazip.economycraft.util.EconomySounds;
 import com.reazip.economycraft.util.IdentityCompat;
 import com.reazip.economycraft.util.ItemPickerUi;
 import com.reazip.economycraft.util.MenuUiSupport;
@@ -128,6 +129,7 @@ public final class OrdersUi {
         eco.getOrders().addRequest(request);
 
         long tax = Math.round(price * EconomyConfig.get().taxRate);
+        EconomySounds.success(player);
         player.sendSystemMessage(Component.literal("Requested " + amount + "x "
                         + prototype.getHoverName().getString() + " for " + EconomyCraft.formatMoney(price)
                         + (tax > 0 ? " (fulfiller receives " + EconomyCraft.formatMoney(price - tax) + ")" : ""))
@@ -306,43 +308,52 @@ public final class OrdersUi {
                     OrderRequest req = requests.get(index);
                     int held = OrderFulfillment.countHeld(viewer, req.item);
                     if (req.requester.equals(viewer.getUUID())) {
+                        EconomySounds.click(viewer);
                         openRemove(viewer, req);
                     } else if (held <= 0) {
+                        EconomySounds.failure(viewer);
                         viewer.sendSystemMessage(Component.literal("You have no " + req.item.getHoverName().getString() +
                                 " to fulfill this.").withStyle(ChatFormatting.RED));
                     } else if (OrderFulfillment.requiresCompleteFulfillment(req) && held < req.amount) {
+                        EconomySounds.failure(viewer);
                         viewer.sendSystemMessage(Component.literal("This request must be fulfilled all at once.")
                                 .withStyle(ChatFormatting.RED));
                     } else {
+                        EconomySounds.click(viewer);
                         openConfirm(viewer, req);
                     }
                     return true;
                 }
             }
-            if (slot == navRowStart + 3 && page > 0) { page--; updatePage(); return true; }
-            if (slot == navRowStart + 5 && (page + 1) * itemsPerPage < requests.size()) { page++; updatePage(); return true; }
+            if (slot == navRowStart + 3 && page > 0) { EconomySounds.page(viewer); page--; updatePage(); return true; }
+            if (slot == navRowStart + 5 && (page + 1) * itemsPerPage < requests.size()) { EconomySounds.page(viewer); page++; updatePage(); return true; }
             if (slot == navRowStart + 1) {
+                EconomySounds.click(viewer);
                 cycleSort();
                 page = 0;
                 updatePage();
                 return true;
             }
             if (slot == navRowStart + 2) {
+                EconomySounds.click(viewer);
                 viewer.closeContainer();
                 startRequest(viewer, eco);
                 return true;
             }
             if (slot == navRowStart + 6) {
+                EconomySounds.click(viewer);
                 viewer.closeContainer();
                 openClaims(viewer, eco);
                 return true;
             }
             if (slot == navRowStart + 7) {
+                EconomySounds.click(viewer);
                 viewer.closeContainer();
                 HubUi.open(viewer);
                 return true;
             }
             if (slot == navRowStart + 8) {
+                EconomySounds.click(viewer);
                 if (query != null && !query.isBlank()) {
                     OrdersUi.open(viewer, eco, 0, null, sort, mineOnly);
                 } else {
@@ -428,13 +439,16 @@ public final class OrdersUi {
                 OrderRequest current = parent.orders.getRequest(request.id);
                 int give = current == null ? 0 : Math.min(OrderFulfillment.countHeld(serverPlayer, current.item), current.amount);
                 if (current == null) {
+                    EconomySounds.failure(serverPlayer);
                     serverPlayer.sendSystemMessage(Component.literal("Request no longer available").withStyle(ChatFormatting.RED));
                 } else if (give <= 0) {
+                    EconomySounds.failure(serverPlayer);
                     serverPlayer.sendSystemMessage(Component.literal("You have none to give").withStyle(ChatFormatting.RED));
                 } else {
                     OrderFulfillment.Result result = OrderFulfillment.fulfill(parent.eco, serverPlayer, current.id, give);
                     switch (result.status()) {
                         case OK -> {
+                            EconomySounds.success(serverPlayer);
                             String requesterName = MenuUiSupport.resolvePlayerName(server, result.requester());
                             String extra = result.remaining() > 0 ? " (" + result.remaining() + " still wanted)" : "";
                             serverPlayer.sendSystemMessage(
@@ -443,11 +457,11 @@ public final class OrdersUi {
                                                     EconomyCraft.formatMoney(result.payout()) + extra)
                                             .withStyle(ChatFormatting.GREEN));
                         }
-                        case REQUESTER_CANT_PAY -> serverPlayer.sendSystemMessage(Component.literal("Requester can't pay").withStyle(ChatFormatting.RED));
-                        case FULFILLER_CANT_RECEIVE -> serverPlayer.sendSystemMessage(Component.literal("Your balance is too high to receive this payout").withStyle(ChatFormatting.RED));
-                        case OWN_ORDER -> serverPlayer.sendSystemMessage(Component.literal("You cannot fulfill your own request").withStyle(ChatFormatting.RED));
-                        case FULL_AMOUNT_REQUIRED -> serverPlayer.sendSystemMessage(Component.literal("This request must be fulfilled all at once.").withStyle(ChatFormatting.RED));
-                        default -> serverPlayer.sendSystemMessage(Component.literal("Request no longer available").withStyle(ChatFormatting.RED));
+                        case REQUESTER_CANT_PAY -> fail(serverPlayer, "Requester can't pay");
+                        case FULFILLER_CANT_RECEIVE -> fail(serverPlayer, "Your balance is too high to receive this payout");
+                        case OWN_ORDER -> fail(serverPlayer, "You cannot fulfill your own request");
+                        case FULL_AMOUNT_REQUIRED -> fail(serverPlayer, "This request must be fulfilled all at once.");
+                        default -> fail(serverPlayer, "Request no longer available");
                     }
                 }
 
@@ -458,11 +472,17 @@ public final class OrdersUi {
             }
 
             if (slot == MenuUiSupport.ROW_CANCEL) {
+                EconomySounds.click((ServerPlayer) player);
                 player.closeContainer();
                 OrdersUi.open((ServerPlayer) player, parent.eco, 0, parent.query, parent.sort, parent.mineOnly);
                 return true;
             }
             return false;
+        }
+
+        private static void fail(ServerPlayer player, String message) {
+            EconomySounds.failure(player);
+            player.sendSystemMessage(Component.literal(message).withStyle(ChatFormatting.RED));
         }
     }
 
@@ -505,8 +525,10 @@ public final class OrdersUi {
             if (slot == MenuUiSupport.ROW_CONFIRM) {
                 OrderRequest removed = parent.orders.removeRequest(request.id);
                 if (removed != null) {
+                    EconomySounds.itemPickedUp((ServerPlayer) player);
                     ((ServerPlayer) player).sendSystemMessage(Component.literal("Request removed").withStyle(ChatFormatting.GREEN));
                 } else {
+                    EconomySounds.failure((ServerPlayer) player);
                     ((ServerPlayer) player).sendSystemMessage(Component.literal("Request no longer available").withStyle(ChatFormatting.RED));
                 }
                 player.closeContainer();
@@ -514,6 +536,7 @@ public final class OrdersUi {
                 return true;
             }
             if (slot == MenuUiSupport.ROW_CANCEL) {
+                EconomySounds.click((ServerPlayer) player);
                 player.closeContainer();
                 OrdersUi.open((ServerPlayer) player, parent.eco, 0, parent.query, parent.sort, parent.mineOnly);
                 return true;
@@ -613,15 +636,17 @@ public final class OrdersUi {
                         ItemStack stack = s.getItem();
                         ItemStack copy = stack.copy();
                         if (player.getInventory().add(copy)) {
+                            EconomySounds.itemPickedUp((ServerPlayer) player);
                             removeStack(stack);
                             updatePage();
                         }
                     }
                     return true;
                 }
-                if (slot == navRowStart + 3 && page > 0) { page--; updatePage(); return true; }
-                if (slot == navRowStart + 5 && (page + 1) * 45 < items.size()) { page++; updatePage(); return true; }
+                if (slot == navRowStart + 3 && page > 0) { EconomySounds.page((ServerPlayer) player); page--; updatePage(); return true; }
+                if (slot == navRowStart + 5 && (page + 1) * 45 < items.size()) { EconomySounds.page((ServerPlayer) player); page++; updatePage(); return true; }
                 if (slot == navRowStart + 8) {
+                    EconomySounds.click((ServerPlayer) player);
                     player.closeContainer();
                     HubUi.open((ServerPlayer) player);
                     return true;
@@ -639,6 +664,7 @@ public final class OrdersUi {
             ItemStack copy = stack.copy();
             if (isDeliverySlot(idx)) {
                 if (player.getInventory().add(copy)) {
+                    EconomySounds.itemPickedUp((ServerPlayer) player);
                     removeStack(stack);
                     updatePage();
                     return copy;

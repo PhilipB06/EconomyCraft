@@ -6,6 +6,7 @@ import com.reazip.economycraft.EconomySources;
 import com.reazip.economycraft.util.ClickKind;
 import com.reazip.economycraft.util.CompatMenu;
 import com.reazip.economycraft.util.ConfirmUi;
+import com.reazip.economycraft.util.EconomySounds;
 import com.reazip.economycraft.util.ItemsCompat;
 import com.reazip.economycraft.util.MenuUiSupport;
 import com.reazip.economycraft.util.NumberInputUi;
@@ -108,6 +109,9 @@ public final class AdminPlayersUi {
             if (kind != ClickKind.PICKUP && kind != ClickKind.QUICK_MOVE) return true;
 
             long balance = eco.getBalance(target.id(), true);
+            if (slot == GIVE || slot == TAKE || slot == SET || slot == WIPE || slot == BACK) {
+                EconomySounds.click(viewer);
+            }
             switch (slot) {
                 case GIVE -> NumberInputUi.openMoney(viewer, "Give to " + target.name(), subject(), "Amount",
                         100, 1, EconomyManager.MAX,
@@ -115,6 +119,7 @@ public final class AdminPlayersUi {
                             if (eco.addMoney(target.id(), amount, EconomySources.ADMIN_ADD).successful()) {
                                 announce(p, "Gave " + EconomyCraft.formatMoney(amount) + " to " + target.name());
                             } else {
+                                EconomySounds.failure(p);
                                 p.sendSystemMessage(MenuUiSupport.line(target.name() + " cannot receive that much.",
                                         ChatFormatting.RED));
                             }
@@ -127,6 +132,7 @@ public final class AdminPlayersUi {
                             if (eco.removeMoney(target.id(), amount, EconomySources.ADMIN_REMOVE).successful()) {
                                 announce(p, "Took " + EconomyCraft.formatMoney(amount) + " from " + target.name());
                             } else {
+                                EconomySounds.failure(p);
                                 p.sendSystemMessage(MenuUiSupport.line(target.name() + " does not have that much.",
                                         ChatFormatting.RED));
                             }
@@ -159,6 +165,7 @@ public final class AdminPlayersUi {
         }
 
         private void announce(ServerPlayer admin, String message) {
+            EconomySounds.click(admin);
             admin.sendSystemMessage(Component.literal(message).withStyle(ChatFormatting.GREEN));
         }
     }

@@ -170,27 +170,32 @@ public final class PlayerPickerUi {
             if (slot < gridSlots) {
                 int index = page * gridSlots + slot;
                 if (index < targets.size()) {
+                    EconomySounds.click(viewer);
                     viewer.closeContainer();
                     onPick.accept(viewer, targets.get(index));
                 }
                 return true;
             }
             if (slot == nav) {
+                EconomySounds.click(viewer);
                 viewer.closeContainer();
                 if (onCancel != null) onCancel.accept(viewer);
                 return true;
             }
             if (slot == nav + 3 && page > 0) {
+                EconomySounds.page(viewer);
                 page--;
                 render();
                 return true;
             }
             if (slot == nav + 5 && (page + 1) * gridSlots < targets.size()) {
+                EconomySounds.page(viewer);
                 page++;
                 render();
                 return true;
             }
             if (slot == nav + 8) {
+                EconomySounds.click(viewer);
                 if (searching()) {
                     open(viewer, title, includeSelf, null, 0, onPick, onCancel);
                 } else {

@@ -6,6 +6,7 @@ import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyManager;
 import com.reazip.economycraft.util.ClickKind;
 import com.reazip.economycraft.util.CompatMenu;
+import com.reazip.economycraft.util.EconomySounds;
 import com.reazip.economycraft.util.ItemsCompat;
 import com.reazip.economycraft.util.MenuUiSupport;
 import com.reazip.economycraft.util.NumberInputUi;
@@ -164,6 +165,7 @@ public final class AdminSettingsUi {
                     (p, next) -> {
                         apply.accept(next);
                         save(p);
+                        EconomySounds.click(p);
                         open(p, eco);
                     },
                     p -> open(p, eco));
@@ -176,6 +178,7 @@ public final class AdminSettingsUi {
                     (p, next) -> {
                         apply.accept(next / 100.0);
                         save(p);
+                        EconomySounds.click(p);
                         open(p, eco);
                     },
                     p -> open(p, eco));
@@ -187,12 +190,14 @@ public final class AdminSettingsUi {
             if (kind != ClickKind.PICKUP && kind != ClickKind.QUICK_MOVE) return true;
 
             if (slot == BACK) {
+                EconomySounds.click(viewer);
                 AdminUi.open(viewer, eco);
                 return true;
             }
 
             for (Setting setting : Setting.values()) {
                 if (setting.slot != slot) continue;
+                EconomySounds.click(viewer);
                 EconomyConfig config = EconomyConfig.get();
                 switch (setting) {
                     case STARTING_BALANCE -> editMoney(setting, config.startingBalance, 0, Items.GOLD_INGOT,
@@ -211,6 +216,7 @@ public final class AdminSettingsUi {
                                 EconomyConfig.get().balanceSeparator =
                                         text.equalsIgnoreCase("space") ? " " : text.substring(0, 1);
                                 save(p);
+                                EconomySounds.click(p);
                                 open(p, eco);
                             });
                     case SHOP -> {

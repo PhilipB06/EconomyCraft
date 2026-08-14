@@ -10,6 +10,7 @@ import com.reazip.economycraft.api.v1.PaymentResult;
 import com.reazip.economycraft.orders.OrderManager;
 import com.reazip.economycraft.auction.AuctionManager;
 import com.reazip.economycraft.util.AsyncFileWriter;
+import com.reazip.economycraft.util.EconomySounds;
 import com.reazip.economycraft.util.EconomyPaths;
 import com.reazip.economycraft.util.IdentityCompat;
 import net.minecraft.ChatFormatting;
@@ -590,6 +591,7 @@ public class EconomyManager {
         PaymentResult result = pay(victim.getUUID(), killer.getUUID(), loss, EconomySources.PVP_REWARD);
         if (!result.successful()) return;
 
+        EconomySounds.moneyReceived(killer);
         victim.sendSystemMessage(Component.literal(
                 "You lost " + EconomyCraft.formatMoney(loss) + " for being killed by " + killer.getName().getString())
                 .withStyle(ChatFormatting.RED));

@@ -9,6 +9,7 @@ import com.reazip.economycraft.PriceRegistry;
 import com.reazip.economycraft.SellService;
 import com.reazip.economycraft.util.ClickKind;
 import com.reazip.economycraft.util.CompatMenu;
+import com.reazip.economycraft.util.EconomySounds;
 import com.reazip.economycraft.util.MenuUiSupport;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -127,7 +128,10 @@ public final class SellUi {
             }
 
             if (moved == 0) {
+                EconomySounds.failure(viewer);
                 viewer.sendSystemMessage(MenuUiSupport.line("Nothing in your inventory can be sold.", ChatFormatting.RED));
+            } else {
+                EconomySounds.itemsStored(viewer);
             }
             renderNavRow();
         }
@@ -176,6 +180,7 @@ public final class SellUi {
 
             int totalSold = orderGivenTotal + serverSoldTotal;
             if (totalSold > 0) {
+                EconomySounds.success(player);
                 long totalPayout = orderPayoutTotal + serverPayoutTotal;
                 player.sendSystemMessage(Component.literal("Successfully sold " + totalSold + " item" + (totalSold == 1 ? "" : "s") +
                                 " for " + EconomyCraft.formatMoney(totalPayout) +
@@ -198,6 +203,10 @@ public final class SellUi {
                         .withStyle(ChatFormatting.RED));
             }
 
+            if (totalSold == 0) {
+                EconomySounds.failure(player);
+            }
+
             renderNavRow();
         }
 
@@ -211,6 +220,7 @@ public final class SellUi {
                     } else if (navSlot == NAV_FILL) {
                         fillFromInventory(player);
                     } else if (navSlot == NAV_MENU) {
+                        EconomySounds.click((ServerPlayer) player);
                         player.closeContainer();
                         HubUi.open((ServerPlayer) player);
                     }
@@ -234,6 +244,7 @@ public final class SellUi {
 
         private void rejectUnsellable(Player player, ItemStack stack) {
             if (player instanceof ServerPlayer sp) {
+                EconomySounds.failure(sp);
                 sp.sendSystemMessage(Component.literal(stack.getHoverName().getString() + " cannot be sold.")
                         .withStyle(ChatFormatting.RED));
             }
