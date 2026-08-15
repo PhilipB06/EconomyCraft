@@ -8,5 +8,6 @@
 - Renamed the player shop to the auction house (`/ah`, `/auction`) and moved the server-shop to `/shop`.
 
 ### Fixes
+- Fixed a text-input crash on NeoForge.
 - Fixed name suggestions not filtering as you type.
 - Prevented partial order fulfillment when it would pay nothing.

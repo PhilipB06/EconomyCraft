@@ -60,7 +60,7 @@ final class EconomyCraftNeoForgeTab {
         registerPlayer.invoke(manager, "%economycraft:daily_sell_remaining%", REFRESH_MS, dailySellRemaining);
 
         Function<Matcher, Supplier<String>> topName = matcher -> {
-            int rank = Integer.parseInt(matcher.group(1));
+            int rank = parseRank(matcher);
             return () -> {
                 EconomyManager.LeaderboardEntry entry = EconomyCraft.getManager(server).getLeaderboardEntry(rank);
                 return entry != null ? entry.name() : NO_PLAYER;
@@ -69,7 +69,7 @@ final class EconomyCraftNeoForgeTab {
         registerServerPattern.invoke(manager, TOP_NAME, REFRESH_MS, topName);
 
         Function<Matcher, Supplier<String>> topBalance = matcher -> {
-            int rank = Integer.parseInt(matcher.group(1));
+            int rank = parseRank(matcher);
             return () -> {
                 EconomyManager.LeaderboardEntry entry = EconomyCraft.getManager(server).getLeaderboardEntry(rank);
                 return entry != null ? String.valueOf(entry.balance()) : NO_PLAYER;
@@ -78,13 +78,21 @@ final class EconomyCraftNeoForgeTab {
         registerServerPattern.invoke(manager, TOP_BALANCE, REFRESH_MS, topBalance);
 
         Function<Matcher, Supplier<String>> topBalanceFormatted = matcher -> {
-            int rank = Integer.parseInt(matcher.group(1));
+            int rank = parseRank(matcher);
             return () -> {
                 EconomyManager.LeaderboardEntry entry = EconomyCraft.getManager(server).getLeaderboardEntry(rank);
                 return entry != null ? EconomyCraft.formatMoney(entry.balance()) : NO_PLAYER;
             };
         };
         registerServerPattern.invoke(manager, TOP_BALANCE_FORMATTED, REFRESH_MS, topBalanceFormatted);
+    }
+
+    private static int parseRank(Matcher matcher) {
+        try {
+            return Integer.parseInt(matcher.group(1));
+        } catch (NumberFormatException ignored) {
+            return -1;
+        }
     }
 
     private static UUID uuidOf(Method getUniqueId, Object tabPlayer) {

@@ -210,14 +210,14 @@ public final class AuctionUi {
 
         private AuctionMenu(int id, Inventory inv, AuctionManager auctions, ServerPlayer viewer, int page, @Nullable String query,
                          SortMode sort, boolean mineOnly, List<AuctionListing> resolved) {
-            super(MenuUiSupport.getMenuType(MenuUiSupport.requiredRows(resolved.size())), id);
+            super(MenuUiSupport.getMenuType(layoutRows(resolved.size())), id);
             this.auctions = auctions;
             this.viewer = viewer;
             this.page = page;
             this.query = query;
             this.sort = sort;
             this.mineOnly = mineOnly;
-            this.rows = MenuUiSupport.requiredRows(resolved.size());
+            this.rows = layoutRows(resolved.size());
             this.itemsPerPage = (rows - 1) * 9;
             this.navRowStart = itemsPerPage;
             this.container = new SimpleContainer(rows * 9);
@@ -251,8 +251,17 @@ public final class AuctionUi {
             return list;
         }
 
+        private static int layoutRows(int listingCount) {
+            return listingCount == 0 ? 2 : 6;
+        }
+
         private void updatePage() {
-            listings = resolveListings(auctions, query, sort, mineOnly, viewer);
+            List<AuctionListing> updated = resolveListings(auctions, query, sort, mineOnly, viewer);
+            if (layoutRows(updated.size()) != rows) {
+                AuctionUi.open(viewer, auctions, 0, query, sort, mineOnly);
+                return;
+            }
+            listings = updated;
             renderPage();
         }
 
@@ -272,8 +281,9 @@ public final class AuctionUi {
 
         private void renderPage() {
             container.clearContent();
-            int start = page * itemsPerPage;
             int totalPages = MenuUiSupport.totalPages(listings.size(), itemsPerPage);
+            page = Math.min(page, totalPages - 1);
+            int start = page * itemsPerPage;
 
             for (int i = 0; i < itemsPerPage; i++) {
                 int idx = start + i;

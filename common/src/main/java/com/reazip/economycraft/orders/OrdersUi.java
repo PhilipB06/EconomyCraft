@@ -160,7 +160,7 @@ public final class OrdersUi {
 
         private RequestMenu(int id, Inventory inv, OrderManager orders, EconomyManager eco, ServerPlayer viewer, int page,
                             @Nullable String query, SortMode sort, boolean mineOnly, List<OrderRequest> resolved) {
-            super(MenuUiSupport.getMenuType(MenuUiSupport.requiredRows(resolved.size())), id);
+            super(MenuUiSupport.getMenuType(layoutRows(resolved.size())), id);
             this.orders = orders;
             this.eco = eco;
             this.viewer = viewer;
@@ -168,7 +168,7 @@ public final class OrdersUi {
             this.query = query;
             this.sort = sort;
             this.mineOnly = mineOnly;
-            this.rows = MenuUiSupport.requiredRows(resolved.size());
+            this.rows = layoutRows(resolved.size());
             this.itemsPerPage = (rows - 1) * 9;
             this.navRowStart = itemsPerPage;
             this.container = new SimpleContainer(rows * 9);
@@ -202,8 +202,17 @@ public final class OrdersUi {
             return list;
         }
 
+        private static int layoutRows(int requestCount) {
+            return requestCount == 0 ? 2 : 6;
+        }
+
         private void updatePage() {
-            requests = resolveRequests(orders, query, sort, mineOnly, viewer);
+            List<OrderRequest> updated = resolveRequests(orders, query, sort, mineOnly, viewer);
+            if (layoutRows(updated.size()) != rows) {
+                OrdersUi.open(viewer, eco, 0, query, sort, mineOnly);
+                return;
+            }
+            requests = updated;
             renderPage();
         }
 
@@ -223,8 +232,9 @@ public final class OrdersUi {
 
         private void renderPage() {
             container.clearContent();
-            int start = page * itemsPerPage;
             int totalPages = MenuUiSupport.totalPages(requests.size(), itemsPerPage);
+            page = Math.min(page, totalPages - 1);
+            int start = page * itemsPerPage;
 
             var server = viewer.level().getServer();
 

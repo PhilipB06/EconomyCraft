@@ -53,7 +53,7 @@ public final class TextInputUi {
             this.inputSlots.setItem(INPUT_SLOT, input);
             lockInputSlot(INPUT_SLOT);
             lockInputSlot(ADDITIONAL_SLOT);
-            createResult();
+            renderResult();
         }
 
         private void lockInputSlot(int index) {
@@ -64,12 +64,11 @@ public final class TextInputUi {
         @Override
         public boolean setItemName(@NonNull String name) {
             this.text = name;
-            createResult();
+            renderResult();
             return true;
         }
 
-        @Override
-        public void createResult() {
+        private void renderResult() {
             String value = text == null ? "" : text;
             ItemStack result = new ItemStack(icon);
             Component name = value.isBlank()
