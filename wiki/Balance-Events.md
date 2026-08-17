@@ -17,7 +17,7 @@ ListenerRegistration registration = api.balanceEvents().register(event -> {
 });
 ```
 
-Keep the returned registration and unregister it when the addon stops using that server:
+Keep the returned registration and unregister it when your mod stops using that server:
 
 ```java
 registration.unregister();
@@ -77,15 +77,15 @@ Listeners should still handle errors internally and return quickly because they 
 
 ```java
 ListenerRegistration registration = api.balanceEvents().register(event -> {
-    boolean fromThisAddon = event.source()
+    boolean fromThisMod = event.source()
             .map(MutationSource::namespace)
             .filter("examplemod"::equals)
             .isPresent();
 
-    if (fromThisAddon) {
-        // Handle this addon's completed balance changes.
+    if (fromThisMod) {
+        // Handle this mod's completed balance changes.
     }
 });
 ```
 
-EconomyCraft's own operations use `economycraft:*` sources. Addons should use their own mod id as the namespace.
+EconomyCraft's own operations use `economycraft:*` sources. Other mods should use their own mod id as the namespace.

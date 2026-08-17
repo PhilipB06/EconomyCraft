@@ -19,7 +19,7 @@ long maximum = balances.getMaximumBalance();
 
 `getBalance(...)` creates a missing balance with EconomyCraft's configured starting balance and stores it. Missing balances are not exposed as a separate API state.
 
-The current maximum balance is `999999999`. Use `getMaximumBalance()` instead of copying that value into an addon.
+The current maximum balance is `999999999`. Use `getMaximumBalance()` instead of copying that value into your mod.
 
 ---
 

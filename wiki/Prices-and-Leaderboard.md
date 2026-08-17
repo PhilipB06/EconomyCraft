@@ -87,6 +87,6 @@ UUID playerId();
 long balance();
 ```
 
-Names are deliberately not part of the result. Entries remain usable when a UUID cannot be resolved to a current player name. The calling addon may resolve names separately when it needs to display them.
+Names are deliberately not part of the result. Entries remain usable when a UUID cannot be resolved to a current player name. The calling mod may resolve names separately when it needs to display them.
 
 Only stored balances appear on the leaderboard. Reading an unknown UUID through `getBalance(...)` initializes and stores it, after which it can appear in later leaderboard queries.

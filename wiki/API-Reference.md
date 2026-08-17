@@ -6,7 +6,7 @@ All public v1 types are in:
 com.reazip.economycraft.api.v1
 ```
 
-Implementation and provider classes are internal. Addons should only import the types listed here.
+Implementation and provider classes are internal. Other mods should only import the types listed here.
 
 ---
 
@@ -228,7 +228,7 @@ public interface ListenerRegistration extends AutoCloseable {
 
 - All calls are server-thread-only.
 - UUID arguments support offline players.
-- Calling addons handle their own permissions.
+- Calling mods handle their own permissions.
 - Normal absent values use `Optional`, `OptionalLong` or an empty immutable list instead of `null`.
 - Failed mutations do not change or implicitly save balances.
 - Returned price and leaderboard data is immutable.

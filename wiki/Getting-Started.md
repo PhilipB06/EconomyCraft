@@ -1,8 +1,8 @@
 # Getting started
 
-Use the normal EconomyCraft jar that matches the Minecraft version and loader of the addon.
+Use the normal EconomyCraft jar that matches the Minecraft version and loader of your mod.
 
-Add that jar as a mod compile dependency in the addon project.
+Add that jar as a mod compile dependency in your project.
 
 Declare `economycraft` as a required mod dependency.
 
@@ -59,7 +59,7 @@ String displayed = api.formatMoney(125000);
 
 ## Permissions
 
-The API does not check command or player permissions. The calling addon decides who may trigger its features before it calls EconomyCraft.
+The API does not check command or player permissions. The calling mod decides who may trigger its features before it calls EconomyCraft.
 
 EconomyCraft validates balance rules regardless of who calls the API.
 
@@ -67,13 +67,13 @@ EconomyCraft validates balance rules regardless of who calls the API.
 
 ## Namespaced sources
 
-A mutation can carry a source that identifies the addon and reason:
+A mutation can carry a source that identifies the calling mod and reason:
 
 ```java
 MutationSource source = MutationSource.of("examplemod:quest/reward");
 ```
 
-Use the addon's own namespace. Both parts must be lowercase.
+Use your mod's own namespace. Both parts must be lowercase.
 
 | Part | Allowed characters |
 |---|---|
