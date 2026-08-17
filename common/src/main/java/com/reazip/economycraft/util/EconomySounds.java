@@ -24,7 +24,7 @@ public final class EconomySounds {
     }
 
     public static void failure(ServerPlayer player) {
-        play(player, SoundEvents.BUNDLE_INSERT_FAIL, 0.4F, 1.0F);
+        play(player, FailureSoundCompat.sound(), 0.4F, 1.0F);
     }
 
     public static void moneyReceived(ServerPlayer player) {

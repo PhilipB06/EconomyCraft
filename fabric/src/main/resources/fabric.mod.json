@@ -13,7 +13,7 @@
     "client": ["com.reazip.economycraft.fabric.client.EconomyCraftFabricClient"]
   },
   "depends": {
-    "minecraft": ">=${mcLo} <${mcHi}",
+    "minecraft": "${mcPredicate}",
     "fabricloader": ">=0.15.0",
     "fabric-api": "*",
     "architectury": ">=${archVer}"

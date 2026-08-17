@@ -14,7 +14,6 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.ItemLore;
-import org.jspecify.annotations.NonNull;
 
 import java.util.List;
 import java.util.function.BiConsumer;
@@ -62,7 +61,7 @@ public final class TextInputUi {
         }
 
         @Override
-        public boolean setItemName(@NonNull String name) {
+        public boolean setItemName(String name) {
             this.text = name;
             renderResult();
             return true;
@@ -82,12 +81,12 @@ public final class TextInputUi {
         }
 
         @Override
-        protected boolean mayPickup(@NonNull Player player, boolean hasItem) {
+        protected boolean mayPickup(Player player, boolean hasItem) {
             return hasItem && text != null && !text.isBlank();
         }
 
         @Override
-        protected void onTake(Player player, @NonNull ItemStack stack) {
+        protected void onTake(Player player, ItemStack stack) {
             String value = text;
             this.setCarried(ItemStack.EMPTY);
             player.closeContainer();
@@ -101,7 +100,7 @@ public final class TextInputUi {
         }
 
         @Override
-        public @NonNull ItemStack quickMoveStack(@NonNull Player player, int index) {
+        public ItemStack quickMoveStack(Player player, int index) {
             return ItemStack.EMPTY;
         }
     }

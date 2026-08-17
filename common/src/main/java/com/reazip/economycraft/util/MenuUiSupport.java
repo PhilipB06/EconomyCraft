@@ -26,7 +26,6 @@ import net.minecraft.world.item.component.ItemLore;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
 import org.jetbrains.annotations.Nullable;
-import org.jspecify.annotations.NonNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -234,8 +233,8 @@ public final class MenuUiSupport {
 
     public static Slot lockedSlot(Container container, int index, int x, int y) {
         return new Slot(container, index, x, y) {
-            @Override public boolean mayPickup(@NonNull Player player) { return false; }
-            @Override public boolean mayPlace(@NonNull ItemStack stack) { return false; }
+            @Override public boolean mayPickup(Player player) { return false; }
+            @Override public boolean mayPlace(ItemStack stack) { return false; }
         };
     }
 
@@ -271,7 +270,7 @@ public final class MenuUiSupport {
             int r = i / 9;
             int c = i % 9;
             slots.add(new Slot(container, i, GRID_LEFT + c * SLOT_SIZE, GRID_TOP + r * SLOT_SIZE) {
-                @Override public boolean mayPlace(@NonNull ItemStack stack) { return mayPlace.test(stack); }
+                @Override public boolean mayPlace(ItemStack stack) { return mayPlace.test(stack); }
             });
         }
         return slots;

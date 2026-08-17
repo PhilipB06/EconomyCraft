@@ -2,10 +2,10 @@ package com.reazip.economycraft.neoforge;
 
 import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyManager;
+import com.reazip.economycraft.util.PlaceholderValues;
 import eu.pb4.placeholders.api.Placeholders;
 import eu.pb4.placeholders.api.PlaceholderResult;
 import net.minecraft.resources.Identifier;
-import net.minecraft.server.MinecraftServer;
 
 final class EconomyCraftNeoForgePlaceholders {
     private EconomyCraftNeoForgePlaceholders() {}
@@ -14,46 +14,34 @@ final class EconomyCraftNeoForgePlaceholders {
         Placeholders.register(Identifier.fromNamespaceAndPath(EconomyCraft.MOD_ID, "balance"), (ctx, arg) -> {
             if (!ctx.hasPlayer()) return PlaceholderResult.invalid("No player!");
             EconomyManager eco = EconomyCraft.getManager(ctx.server());
-            long balance = eco.getBalance(ctx.player().getUUID(), true);
-            return PlaceholderResult.value(String.valueOf(balance));
+            return PlaceholderResult.value(PlaceholderValues.balance(eco, ctx.player().getUUID()));
         });
 
         Placeholders.register(Identifier.fromNamespaceAndPath(EconomyCraft.MOD_ID, "balance_formatted"), (ctx, arg) -> {
             if (!ctx.hasPlayer()) return PlaceholderResult.invalid("No player!");
             EconomyManager eco = EconomyCraft.getManager(ctx.server());
-            long balance = eco.getBalance(ctx.player().getUUID(), true);
-            return PlaceholderResult.value(EconomyCraft.formatMoney(balance));
+            return PlaceholderResult.value(PlaceholderValues.balanceFormatted(eco, ctx.player().getUUID()));
         });
 
         Placeholders.register(Identifier.fromNamespaceAndPath(EconomyCraft.MOD_ID, "daily_sell_remaining"), (ctx, arg) -> {
             if (!ctx.hasPlayer()) return PlaceholderResult.invalid("No player!");
             EconomyManager eco = EconomyCraft.getManager(ctx.server());
-            long remaining = eco.getDailySellRemaining(ctx.player().getUUID());
-            return PlaceholderResult.value(remaining == Long.MAX_VALUE ? "∞" : String.valueOf(remaining));
+            return PlaceholderResult.value(PlaceholderValues.dailySellRemaining(eco, ctx.player().getUUID()));
         });
 
         Placeholders.register(Identifier.fromNamespaceAndPath(EconomyCraft.MOD_ID, "top_name"), (ctx, arg) -> {
-            EconomyManager.LeaderboardEntry entry = topEntry(ctx.server(), arg);
-            return entry != null ? PlaceholderResult.value(entry.name()) : PlaceholderResult.invalid("No player!");
+            String result = PlaceholderValues.topName(EconomyCraft.getManager(ctx.server()), arg);
+            return result != null ? PlaceholderResult.value(result) : PlaceholderResult.invalid("No player!");
         });
 
         Placeholders.register(Identifier.fromNamespaceAndPath(EconomyCraft.MOD_ID, "top_balance"), (ctx, arg) -> {
-            EconomyManager.LeaderboardEntry entry = topEntry(ctx.server(), arg);
-            return entry != null ? PlaceholderResult.value(String.valueOf(entry.balance())) : PlaceholderResult.invalid("No player!");
+            String result = PlaceholderValues.topBalance(EconomyCraft.getManager(ctx.server()), arg);
+            return result != null ? PlaceholderResult.value(result) : PlaceholderResult.invalid("No player!");
         });
 
         Placeholders.register(Identifier.fromNamespaceAndPath(EconomyCraft.MOD_ID, "top_balance_formatted"), (ctx, arg) -> {
-            EconomyManager.LeaderboardEntry entry = topEntry(ctx.server(), arg);
-            return entry != null ? PlaceholderResult.value(EconomyCraft.formatMoney(entry.balance())) : PlaceholderResult.invalid("No player!");
+            String result = PlaceholderValues.topBalanceFormatted(EconomyCraft.getManager(ctx.server()), arg);
+            return result != null ? PlaceholderResult.value(result) : PlaceholderResult.invalid("No player!");
         });
-    }
-
-    private static EconomyManager.LeaderboardEntry topEntry(MinecraftServer server, String arg) {
-        if (arg == null) return null;
-        try {
-            return EconomyCraft.getManager(server).getLeaderboardEntry(Integer.parseInt(arg.trim()));
-        } catch (NumberFormatException e) {
-            return null;
-        }
     }
 }

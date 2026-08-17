@@ -114,7 +114,7 @@ Two further keys are written by the editor:
 
 ## Developer API
 
-The normal EconomyCraft jar includes API v1 for server-side addon mods. There is no separate runtime API mod to install.
+The normal EconomyCraft jar includes API v1 for other server-side mods. There is no separate runtime API mod to install.
 
 The API covers balances and payments, official money formatting, read-only item prices, leaderboard data and successful balance-change events. Public classes are under `com.reazip.economycraft.api.v1`.
 

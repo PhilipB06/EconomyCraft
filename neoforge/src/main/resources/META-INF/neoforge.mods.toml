@@ -38,7 +38,7 @@ side = "BOTH"
 
 # ---- Placeholder API NeoForge (optional, for mod-to-mod placeholder integration):
 [[dependencies.economycraft]]
-modId = "placeholder-api-neoforge"
+modId = "${placeholderModId}"
 type = "optional"
 versionRange = "[1,)"
 ordering = "AFTER"

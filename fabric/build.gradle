@@ -35,7 +35,7 @@ def tgt     = rootProject.ext.resolveMcTarget(mcCoord)
 sourceSets {
     main {
         java {
-            srcDir "src/${tgt.obfuscated ? 'obfuscated' : 'unobfuscated'}/java"
+            srcDir "src/${tgt.legacy121 ? 'legacy121' : (tgt.obfuscated ? 'obfuscated' : 'unobfuscated')}/java"
         }
     }
 }
@@ -78,21 +78,18 @@ dependencies {
 }
 
 processResources {
-    def mcFull = mcCoord.toString()
-    def parts = mcFull.tokenize('.')
-    if (parts.size() < 2) throw new GradleException("Invalid minecraft_version: ${mcFull}")
-    def major = parts[0] as int
-    def minor = parts[1] as int
-    def mcLo = "${major}.${minor}"
-    def mcHi = "${major}.${minor + 1}"
+    def (mcLo, mcHi) = rootProject.ext.mcRange(tgt)
+    def mcPredicate = (tgt.minecraftPredicate ?: ">=${mcLo} <${mcHi}").toString()
 
     inputs.property("version", project.version)
     inputs.property("mcLo", mcLo)
     inputs.property("mcHi", mcHi)
+    inputs.property("mcPredicate", mcPredicate)
     inputs.property("archVer", tgt.architecturyVer)
 
     filesMatching("fabric.mod.json") {
-        expand version: project.version, mcLo: mcLo, mcHi: mcHi, archVer: tgt.architecturyVer
+        expand version: project.version, mcLo: mcLo, mcHi: mcHi,
+                mcPredicate: mcPredicate, archVer: tgt.architecturyVer
     }
 }
 

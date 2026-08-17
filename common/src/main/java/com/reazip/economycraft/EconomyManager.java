@@ -13,13 +13,11 @@ import com.reazip.economycraft.util.AsyncFileWriter;
 import com.reazip.economycraft.util.EconomySounds;
 import com.reazip.economycraft.util.EconomyPaths;
 import com.reazip.economycraft.util.IdentityCompat;
+import com.reazip.economycraft.util.ProfileCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.players.NameAndId;
-import net.minecraft.server.players.UserNameToIdResolver;
-import net.minecraft.util.Util;
 import net.minecraft.world.scores.DisplaySlot;
 import net.minecraft.world.scores.Objective;
 import net.minecraft.world.scores.Scoreboard;
@@ -129,19 +127,12 @@ public class EconomyManager {
         ServerPlayer online = server.getPlayerList().getPlayer(id);
         if (online != null) return IdentityCompat.of(online).name();
 
-        String cached = resolveCachedName(server.services().nameToIdCache(), id);
+        String cached = safeResolveCachedName(server, id);
         if (cached != null) return cached;
 
         String loaderCached = getNeoForgeCachedName(id);
         if (loaderCached != null) return loaderCached;
         return null;
-    }
-
-    static @Nullable String resolveCachedName(UserNameToIdResolver cache, UUID id) {
-        return cache.get(id)
-                .map(profile -> profile.name())
-                .filter(name -> !name.isBlank())
-                .orElse(null);
     }
 
     public @Nullable String getBestName(UUID id) {
@@ -162,10 +153,9 @@ public class EconomyManager {
         ServerPlayer online = server.getPlayerList().getPlayerByName(name);
         if (online != null) return online.getUUID();
 
-        UserNameToIdResolver cache = server.services().nameToIdCache();
         UUID match = null;
         for (UUID id : balances.keySet()) {
-            String resolved = resolveCachedName(cache, id);
+            String resolved = safeResolveCachedName(server, id);
             if (resolved == null) resolved = getNeoForgeCachedName(id);
             if (resolved == null) continue;
             if (!name.equalsIgnoreCase(resolved)) continue;
@@ -173,6 +163,14 @@ public class EconomyManager {
             match = id;
         }
         return match;
+    }
+
+    private static @Nullable String safeResolveCachedName(MinecraftServer server, UUID id) {
+        try {
+            return ProfileCompat.resolveCachedName(server, id);
+        } catch (RuntimeException ignored) {
+            return null;
+        }
     }
 
     private void scheduleProfileLookup(UUID id) {
@@ -195,7 +193,7 @@ public class EconomyManager {
         if (unresolved.isEmpty()) return;
 
         CompletableFuture
-                .supplyAsync(() -> fetchProfiles(unresolved), Util.nonCriticalIoPool())
+                .supplyAsync(() -> fetchProfiles(unresolved))
                 .whenComplete((profiles, error) -> {
                     try {
                         server.execute(() -> finishProfileLookups(unresolved, profiles, error));
@@ -209,12 +207,13 @@ public class EconomyManager {
         Map<UUID, String> profiles = new HashMap<>();
         for (UUID id : ids) {
             try {
-                server.services().profileResolver().fetchById(id).ifPresent(profile -> {
-                    var identity = IdentityCompat.of(profile);
+                Object profile = ProfileCompat.fetchProfile(server, id);
+                if (profile != null) {
+                    var identity = IdentityCompat.fromUnknown(profile);
                     if (id.equals(identity.id()) && identity.name() != null && !identity.name().isBlank()) {
                         profiles.put(id, identity.name());
                     }
-                });
+                }
             } catch (RuntimeException ignored) {}
         }
         return profiles;
@@ -230,7 +229,7 @@ public class EconomyManager {
                 UUID id = entry.getKey();
                 ServerPlayer online = server.getPlayerList().getPlayer(id);
                 String name = online != null ? IdentityCompat.of(online).name() : entry.getValue();
-                server.services().nameToIdCache().add(new NameAndId(id, name));
+                ProfileCompat.cacheName(server, id, name);
             }
         }
 

@@ -4,7 +4,6 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 
 import java.lang.reflect.Constructor;
@@ -93,7 +92,7 @@ public final class ChatCompat {
         }
     }
 
-    private static @NonNull String getJson(String prefixText, String labelText, String cmd) {
+    private static String getJson(String prefixText, String labelText, String cmd) {
         String escCmd = cmd.replace("\\", "\\\\").replace("\"", "\\\"");
         String escPrefix = prefixText.replace("\\", "\\\\").replace("\"", "\\\"");
         String escLabel = labelText.replace("\\", "\\\\").replace("\"", "\\\"");

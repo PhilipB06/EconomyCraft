@@ -20,6 +20,7 @@ sourceSets {
     main {
         java {
             srcDir "src/${tgt.obfuscated ? 'obfuscated' : 'unobfuscated'}/java"
+            srcDir "src/${tgt.legacy121 ? 'legacy121' : 'modern'}/java"
         }
     }
 }

@@ -22,11 +22,10 @@ allprojects {
 // — its configuration closure isn't guaranteed to run after the rest of this script, so it can't
 // safely forward-reference an ext value defined later in the file.
 ext.mcTargets = [
+        [ mc: "1.21.1", minecraftPredicate: "1.21.1", fabricApi: "0.116.15+1.21.1", architecturyVer: "13.0.10", neoforge: "21.1.248", neoforgeLineLo: "21.1", neoforgeLineHi: "21.2", textPlaceholderApi: "2.4.2+1.21", placeholderApiNeoForge: null, obfuscated: true, javaVersion: 21, legacy121: true ],
+        [ mc: "1.21.11", fabricApi: "0.141.6+1.21.11", architecturyVer: "19.0.1", neoforge: "21.11.45", neoforgeLineLo: "21.11", neoforgeLineHi: "21.12", textPlaceholderApi: "2.8.2+1.21.10", placeholderApiNeoForge: "2.9.0+1.21.11+neoforge", obfuscated: true, javaVersion: 21 ],
         [ mc: "26.1.2", fabricApi: "0.155.2+26.1.2", architecturyVer: "20.0.12", neoforge: "26.1.2.95", neoforgeLineLo: "26.1", neoforgeLineHi: "26.2", textPlaceholderApi: "3.0.0+26.1", placeholderApiNeoForge: "3.0.0+26.1+neoforge" ],
         [ mc: "26.2", fabricApi: "0.157.0+26.2", architecturyVer: "21.0.7", neoforge: "26.2.0.59", neoforgeLineLo: "26.2", neoforgeLineHi: "26.3", textPlaceholderApi: "3.1.0-beta.1+26.2", placeholderApiNeoForge: "3.1.0-beta.1+26.2+neoforge" ],
-        // 1.21.11 is the last obfuscated Minecraft version, so it needs real remapping (Mojang
-        // official mappings) instead of loom-no-remap, and runs on Java 21 instead of 25.
-        [ mc: "1.21.11", fabricApi: "0.141.6+1.21.11", architecturyVer: "19.0.1", neoforge: "21.11.45", neoforgeLineLo: "21.11", neoforgeLineHi: "21.12", textPlaceholderApi: "2.8.2+1.21.10", placeholderApiNeoForge: "2.9.0+1.21.11+neoforge", obfuscated: true, javaVersion: 21 ],
 ]
 
 // ---- TARGET RESOLVER
@@ -45,6 +44,21 @@ ext.mcTaskVer = { String v ->
     def patch = parts[2] as int
     return "${major}.${minor}.${String.format('%02d', patch)}"
 }
+
+ext.mcRange = { tgt ->
+    def parts = tgt.mc.tokenize('.')
+    if (parts.size() < 2) throw new GradleException("Invalid minecraft_version: ${tgt.mc}")
+    if (tgt.obfuscated) {
+        def hiParts = new ArrayList<>(parts)
+        hiParts[-1] = ((hiParts[-1] as int) + 1).toString()
+        return [tgt.mc, hiParts.join('.')]
+    }
+    def major = parts[0] as int
+    def minor = parts[1] as int
+    return ["${major}.${minor}".toString(), "${major}.${minor + 1}".toString()]
+}
+
+ext.placeholderModId = "placeholder-api-neoforge"
 
 subprojects {
     def mcCoord = (rootProject.findProperty("minecraft_version") ?: rootProject.minecraft_version) as String
@@ -99,13 +113,7 @@ subprojects {
 
     if (project.name == "neoforge") {
         tasks.named("processResources") {
-            def mcFull = (rootProject.findProperty("minecraft_version") ?: rootProject.minecraft_version).toString()
-            def parts = mcFull.tokenize('.')
-            if (parts.size() < 2) throw new GradleException("Invalid minecraft_version: ${mcFull}")
-            def major = parts[0] as int
-            def minor = parts[1] as int
-            def mcLo = "${major}.${minor}"
-            def mcHi = "${major}.${minor + 1}"
+            def (mcLo, mcHi) = rootProject.ext.mcRange(tgt)
 
             def nfLo = (rootProject.findProperty("neoforge_line_lo") ?: tgt.neoforgeLineLo).toString()
             def nfHi = (rootProject.findProperty("neoforge_line_hi") ?: tgt.neoforgeLineHi).toString()
@@ -113,12 +121,14 @@ subprojects {
             def archVer = (rootProject.findProperty("architectury_version_plain")
                     ?: project.findProperty("architectury_version_plain")
                     ?: tgt.architecturyVer).toString()
+            def placeholderModId = rootProject.ext.placeholderModId
 
             inputs.property "mcLo", mcLo
             inputs.property "mcHi", mcHi
             inputs.property "nfLo", nfLo
             inputs.property "nfHi", nfHi
             inputs.property "archVer", archVer
+            inputs.property "placeholderModId", placeholderModId
 
             filesMatching("META-INF/neoforge.mods.toml") {
                 expand([
@@ -127,6 +137,7 @@ subprojects {
                         nfLo    : nfLo,
                         nfHi    : nfHi,
                         archVer : archVer,
+                        placeholderModId: placeholderModId,
                         version : project.version
                 ])
                 filteringCharset = 'UTF-8'
@@ -238,7 +249,9 @@ ext.mcTargets.each { t ->
                 "-Parchitectury_version_plain=${t.architecturyVer}",
                 "-Pneoforge_line_lo=${t.neoforgeLineLo}",
                 "-Pneoforge_line_hi=${t.neoforgeLineHi}",
-                "-Pplaceholder_api_neoforge_version=${t.placeholderApiNeoForge}",
+                *(t.placeholderApiNeoForge
+                        ? ["-Pplaceholder_api_neoforge_version=${t.placeholderApiNeoForge}"]
+                        : []),
                 ":neoforge:clean", ":neoforge:build"
         ])
     }

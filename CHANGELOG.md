@@ -1,9 +1,10 @@
 ### Features
-- Added EconomyCraft API v1 for balances, payments, formatting, prices, leaderboards and balance events. It is included in the normal Fabric and NeoForge jars.
+- Added EconomyCraft API v1 for balances, payments, formatting, prices, leaderboards and balance events.
 - Modded items now get added to `prices.json` automatically.
-- Added subtle sound effects.
+- Added sound effects.
 
 ### Improvements
+- Added support for Minecraft 1.21.1.
 - Removed the scoreboard toggle command (UI-only now).
 - Renamed the player shop to the auction house (`/ah`, `/auction`) and moved the server-shop to `/shop`.
 
