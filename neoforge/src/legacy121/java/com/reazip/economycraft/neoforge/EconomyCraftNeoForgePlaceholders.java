@@ -32,10 +32,12 @@ final class EconomyCraftNeoForgePlaceholders {
 
             register(register, handlerType, value, invalid, "balance");
             register(register, handlerType, value, invalid, "balance_formatted");
+            register(register, handlerType, value, invalid, "balance_short");
             register(register, handlerType, value, invalid, "daily_sell_remaining");
             register(register, handlerType, value, invalid, "top_name");
             register(register, handlerType, value, invalid, "top_balance");
             register(register, handlerType, value, invalid, "top_balance_formatted");
+            register(register, handlerType, value, invalid, "top_balance_short");
         } catch (ReflectiveOperationException e) {
             LOGGER.error("Failed to register EconomyCraft placeholders", e);
         }
@@ -84,6 +86,7 @@ final class EconomyCraftNeoForgePlaceholders {
             String result = switch (path) {
                 case "top_name" -> PlaceholderValues.topName(economy, argument);
                 case "top_balance" -> PlaceholderValues.topBalance(economy, argument);
+                case "top_balance_short" -> PlaceholderValues.topBalanceShort(economy, argument);
                 default -> PlaceholderValues.topBalanceFormatted(economy, argument);
             };
             return result != null ? value.invoke(null, result) : invalid.invoke(null, "No player!");
@@ -95,6 +98,7 @@ final class EconomyCraftNeoForgePlaceholders {
         return value.invoke(null, switch (path) {
             case "balance" -> PlaceholderValues.balance(economy, player.getUUID());
             case "balance_formatted" -> PlaceholderValues.balanceFormatted(economy, player.getUUID());
+            case "balance_short" -> PlaceholderValues.balanceShort(economy, player.getUUID());
             default -> PlaceholderValues.dailySellRemaining(economy, player.getUUID());
         });
     }

@@ -132,10 +132,12 @@ Both are optional and not bundled. The mod works without them, but the matching 
 |------------------------------------------|--------------------------------------------------------------------------------------------|
 | `%economycraft:balance%`                 | Raw balance of the viewed player, e.g. `1000`.                                             |
 | `%economycraft:balance_formatted%`       | Balance with currency symbol and thousands separator, e.g. `$1.000`.                       |
+| `%economycraft:balance_short%`           | Balance abbreviated to 1 decimal place, e.g. `$1.2k`.                                      |
 | `%economycraft:daily_sell_remaining%`    | How much the player can still earn from selling today. Shows `∞` if the limit is disabled. |
 | `%economycraft:top_name 1%`              | Name of the player ranked `1` on the balance leaderboard (`1` = richest).                  |
 | `%economycraft:top_balance 1%`           | Raw balance of the player ranked `1`.                                                      |
 | `%economycraft:top_balance_formatted 1%` | Formatted balance of the player ranked `1`.                                                |
+| `%economycraft:top_balance_short 1%`     | Abbreviated balance of the player ranked `1`.                                              |
 
 The `top_*` placeholders take the rank as an argument, e.g. `%economycraft:top_name 3%` for third place. Ranks beyond the number of players resolve as invalid.
 

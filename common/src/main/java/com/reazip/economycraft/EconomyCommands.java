@@ -225,15 +225,34 @@ public final class EconomyCommands {
                 .then(argument("player", StringArgumentType.word())
                         .suggests((ctx, builder) -> suggestPlayers(ctx.getSource(), builder))
                         .executes(ctx -> usage(ctx.getSource(), payUsage))
-                        .then(argument("amount", LongArgumentType.longArg(1, EconomyManager.MAX))
-                                .executes(ctx -> pay(ctx.getSource().getPlayerOrException(),
-                                        StringArgumentType.getString(ctx, "player"),
-                                        LongArgumentType.getLong(ctx, "amount"), ctx.getSource()))));
+                        .then(argument("amount", StringArgumentType.word())
+                                .executes(ctx -> {
+                                    Long amount = parseAmount(ctx.getSource(), StringArgumentType.getString(ctx, "amount"), 1, EconomyManager.MAX);
+                                    if (amount == null) return 0;
+                                    return pay(ctx.getSource().getPlayerOrException(),
+                                            StringArgumentType.getString(ctx, "player"),
+                                            amount, ctx.getSource());
+                                })));
     }
 
     private static int usage(CommandSourceStack source, String usage) {
         source.sendFailure(Component.literal("Usage: " + usage).withStyle(ChatFormatting.RED));
         return 0;
+    }
+
+    private static @Nullable Long parseAmount(CommandSourceStack source, String raw, long min, long max) {
+        Long amount = EconomyCraft.parseMoneyShort(raw);
+        if (amount == null) {
+            source.sendFailure(Component.literal("Invalid amount: " + raw + " (try 1000, 1.5k, 20k, 234M, ...)")
+                    .withStyle(ChatFormatting.RED));
+            return null;
+        }
+        if (amount < min || amount > max) {
+            source.sendFailure(Component.literal("Amount must be between " + min + " and " + max)
+                    .withStyle(ChatFormatting.RED));
+            return null;
+        }
+        return amount;
     }
 
     private static int showBalance(IdentityCompat.PlayerRef target, CommandSourceStack source) {
@@ -377,21 +396,29 @@ public final class EconomyCommands {
     private static LiteralArgumentBuilder<CommandSourceStack> buildAddMoney() {
         return literal("addmoney").requires(PermissionCompat.gamemaster())
                 .then(argument("targets", GameProfileArgument.gameProfile())
-                        .then(argument("amount", LongArgumentType.longArg(1, EconomyManager.MAX))
-                                .executes(ctx -> addMoney(
-                                        IdentityCompat.getArgAsPlayerRefs(ctx, "targets"),
-                                        LongArgumentType.getLong(ctx, "amount"),
-                                        ctx.getSource()))));
+                        .then(argument("amount", StringArgumentType.word())
+                                .executes(ctx -> {
+                                    Long amount = parseAmount(ctx.getSource(), StringArgumentType.getString(ctx, "amount"), 1, EconomyManager.MAX);
+                                    if (amount == null) return 0;
+                                    return addMoney(
+                                            IdentityCompat.getArgAsPlayerRefs(ctx, "targets"),
+                                            amount,
+                                            ctx.getSource());
+                                })));
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildSetMoney() {
         return literal("setmoney").requires(PermissionCompat.gamemaster())
                 .then(argument("targets", GameProfileArgument.gameProfile())
-                        .then(argument("amount", LongArgumentType.longArg(0, EconomyManager.MAX))
-                                .executes(ctx -> setMoney(
-                                        IdentityCompat.getArgAsPlayerRefs(ctx, "targets"),
-                                        LongArgumentType.getLong(ctx, "amount"),
-                                        ctx.getSource()))));
+                        .then(argument("amount", StringArgumentType.word())
+                                .executes(ctx -> {
+                                    Long amount = parseAmount(ctx.getSource(), StringArgumentType.getString(ctx, "amount"), 0, EconomyManager.MAX);
+                                    if (amount == null) return 0;
+                                    return setMoney(
+                                            IdentityCompat.getArgAsPlayerRefs(ctx, "targets"),
+                                            amount,
+                                            ctx.getSource());
+                                })));
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildRemoveMoney() {
@@ -401,11 +428,15 @@ public final class EconomyCommands {
                                 IdentityCompat.getArgAsPlayerRefs(ctx, "targets"),
                                 null,
                                 ctx.getSource()))
-                        .then(argument("amount", LongArgumentType.longArg(1, EconomyManager.MAX))
-                                .executes(ctx -> removeMoney(
-                                        IdentityCompat.getArgAsPlayerRefs(ctx, "targets"),
-                                        LongArgumentType.getLong(ctx, "amount"),
-                                        ctx.getSource()))));
+                        .then(argument("amount", StringArgumentType.word())
+                                .executes(ctx -> {
+                                    Long amount = parseAmount(ctx.getSource(), StringArgumentType.getString(ctx, "amount"), 1, EconomyManager.MAX);
+                                    if (amount == null) return 0;
+                                    return removeMoney(
+                                            IdentityCompat.getArgAsPlayerRefs(ctx, "targets"),
+                                            amount,
+                                            ctx.getSource());
+                                })));
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildRemovePlayer() {

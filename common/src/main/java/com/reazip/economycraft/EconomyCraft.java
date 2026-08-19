@@ -14,6 +14,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.text.DecimalFormat;
@@ -120,5 +121,52 @@ public final class EconomyCraft {
         DecimalFormatSymbols symbols = DecimalFormatSymbols.getInstance(Locale.ROOT);
         symbols.setGroupingSeparator(EconomyConfig.get().balanceSeparator.charAt(0));
         return "$" + new DecimalFormat("#,##0", symbols).format(amount);
+    }
+
+    private static final String[] SHORT_MONEY_SUFFIXES = {"", "k", "M", "B", "T"};
+
+    public static String formatMoneyShort(long amount) {
+        long value = Math.abs(amount);
+        int magnitude = 0;
+        double scaled = value;
+        while (scaled >= 1000 && magnitude < SHORT_MONEY_SUFFIXES.length - 1) {
+            scaled /= 1000;
+            magnitude++;
+        }
+        DecimalFormat format = new DecimalFormat("0.#", DecimalFormatSymbols.getInstance(Locale.ROOT));
+        String number = format.format(scaled);
+        if (magnitude < SHORT_MONEY_SUFFIXES.length - 1 && Double.parseDouble(number) >= 1000) {
+            magnitude++;
+            number = format.format(scaled / 1000);
+        }
+        return "$" + (amount < 0 ? "-" : "") + number + SHORT_MONEY_SUFFIXES[magnitude];
+    }
+
+    public static @Nullable Long parseMoneyShort(String input) {
+        if (input == null) return null;
+        String s = input.trim();
+        if (s.isEmpty()) return null;
+
+        for (int magnitude = SHORT_MONEY_SUFFIXES.length - 1; magnitude >= 1; magnitude--) {
+            String suffix = SHORT_MONEY_SUFFIXES[magnitude];
+            if (s.length() > suffix.length() && s.regionMatches(true, s.length() - suffix.length(), suffix, 0, suffix.length())) {
+                double value;
+                try {
+                    value = Double.parseDouble(s.substring(0, s.length() - suffix.length()));
+                } catch (NumberFormatException e) {
+                    return null;
+                }
+                if (!Double.isFinite(value) || value < 0) return null;
+                double scaled = value * Math.pow(1000, magnitude);
+                if (scaled > Long.MAX_VALUE) return null;
+                return Math.round(scaled);
+            }
+        }
+
+        try {
+            return Long.parseLong(s);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 }

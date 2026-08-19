@@ -22,6 +22,7 @@ final class EconomyCraftNeoForgeTab {
     private static final Pattern TOP_NAME = Pattern.compile("^%economycraft:top_name (\\d+)%$");
     private static final Pattern TOP_BALANCE = Pattern.compile("^%economycraft:top_balance (\\d+)%$");
     private static final Pattern TOP_BALANCE_FORMATTED = Pattern.compile("^%economycraft:top_balance_formatted (\\d+)%$");
+    private static final Pattern TOP_BALANCE_SHORT = Pattern.compile("^%economycraft:top_balance_short (\\d+)%$");
 
     private EconomyCraftNeoForgeTab() {}
 
@@ -52,6 +53,10 @@ final class EconomyCraftNeoForgeTab {
         Function<Object, String> balanceFormatted = tabPlayer -> EconomyCraft.formatMoney(
                 EconomyCraft.getManager(server).getBalance(uuidOf(getUniqueId, tabPlayer), true));
         registerPlayer.invoke(manager, "%economycraft:balance_formatted%", REFRESH_MS, balanceFormatted);
+
+        Function<Object, String> balanceShort = tabPlayer -> EconomyCraft.formatMoneyShort(
+                EconomyCraft.getManager(server).getBalance(uuidOf(getUniqueId, tabPlayer), true));
+        registerPlayer.invoke(manager, "%economycraft:balance_short%", REFRESH_MS, balanceShort);
 
         Function<Object, String> dailySellRemaining = tabPlayer -> {
             long remaining = EconomyCraft.getManager(server).getDailySellRemaining(uuidOf(getUniqueId, tabPlayer));
@@ -85,6 +90,15 @@ final class EconomyCraftNeoForgeTab {
             };
         };
         registerServerPattern.invoke(manager, TOP_BALANCE_FORMATTED, REFRESH_MS, topBalanceFormatted);
+
+        Function<Matcher, Supplier<String>> topBalanceShort = matcher -> {
+            int rank = parseRank(matcher);
+            return () -> {
+                EconomyManager.LeaderboardEntry entry = EconomyCraft.getManager(server).getLeaderboardEntry(rank);
+                return entry != null ? EconomyCraft.formatMoneyShort(entry.balance()) : NO_PLAYER;
+            };
+        };
+        registerServerPattern.invoke(manager, TOP_BALANCE_SHORT, REFRESH_MS, topBalanceShort);
     }
 
     private static int parseRank(Matcher matcher) {

@@ -17,6 +17,10 @@ public final class PlaceholderValues {
         return EconomyCraft.formatMoney(economy.getBalance(playerId, true));
     }
 
+    public static String balanceShort(EconomyManager economy, UUID playerId) {
+        return EconomyCraft.formatMoneyShort(economy.getBalance(playerId, true));
+    }
+
     public static String dailySellRemaining(EconomyManager economy, UUID playerId) {
         long remaining = economy.getDailySellRemaining(playerId);
         return remaining == Long.MAX_VALUE ? "∞" : String.valueOf(remaining);
@@ -35,6 +39,11 @@ public final class PlaceholderValues {
     public static @Nullable String topBalanceFormatted(EconomyManager economy, @Nullable String arg) {
         EconomyManager.LeaderboardEntry entry = topEntry(economy, arg);
         return entry != null ? EconomyCraft.formatMoney(entry.balance()) : null;
+    }
+
+    public static @Nullable String topBalanceShort(EconomyManager economy, @Nullable String arg) {
+        EconomyManager.LeaderboardEntry entry = topEntry(economy, arg);
+        return entry != null ? EconomyCraft.formatMoneyShort(entry.balance()) : null;
     }
 
     private static @Nullable EconomyManager.LeaderboardEntry topEntry(EconomyManager economy, @Nullable String arg) {

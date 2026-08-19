@@ -16,11 +16,13 @@ import com.reazip.economycraft.util.IdentityCompat;
 import com.reazip.economycraft.util.ProfileCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.numbers.FixedFormat;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.scores.DisplaySlot;
 import net.minecraft.world.scores.Objective;
 import net.minecraft.world.scores.Scoreboard;
+import net.minecraft.world.scores.ScoreAccess;
 import net.minecraft.world.scores.ScoreHolder;
 import net.minecraft.world.scores.criteria.ObjectiveCriteria;
 import org.jetbrains.annotations.Nullable;
@@ -44,6 +46,7 @@ public class EconomyManager {
     private static final Type DAILY_SELL_TYPE = new TypeToken<Map<UUID, DailySellData>>(){}.getType();
     private static final String ECO_BALANCE_OBJECTIVE = "eco_balance";
     private static final int LEADERBOARD_SIZE = 5;
+    private static final long SCOREBOARD_SCORE_SCALE = 1000L;
 
     private final MinecraftServer server;
     private final Path file;
@@ -66,7 +69,7 @@ public class EconomyManager {
     private final Set<UUID> loggedUnresolvedNames = ConcurrentHashMap.newKeySet();
     private volatile boolean active = true;
 
-    public static final long MAX = 999_999_999L;
+    public static final long MAX = 999_999_999_999L;
 
     public EconomyManager(MinecraftServer server) {
         this.server = server;
@@ -442,10 +445,12 @@ public class EconomyManager {
         }
 
         for (LeaderboardEntry e : entries) {
-            board.getOrCreatePlayerScore(
+            ScoreAccess score = board.getOrCreatePlayerScore(
                     ScoreHolder.forNameOnly(e.name()),
                     objective
-            ).set((int) e.balance());
+            );
+            score.set((int) Math.min(e.balance() / SCOREBOARD_SCORE_SCALE, Integer.MAX_VALUE));
+            score.numberFormatOverride(new FixedFormat(Component.literal(EconomyCraft.formatMoneyShort(e.balance()))));
         }
 
         displayed.clear();

@@ -23,6 +23,12 @@ final class EconomyCraftNeoForgePlaceholders {
             return PlaceholderResult.value(PlaceholderValues.balanceFormatted(eco, ctx.player().getUUID()));
         });
 
+        Placeholders.registerServer(Identifier.fromNamespaceAndPath(EconomyCraft.MOD_ID, "balance_short"), (ctx, arg) -> {
+            if (!ctx.hasPlayer()) return PlaceholderResult.invalid("No player!");
+            EconomyManager eco = EconomyCraft.getManager(ctx.server());
+            return PlaceholderResult.value(PlaceholderValues.balanceShort(eco, ctx.player().getUUID()));
+        });
+
         Placeholders.registerServer(Identifier.fromNamespaceAndPath(EconomyCraft.MOD_ID, "daily_sell_remaining"), (ctx, arg) -> {
             if (!ctx.hasPlayer()) return PlaceholderResult.invalid("No player!");
             EconomyManager eco = EconomyCraft.getManager(ctx.server());
@@ -41,6 +47,11 @@ final class EconomyCraftNeoForgePlaceholders {
 
         Placeholders.registerServer(Identifier.fromNamespaceAndPath(EconomyCraft.MOD_ID, "top_balance_formatted"), (ctx, arg) -> {
             String result = PlaceholderValues.topBalanceFormatted(EconomyCraft.getManager(ctx.server()), arg);
+            return result != null ? PlaceholderResult.value(result) : PlaceholderResult.invalid("No player!");
+        });
+
+        Placeholders.registerServer(Identifier.fromNamespaceAndPath(EconomyCraft.MOD_ID, "top_balance_short"), (ctx, arg) -> {
+            String result = PlaceholderValues.topBalanceShort(EconomyCraft.getManager(ctx.server()), arg);
             return result != null ? PlaceholderResult.value(result) : PlaceholderResult.invalid("No player!");
         });
     }
