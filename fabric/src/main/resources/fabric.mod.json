@@ -6,7 +6,7 @@
   "icon": "assets/economycraft/logo.png",
   "description": "Simple server-side economy and shop mod.",
   "authors": ["ReaZip"],
-  "license": "MIT",
+  "license": "GPL-3.0",
   "environment": "*",
   "entrypoints": {
     "main": ["com.reazip.economycraft.fabric.EconomyCraftFabric"],
