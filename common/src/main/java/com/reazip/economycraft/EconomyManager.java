@@ -14,6 +14,7 @@ import com.reazip.economycraft.util.EconomySounds;
 import com.reazip.economycraft.util.EconomyPaths;
 import com.reazip.economycraft.util.IdentityCompat;
 import com.reazip.economycraft.util.ProfileCompat;
+import com.reazip.economycraft.util.TransactionLogWriter;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.numbers.FixedFormat;
@@ -84,6 +85,10 @@ public class EconomyManager {
         loadDaily();
         loadDailySells();
 
+        Path logsDir = EconomyPaths.logsDir(server);
+        TransactionLogWriter.cleanup(logsDir, EconomyConfig.get().transactionLogRetentionDays);
+        TransactionLogger transactionLogger = new TransactionLogger(logsDir, this::getBestName);
+
         this.balanceMutations = new BalanceMutationEngine(
                 balances,
                 () -> EconomyConfig.get().startingBalance,
@@ -92,13 +97,16 @@ public class EconomyManager {
                     updateLeaderboard();
                     save();
                 },
-                balanceEvents
+                balanceEvents,
+                transactionLogger::onTransfer
         );
 
         this.deliveries = new DeliveryManager(server);
         this.auctions = new AuctionManager(server, deliveries);
         this.orders = new OrderManager(server, deliveries);
         this.prices = new PriceRegistry(server);
+
+        balanceEvents.register(transactionLogger::onBalanceChanged);
 
         scheduleProfileLookups(balances.keySet());
         applyScoreboardSettingOnStartup();

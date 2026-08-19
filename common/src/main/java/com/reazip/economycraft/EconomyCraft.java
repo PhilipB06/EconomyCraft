@@ -32,6 +32,7 @@ public final class EconomyCraft {
             throw new IllegalStateException("EconomyCraft API bootstrap failed");
         }
         LifecycleEvent.SERVER_STARTING.register(EconomyConfig::load);
+        LifecycleEvent.SERVER_STARTING.register(WebhookConfig::load);
 
         CommandRegistrationEvent.EVENT.register((dispatcher, registry, selection) -> {
             EconomyCommands.register(dispatcher, registry, selection);
@@ -108,6 +109,7 @@ public final class EconomyCraft {
         lastServer = null;
 
         EconomyConfig.load(server);
+        WebhookConfig.load(server);
         getManager(server);
     }
 

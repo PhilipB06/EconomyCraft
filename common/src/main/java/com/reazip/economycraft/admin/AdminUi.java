@@ -3,6 +3,7 @@ package com.reazip.economycraft.admin;
 import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyManager;
 import com.reazip.economycraft.HubUi;
+import com.reazip.economycraft.WebhookConfig;
 import com.reazip.economycraft.util.ClickKind;
 import com.reazip.economycraft.util.CompatMenu;
 import com.reazip.economycraft.util.EconomySounds;
@@ -101,9 +102,10 @@ public final class AdminUi {
                 case RELOAD -> {
                     EconomySounds.click(viewer);
                     EconomyConfig.load(viewer.level().getServer());
+                    WebhookConfig.load(viewer.level().getServer());
                     eco.getPrices().reload();
                     AdminSettingsUi.applyRuntimeSettings(viewer.level().getServer());
-                    viewer.sendSystemMessage(Component.literal("Reloaded config.json and prices.json.")
+                    viewer.sendSystemMessage(Component.literal("Reloaded config.json, webhook.json and prices.json.")
                             .withStyle(ChatFormatting.GREEN));
                     render();
                 }

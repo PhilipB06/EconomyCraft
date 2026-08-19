@@ -12,5 +12,7 @@
   "sell_enabled": true,
   "worth_enabled": true,
   "orders_enabled": true,
-  "balance_separator": "."
+  "balance_separator": ".",
+  "transaction_log_enabled": true,
+  "transaction_log_retention_days": 7
 }

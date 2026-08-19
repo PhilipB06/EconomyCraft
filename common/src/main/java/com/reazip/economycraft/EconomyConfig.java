@@ -44,6 +44,13 @@ public class EconomyConfig {
     public boolean ordersEnabled = true;
     @SerializedName("balance_separator")
     public String balanceSeparator = ".";
+    @SerializedName("transaction_log_enabled")
+    public boolean transactionLogEnabled = true;
+    @SerializedName("transaction_log_retention_days")
+    public int transactionLogRetentionDays = 7;
+
+    public static final int MIN_TRANSACTION_LOG_RETENTION_DAYS = 1;
+    public static final int WARN_TRANSACTION_LOG_RETENTION_DAYS = 90;
 
     private static EconomyConfig INSTANCE = new EconomyConfig();
     private static Path file;
@@ -77,6 +84,7 @@ public class EconomyConfig {
                 LOGGER.warn("[EconomyCraft] balance_separator is empty; defaulting to \".\".");
                 parsed.balanceSeparator = ".";
             }
+            parsed.transactionLogRetentionDays = clampRetentionDays(parsed.transactionLogRetentionDays);
             INSTANCE = parsed;
         } catch (Exception e) {
             throw new IllegalStateException("[EconomyCraft] Failed to read/parse config.json at " + file, e);
@@ -90,6 +98,19 @@ public class EconomyConfig {
                     fieldName, value, clamped);
         }
         return clamped;
+    }
+
+    private static int clampRetentionDays(int days) {
+        if (days < MIN_TRANSACTION_LOG_RETENTION_DAYS) {
+            LOGGER.warn("[EconomyCraft] transaction_log_retention_days ({}) is below the minimum of {} day(s); clamping to {}.",
+                    days, MIN_TRANSACTION_LOG_RETENTION_DAYS, MIN_TRANSACTION_LOG_RETENTION_DAYS);
+            return MIN_TRANSACTION_LOG_RETENTION_DAYS;
+        }
+        if (days > WARN_TRANSACTION_LOG_RETENTION_DAYS) {
+            LOGGER.warn("[EconomyCraft] transaction_log_retention_days ({}) is above {} days; transaction logs can take up significant disk space over that long a retention period.",
+                    days, WARN_TRANSACTION_LOG_RETENTION_DAYS);
+        }
+        return days;
     }
 
     public static void save() {

@@ -1,0 +1,5 @@
+{
+  "webhook_enabled": false,
+  "webhook_url": "",
+  "webhook_min_amount": 0
+}

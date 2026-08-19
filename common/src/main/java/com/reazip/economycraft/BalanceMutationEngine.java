@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.LongSupplier;
 
 final class BalanceMutationEngine {
@@ -19,19 +20,22 @@ final class BalanceMutationEngine {
     private final Runnable onInitialized;
     private final Runnable onMutationCommitted;
     private final BalanceEventDispatcher events;
+    private final Consumer<PaymentResult> onTransfer;
 
     BalanceMutationEngine(
             Map<UUID, Long> balances,
             LongSupplier startingBalance,
             Runnable onInitialized,
             Runnable onMutationCommitted,
-            BalanceEventDispatcher events
+            BalanceEventDispatcher events,
+            Consumer<PaymentResult> onTransfer
     ) {
         this.balances = balances;
         this.startingBalance = startingBalance;
         this.onInitialized = onInitialized;
         this.onMutationCommitted = onMutationCommitted;
         this.events = events;
+        this.onTransfer = onTransfer;
     }
 
     long getBalance(UUID playerId) {
@@ -133,6 +137,7 @@ final class BalanceMutationEngine {
             events.emit(new BalanceChangeEvent(receiverId, receiver.balance(), receiverNew,
                     BalanceMutationType.PAYMENT_RECEIVED, Optional.of(senderId), optionalSource));
         }
+        onTransfer.accept(result);
         return result;
     }
 

@@ -17,9 +17,11 @@ public final class EconomyPaths {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final String DIR_NAME = "economycraft";
     private static final String DATA_DIR_NAME = "data";
+    private static final String LOGS_DIR_NAME = "logs";
     private static final String IMPORTED_DIR_NAME = "economycraft_imported";
     private static final List<String> SETTINGS_FILES = List.of(
             "config.json",
+            "webhook.json",
             "prices.json"
     );
     private static final List<String> DATA_FILES = List.of(
@@ -38,6 +40,12 @@ public final class EconomyPaths {
 
     public static Path dataDir(MinecraftServer server) {
         Path dir = prepareRoot(server).resolve(DATA_DIR_NAME);
+        createDirectories(dir);
+        return dir;
+    }
+
+    public static Path logsDir(MinecraftServer server) {
+        Path dir = prepareRoot(server).resolve(LOGS_DIR_NAME);
         createDirectories(dir);
         return dir;
     }

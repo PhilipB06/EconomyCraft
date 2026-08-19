@@ -61,7 +61,9 @@ public final class AdminSettingsUi {
         WORTH(23, "Item Values", "The /worth command and Item Value menu."),
         SCOREBOARD(16, "Balance Sidebar", "The balance leaderboard on the right."),
         STANDALONE(24, "Short Commands", "Allow /pay, /shop and /ah without the /eco prefix."),
-        STANDALONE_ADMIN(25, "Short Admin Commands", "Allow /addmoney without the /eco prefix.");
+        STANDALONE_ADMIN(25, "Short Admin Commands", "Allow /addmoney without the /eco prefix."),
+        TRANSACTION_LOG(28, "Transaction Logs", "Record every balance change to a daily log file."),
+        TRANSACTION_LOG_RETENTION(29, "Log Retention", "How many days of transaction logs to keep before deleting them.");
 
         final int slot;
         final String label;
@@ -126,6 +128,9 @@ public final class AdminSettingsUi {
             toggle(Setting.STANDALONE, config.standaloneCommands);
             toggle(Setting.STANDALONE_ADMIN, config.standaloneAdminCommands);
 
+            toggle(Setting.TRANSACTION_LOG, config.transactionLogEnabled);
+            value(Setting.TRANSACTION_LOG_RETENTION, Items.MAP, days(config.transactionLogRetentionDays));
+
             container.setItem(BACK, MenuUiSupport.backButton());
             MenuUiSupport.fillBackground(container);
         }
@@ -158,6 +163,10 @@ public final class AdminSettingsUi {
             return Math.round(factor * 100) + "%";
         }
 
+        private static String days(long value) {
+            return value + (value == 1 ? " day" : " days");
+        }
+
         private void editMoney(Setting setting, long current, long min, net.minecraft.world.item.Item icon,
                                java.util.function.LongConsumer apply) {
             NumberInputUi.openMoney(viewer, setting.label, new ItemStack(icon), setting.label, current, min,
@@ -177,6 +186,21 @@ public final class AdminSettingsUi {
                     Math.round(current * 100),
                     (p, next) -> {
                         apply.accept(next / 100.0);
+                        save(p);
+                        EconomySounds.click(p);
+                        open(p, eco);
+                    },
+                    p -> open(p, eco));
+        }
+
+        private void editRetentionDays(Setting setting, long current, net.minecraft.world.item.Item icon,
+                                       java.util.function.LongConsumer apply) {
+            NumberInputUi.open(viewer, setting.label, new ItemStack(icon), setting.label, current,
+                    EconomyConfig.MIN_TRANSACTION_LOG_RETENTION_DAYS, Integer.MAX_VALUE,
+                    new int[]{30, 7, 1}, SettingsMenu::days,
+                    "Confirm", null,
+                    (p, next) -> {
+                        apply.accept(next);
                         save(p);
                         EconomySounds.click(p);
                         open(p, eco);
@@ -259,6 +283,13 @@ public final class AdminSettingsUi {
                         save(viewer);
                         render();
                     }
+                    case TRANSACTION_LOG -> {
+                        config.transactionLogEnabled = !config.transactionLogEnabled;
+                        save(viewer);
+                        render();
+                    }
+                    case TRANSACTION_LOG_RETENTION -> editRetentionDays(setting, config.transactionLogRetentionDays,
+                            Items.MAP, v -> EconomyConfig.get().transactionLogRetentionDays = (int) v);
                 }
                 return true;
             }
