@@ -56,7 +56,7 @@ public final class IdentityCompat {
     private static boolean isNameAndId(Object o) {
         if (o == null) return false;
         String n = o.getClass().getName();
-        return n.equals("net.minecraft.server.players.NameAndId") || n.endsWith(".NameAndId");
+        return n.equals("net.minecraft.server.players.NameAndId");
     }
 
     private static PlayerRef fromNameAndIdReflect(Object nid) {

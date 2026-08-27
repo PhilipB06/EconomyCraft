@@ -5,6 +5,8 @@ import com.reazip.economycraft.util.AsyncFileWriter;
 import com.reazip.economycraft.api.v1.EconomyCraftApiBootstrap;
 import com.reazip.economycraft.util.ChatCompat;
 import com.reazip.economycraft.util.EconomyPaths;
+import com.reazip.economycraft.util.IdentityCompat;
+import com.reazip.economycraft.util.ProfileCompat;
 import dev.architectury.event.events.common.CommandRegistrationEvent;
 import dev.architectury.event.events.common.LifecycleEvent;
 import dev.architectury.event.events.common.PlayerEvent;
@@ -24,8 +26,9 @@ import java.util.Locale;
 public final class EconomyCraft {
     private static final Logger LOGGER = LogUtils.getLogger();
     public static final String MOD_ID = "economycraft";
-    private static EconomyManager manager;
-    private static MinecraftServer lastServer;
+    private static final Object MANAGER_LOCK = new Object();
+    private static volatile EconomyManager manager;
+    private static volatile MinecraftServer lastServer;
 
     public static void registerEvents() {
         if (EconomyCraftApiBootstrap.INITIALIZED == null) {
@@ -54,6 +57,8 @@ public final class EconomyCraft {
     private static void onPlayerJoin(ServerPlayer player) {
         try {
             MinecraftServer server = player.level().getServer();
+            ProfileCompat.cacheName(server, player.getUUID(), IdentityCompat.of(player).name());
+
             EconomyManager eco = getManager(server);
             if (eco.getBalance(player.getUUID(), false) == null) {
                 eco.getBalance(player.getUUID(), true);
@@ -88,12 +93,14 @@ public final class EconomyCraft {
     }
 
     public static EconomyManager getManager(MinecraftServer server) {
-        if (manager == null || lastServer != server) {
-            if (manager != null) manager.deactivate();
-            manager = new EconomyManager(server);
-            lastServer = server;
+        synchronized (MANAGER_LOCK) {
+            if (manager == null || lastServer != server) {
+                if (manager != null) manager.deactivate();
+                manager = new EconomyManager(server);
+                lastServer = server;
+            }
+            return manager;
         }
-        return manager;
     }
 
     public static boolean canImportSharedFolder() {
@@ -102,15 +109,17 @@ public final class EconomyCraft {
     }
 
     public static void reloadFromDisk(MinecraftServer server) {
-        if (manager != null && lastServer == server) {
-            manager.detach();
-        }
-        manager = null;
-        lastServer = null;
+        synchronized (MANAGER_LOCK) {
+            if (manager != null && lastServer == server) {
+                manager.detach();
+            }
+            manager = null;
+            lastServer = null;
 
-        EconomyConfig.load(server);
-        WebhookConfig.load(server);
-        getManager(server);
+            EconomyConfig.load(server);
+            WebhookConfig.load(server);
+            getManager(server);
+        }
     }
 
     public static void tryHandlePvpKill(ServerPlayer victim, Entity damageSource) {

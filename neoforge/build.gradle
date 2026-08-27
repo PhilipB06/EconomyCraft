@@ -36,6 +36,7 @@ def tgt     = rootProject.ext.resolveMcTarget(mcCoord)
 sourceSets {
     main {
         java {
+            srcDir "src/${tgt.legacy121 ? 'legacy121' : 'modern'}/java"
             srcDir "src/${tgt.legacy121 ? 'legacy121' : (tgt.obfuscated ? 'obfuscated' : 'unobfuscated')}/java"
         }
     }

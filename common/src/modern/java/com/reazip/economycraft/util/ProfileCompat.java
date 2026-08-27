@@ -11,8 +11,7 @@ public final class ProfileCompat {
 
     public static @Nullable String resolveCachedName(MinecraftServer server, UUID id) {
         return server.services().nameToIdCache().get(id)
-                .map(IdentityCompat::fromUnknown)
-                .map(IdentityCompat.PlayerRef::name)
+                .map(NameAndId::name)
                 .filter(name -> !name.isBlank())
                 .orElse(null);
     }

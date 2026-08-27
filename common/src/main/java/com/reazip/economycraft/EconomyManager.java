@@ -37,6 +37,9 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.time.LocalDate;
 
 public class EconomyManager {
@@ -48,6 +51,12 @@ public class EconomyManager {
     private static final String ECO_BALANCE_OBJECTIVE = "eco_balance";
     private static final int LEADERBOARD_SIZE = 5;
     private static final long SCOREBOARD_SCORE_SCALE = 1000L;
+    private static final long LOOKUP_RETRY_COOLDOWN_MS = TimeUnit.MINUTES.toMillis(5);
+    private static final ExecutorService PROFILE_LOOKUP_EXECUTOR = Executors.newFixedThreadPool(4, r -> {
+        Thread thread = new Thread(r, "EconomyCraft-ProfileLookup");
+        thread.setDaemon(true);
+        return thread;
+    });
 
     private final MinecraftServer server;
     private final Path file;
@@ -69,6 +78,7 @@ public class EconomyManager {
     private final Set<UUID> scheduledProfileLookups = ConcurrentHashMap.newKeySet();
     private final Set<UUID> loggedUnresolvedNames = ConcurrentHashMap.newKeySet();
     private volatile boolean active = true;
+    private volatile List<LeaderboardEntry> leaderboardCache;
 
     public static final long MAX = 999_999_999_999L;
 
@@ -135,8 +145,10 @@ public class EconomyManager {
     }
 
     private static @Nullable String resolveLocalName(MinecraftServer server, UUID id) {
-        ServerPlayer online = server.getPlayerList().getPlayer(id);
-        if (online != null) return IdentityCompat.of(online).name();
+        if (server.isSameThread()) {
+            ServerPlayer online = server.getPlayerList().getPlayer(id);
+            if (online != null) return IdentityCompat.of(online).name();
+        }
 
         String cached = safeResolveCachedName(server, id);
         if (cached != null) return cached;
@@ -215,18 +227,22 @@ public class EconomyManager {
     }
 
     private Map<UUID, String> fetchProfiles(Collection<UUID> ids) {
-        Map<UUID, String> profiles = new HashMap<>();
+        Map<UUID, String> profiles = new ConcurrentHashMap<>();
+        List<CompletableFuture<Void>> fetches = new ArrayList<>();
         for (UUID id : ids) {
-            try {
-                Object profile = ProfileCompat.fetchProfile(server, id);
-                if (profile != null) {
-                    var identity = IdentityCompat.fromUnknown(profile);
-                    if (id.equals(identity.id()) && identity.name() != null && !identity.name().isBlank()) {
-                        profiles.put(id, identity.name());
+            fetches.add(CompletableFuture.runAsync(() -> {
+                try {
+                    Object profile = ProfileCompat.fetchProfile(server, id);
+                    if (profile != null) {
+                        var identity = IdentityCompat.fromUnknown(profile);
+                        if (id.equals(identity.id()) && identity.name() != null && !identity.name().isBlank()) {
+                            profiles.put(id, identity.name());
+                        }
                     }
-                }
-            } catch (RuntimeException ignored) {}
+                } catch (RuntimeException ignored) {}
+            }, PROFILE_LOOKUP_EXECUTOR));
         }
+        fetches.forEach(CompletableFuture::join);
         return profiles;
     }
 
@@ -235,17 +251,29 @@ public class EconomyManager {
                                       @Nullable Throwable error) {
         if (!active) return;
 
+        Set<UUID> resolved = new HashSet<>();
         if (error == null && profiles != null) {
             for (var entry : profiles.entrySet()) {
                 UUID id = entry.getKey();
-                ServerPlayer online = server.getPlayerList().getPlayer(id);
-                String name = online != null ? IdentityCompat.of(online).name() : entry.getValue();
-                ProfileCompat.cacheName(server, id, name);
+                try {
+                    ServerPlayer online = server.getPlayerList().getPlayer(id);
+                    String name = online != null ? IdentityCompat.of(online).name() : entry.getValue();
+                    ProfileCompat.cacheName(server, id, name);
+                    resolved.add(id);
+                } catch (RuntimeException ignored) {}
             }
         }
 
+        scheduledProfileLookups.removeAll(resolved);
+
         for (UUID id : requested) {
-            if (resolveLocalName(server, id) == null) logUnresolvedName(id);
+            if (resolveLocalName(server, id) == null) {
+                logUnresolvedName(id);
+                if (!resolved.contains(id)) {
+                    CompletableFuture.delayedExecutor(LOOKUP_RETRY_COOLDOWN_MS, TimeUnit.MILLISECONDS, PROFILE_LOOKUP_EXECUTOR)
+                            .execute(() -> scheduledProfileLookups.remove(id));
+                }
+            }
         }
         updateLeaderboard();
     }
@@ -418,6 +446,21 @@ public class EconomyManager {
     }
 
     private void updateLeaderboard() {
+        leaderboardCache = null;
+
+        if (!server.isSameThread()) {
+            try {
+                server.execute(this::syncScoreboard);
+            } catch (RuntimeException ignored) {
+                // The server is already shutting down.
+            }
+            return;
+        }
+
+        syncScoreboard();
+    }
+
+    private void syncScoreboard() {
         Scoreboard board = server.getScoreboard();
 
         if (!EconomyConfig.get().scoreboardEnabled) {
@@ -466,24 +509,30 @@ public class EconomyManager {
     }
 
     private List<LeaderboardEntry> computeLeaderboard(int limit) {
-        List<LeaderboardEntry> sorted = new ArrayList<>();
-        for (var entry : balances.entrySet()) {
-            String name = resolveName(server, entry.getKey());
-            if (name != null && !name.isBlank()) {
-                sorted.add(new LeaderboardEntry(entry.getKey(), name, entry.getValue()));
+        List<LeaderboardEntry> full = leaderboardCache;
+        if (full == null) {
+            full = new ArrayList<>();
+            for (var entry : balances.entrySet()) {
+                String name = resolveName(server, entry.getKey());
+                if (name != null && !name.isBlank()) {
+                    full.add(new LeaderboardEntry(entry.getKey(), name, entry.getValue()));
+                }
+            }
+            full.sort((a, b) -> {
+                int c = Long.compare(b.balance(), a.balance());
+                if (c != 0) return c;
+
+                c = String.CASE_INSENSITIVE_ORDER.compare(a.name(), b.name());
+                if (c != 0) return c;
+
+                return a.id().compareTo(b.id());
+            });
+            if (server.isSameThread()) {
+                leaderboardCache = full;
             }
         }
-        sorted.sort((a, b) -> {
-            int c = Long.compare(b.balance(), a.balance());
-            if (c != 0) return c;
 
-            c = String.CASE_INSENSITIVE_ORDER.compare(a.name(), b.name());
-            if (c != 0) return c;
-
-            return a.id().compareTo(b.id());
-        });
-
-        return new ArrayList<>(sorted.subList(0, Math.min(limit, sorted.size())));
+        return new ArrayList<>(full.subList(0, Math.min(limit, full.size())));
     }
 
     public List<LeaderboardEntry> getLeaderboardEntries(int limit) {

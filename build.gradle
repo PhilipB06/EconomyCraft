@@ -21,11 +21,17 @@ allprojects {
 // tasks below (buildFabric_<v>, runLocalFabric_<v>, ...). Must stay defined before subprojects{}
 // — its configuration closure isn't guaranteed to run after the rest of this script, so it can't
 // safely forward-reference an ext value defined later in the file.
+ext.bumpLastSegment = { String v ->
+    def parts = v.tokenize('.')
+    parts[-1] = ((parts[-1] as int) + 1).toString()
+    return parts.join('.')
+}
+
 ext.mcTargets = [
-        [ mc: "1.21.1", minecraftPredicate: "1.21.1", fabricApi: "0.116.15+1.21.1", architecturyVer: "13.0.10", neoforge: "21.1.248", neoforgeLineLo: "21.1", neoforgeLineHi: "21.2", textPlaceholderApi: "2.4.2+1.21", placeholderApiNeoForge: null, obfuscated: true, javaVersion: 21, legacy121: true ],
-        [ mc: "1.21.11", fabricApi: "0.141.6+1.21.11", architecturyVer: "19.0.1", neoforge: "21.11.45", neoforgeLineLo: "21.11", neoforgeLineHi: "21.12", textPlaceholderApi: "2.8.2+1.21.10", placeholderApiNeoForge: "2.9.0+1.21.11+neoforge", obfuscated: true, javaVersion: 21 ],
-        [ mc: "26.1.2", fabricApi: "0.155.2+26.1.2", architecturyVer: "20.0.12", neoforge: "26.1.2.95", neoforgeLineLo: "26.1", neoforgeLineHi: "26.2", textPlaceholderApi: "3.0.0+26.1", placeholderApiNeoForge: "3.0.0+26.1+neoforge" ],
-        [ mc: "26.2", fabricApi: "0.157.0+26.2", architecturyVer: "21.0.7", neoforge: "26.2.0.59", neoforgeLineLo: "26.2", neoforgeLineHi: "26.3", textPlaceholderApi: "3.1.0-beta.1+26.2", placeholderApiNeoForge: "3.1.0-beta.1+26.2+neoforge" ],
+        [ mc: "1.21.1", minecraftPredicate: "1.21.1", fabricApi: "0.116.15+1.21.1", architecturyVer: "13.0.10", neoforge: "21.1.248", neoforgeLineLo: "21.1", neoforgeLineHi: ext.bumpLastSegment("21.1"), textPlaceholderApi: "2.4.2+1.21", placeholderApiNeoForge: null, obfuscated: true, javaVersion: 21, legacy121: true ],
+        [ mc: "1.21.11", fabricApi: "0.141.6+1.21.11", architecturyVer: "19.0.1", neoforge: "21.11.45", neoforgeLineLo: "21.11", neoforgeLineHi: ext.bumpLastSegment("21.11"), textPlaceholderApi: "2.8.2+1.21.10", placeholderApiNeoForge: "2.9.0+1.21.11+neoforge", obfuscated: true, javaVersion: 21 ],
+        [ mc: "26.1.2", fabricApi: "0.155.2+26.1.2", architecturyVer: "20.0.12", neoforge: "26.1.2.95", neoforgeLineLo: "26.1", neoforgeLineHi: ext.bumpLastSegment("26.1"), textPlaceholderApi: "3.0.0+26.1", placeholderApiNeoForge: "3.0.0+26.1+neoforge" ],
+        [ mc: "26.2", fabricApi: "0.157.0+26.2", architecturyVer: "21.0.7", neoforge: "26.2.0.59", neoforgeLineLo: "26.2", neoforgeLineHi: ext.bumpLastSegment("26.2"), textPlaceholderApi: "3.1.0-beta.1+26.2", placeholderApiNeoForge: "3.1.0-beta.1+26.2+neoforge" ],
 ]
 
 // ---- TARGET RESOLVER

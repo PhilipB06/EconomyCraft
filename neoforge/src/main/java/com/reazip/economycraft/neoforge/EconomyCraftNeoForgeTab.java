@@ -1,7 +1,7 @@
 package com.reazip.economycraft.neoforge;
 
 import com.reazip.economycraft.EconomyCraft;
-import com.reazip.economycraft.EconomyManager;
+import com.reazip.economycraft.util.PlaceholderValues;
 import net.minecraft.server.MinecraftServer;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
@@ -46,67 +46,49 @@ final class EconomyCraftNeoForgeTab {
         Method registerPlayer = managerClass.getMethod("registerPlayerPlaceholder", String.class, int.class, Function.class);
         Method registerServerPattern = managerClass.getMethod("registerServerPlaceholder", Pattern.class, int.class, Function.class);
 
-        Function<Object, String> balance = tabPlayer -> String.valueOf(
-                EconomyCraft.getManager(server).getBalance(uuidOf(getUniqueId, tabPlayer), true));
+        Function<Object, String> balance = tabPlayer ->
+                PlaceholderValues.balance(EconomyCraft.getManager(server), uuidOf(getUniqueId, tabPlayer));
         registerPlayer.invoke(manager, "%economycraft:balance%", REFRESH_MS, balance);
 
-        Function<Object, String> balanceFormatted = tabPlayer -> EconomyCraft.formatMoney(
-                EconomyCraft.getManager(server).getBalance(uuidOf(getUniqueId, tabPlayer), true));
+        Function<Object, String> balanceFormatted = tabPlayer ->
+                PlaceholderValues.balanceFormatted(EconomyCraft.getManager(server), uuidOf(getUniqueId, tabPlayer));
         registerPlayer.invoke(manager, "%economycraft:balance_formatted%", REFRESH_MS, balanceFormatted);
 
-        Function<Object, String> balanceShort = tabPlayer -> EconomyCraft.formatMoneyShort(
-                EconomyCraft.getManager(server).getBalance(uuidOf(getUniqueId, tabPlayer), true));
+        Function<Object, String> balanceShort = tabPlayer ->
+                PlaceholderValues.balanceShort(EconomyCraft.getManager(server), uuidOf(getUniqueId, tabPlayer));
         registerPlayer.invoke(manager, "%economycraft:balance_short%", REFRESH_MS, balanceShort);
 
-        Function<Object, String> dailySellRemaining = tabPlayer -> {
-            long remaining = EconomyCraft.getManager(server).getDailySellRemaining(uuidOf(getUniqueId, tabPlayer));
-            return remaining == Long.MAX_VALUE ? "∞" : String.valueOf(remaining);
-        };
+        Function<Object, String> dailySellRemaining = tabPlayer ->
+                PlaceholderValues.dailySellRemaining(EconomyCraft.getManager(server), uuidOf(getUniqueId, tabPlayer));
         registerPlayer.invoke(manager, "%economycraft:daily_sell_remaining%", REFRESH_MS, dailySellRemaining);
 
         Function<Matcher, Supplier<String>> topName = matcher -> {
-            int rank = parseRank(matcher);
-            return () -> {
-                EconomyManager.LeaderboardEntry entry = EconomyCraft.getManager(server).getLeaderboardEntry(rank);
-                return entry != null ? entry.name() : NO_PLAYER;
-            };
+            String rank = matcher.group(1);
+            return () -> orNoPlayer(PlaceholderValues.topName(EconomyCraft.getManager(server), rank));
         };
         registerServerPattern.invoke(manager, TOP_NAME, REFRESH_MS, topName);
 
         Function<Matcher, Supplier<String>> topBalance = matcher -> {
-            int rank = parseRank(matcher);
-            return () -> {
-                EconomyManager.LeaderboardEntry entry = EconomyCraft.getManager(server).getLeaderboardEntry(rank);
-                return entry != null ? String.valueOf(entry.balance()) : NO_PLAYER;
-            };
+            String rank = matcher.group(1);
+            return () -> orNoPlayer(PlaceholderValues.topBalance(EconomyCraft.getManager(server), rank));
         };
         registerServerPattern.invoke(manager, TOP_BALANCE, REFRESH_MS, topBalance);
 
         Function<Matcher, Supplier<String>> topBalanceFormatted = matcher -> {
-            int rank = parseRank(matcher);
-            return () -> {
-                EconomyManager.LeaderboardEntry entry = EconomyCraft.getManager(server).getLeaderboardEntry(rank);
-                return entry != null ? EconomyCraft.formatMoney(entry.balance()) : NO_PLAYER;
-            };
+            String rank = matcher.group(1);
+            return () -> orNoPlayer(PlaceholderValues.topBalanceFormatted(EconomyCraft.getManager(server), rank));
         };
         registerServerPattern.invoke(manager, TOP_BALANCE_FORMATTED, REFRESH_MS, topBalanceFormatted);
 
         Function<Matcher, Supplier<String>> topBalanceShort = matcher -> {
-            int rank = parseRank(matcher);
-            return () -> {
-                EconomyManager.LeaderboardEntry entry = EconomyCraft.getManager(server).getLeaderboardEntry(rank);
-                return entry != null ? EconomyCraft.formatMoneyShort(entry.balance()) : NO_PLAYER;
-            };
+            String rank = matcher.group(1);
+            return () -> orNoPlayer(PlaceholderValues.topBalanceShort(EconomyCraft.getManager(server), rank));
         };
         registerServerPattern.invoke(manager, TOP_BALANCE_SHORT, REFRESH_MS, topBalanceShort);
     }
 
-    private static int parseRank(Matcher matcher) {
-        try {
-            return Integer.parseInt(matcher.group(1));
-        } catch (NumberFormatException ignored) {
-            return -1;
-        }
+    private static String orNoPlayer(String value) {
+        return value != null ? value : NO_PLAYER;
     }
 
     private static UUID uuidOf(Method getUniqueId, Object tabPlayer) {

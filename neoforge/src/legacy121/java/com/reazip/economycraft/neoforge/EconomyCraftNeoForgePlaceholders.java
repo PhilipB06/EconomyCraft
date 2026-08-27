@@ -15,6 +15,7 @@ import java.lang.reflect.Proxy;
 final class EconomyCraftNeoForgePlaceholders {
     private static final Logger LOGGER = LoggerFactory.getLogger("EconomyCraft/PlaceholderAPI");
 
+    private static final Object CONTEXT_METHODS_LOCK = new Object();
     private static volatile Method serverMethod;
     private static volatile Method hasPlayerMethod;
     private static volatile Method playerMethod;
@@ -62,7 +63,7 @@ final class EconomyCraftNeoForgePlaceholders {
                     String argument = args.length > 1 && args[1] instanceof String string ? string : null;
                     try {
                         return resolve(context, argument, path, value, invalid);
-                    } catch (ReflectiveOperationException e) {
+                    } catch (ReflectiveOperationException | RuntimeException e) {
                         LOGGER.error("Failed to resolve EconomyCraft placeholder {}", path, e);
                         return invalid.invoke(null, "Error");
                     }
@@ -73,10 +74,17 @@ final class EconomyCraftNeoForgePlaceholders {
     private static Object resolve(Object context, String argument, String path, Method value, Method invalid)
             throws ReflectiveOperationException {
         if (serverMethod == null) {
-            Class<?> cls = context.getClass();
-            serverMethod = cls.getMethod("server");
-            hasPlayerMethod = cls.getMethod("hasPlayer");
-            playerMethod = cls.getMethod("player");
+            synchronized (CONTEXT_METHODS_LOCK) {
+                if (serverMethod == null) {
+                    Class<?> cls = context.getClass();
+                    Method resolvedServerMethod = cls.getMethod("server");
+                    Method resolvedHasPlayerMethod = cls.getMethod("hasPlayer");
+                    Method resolvedPlayerMethod = cls.getMethod("player");
+                    hasPlayerMethod = resolvedHasPlayerMethod;
+                    playerMethod = resolvedPlayerMethod;
+                    serverMethod = resolvedServerMethod;
+                }
+            }
         }
 
         MinecraftServer server = (MinecraftServer) serverMethod.invoke(context);

@@ -18,7 +18,7 @@ public final class EconomyCraftNeoForge {
         EconomyCraft.registerEvents();
         NeoForge.EVENT_BUS.register(this);
 
-        if (ModList.get().isLoaded("placeholder_api_neoforge") || ModList.get().isLoaded("placeholder-api-neoforge")) {
+        if (EconomyCraftNeoForgeModIds.isPlaceholderApiLoaded()) {
             EconomyCraftNeoForgePlaceholders.register();
         }
 
