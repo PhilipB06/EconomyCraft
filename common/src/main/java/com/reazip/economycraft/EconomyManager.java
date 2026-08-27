@@ -74,6 +74,7 @@ public class EconomyManager {
     private final DeliveryManager deliveries;
     private final AuctionManager auctions;
     private final OrderManager orders;
+    private final NotificationManager notifications;
     private final Map<UUID, String> displayed = new ConcurrentHashMap<>();
     private final Set<UUID> scheduledProfileLookups = ConcurrentHashMap.newKeySet();
     private final Set<UUID> loggedUnresolvedNames = ConcurrentHashMap.newKeySet();
@@ -114,6 +115,7 @@ public class EconomyManager {
         this.deliveries = new DeliveryManager(server);
         this.auctions = new AuctionManager(server, deliveries);
         this.orders = new OrderManager(server, deliveries);
+        this.notifications = new NotificationManager(server);
         this.prices = new PriceRegistry(server);
 
         balanceEvents.register(transactionLogger::onBalanceChanged);
@@ -570,6 +572,10 @@ public class EconomyManager {
 
     public DeliveryManager getDeliveries() {
         return deliveries;
+    }
+
+    public NotificationManager getNotifications() {
+        return notifications;
     }
 
     public PriceRegistry getPrices() {

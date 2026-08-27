@@ -1,5 +1,6 @@
 ### Features
 - New orders reserve payment upfront; cancelling refunds what's left.
+- Orders and auction listings now expire after a configurable time.
 
 ### Improvements
 

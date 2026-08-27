@@ -5,8 +5,10 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
 import com.reazip.economycraft.DeliveryManager;
+import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.util.AsyncFileWriter;
 import com.reazip.economycraft.util.EconomyPaths;
+import com.reazip.economycraft.util.ExpirationUtil;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.ItemStack;
 import org.slf4j.Logger;
@@ -81,6 +83,8 @@ public class OrderManager {
                 JsonArray savedRequests = root.has("requests")
                         ? root.getAsJsonArray("requests")
                         : new JsonArray();
+                long now = System.currentTimeMillis();
+                boolean migrated = false;
                 for (var el : savedRequests) {
                     try {
                         OrderRequest r = OrderRequest.load(el.getAsJsonObject(), server.registryAccess());
@@ -88,11 +92,17 @@ public class OrderManager {
                             LOGGER.error("[EconomyCraft] Dropping order request {} with an unreadable item in {}", r.id, file);
                             continue;
                         }
+                        if (r.createdAt <= 0) {
+                            r.createdAt = now;
+                            r.expiresAt = ExpirationUtil.expiresAt(now, EconomyConfig.get().orderExpirationHours);
+                            migrated = true;
+                        }
                         requests.put(r.id, r);
                     } catch (Exception ex) {
                         LOGGER.error("[EconomyCraft] Dropping an unreadable order request in {}", file, ex);
                     }
                 }
+                if (migrated) save();
             } catch (Exception ex) {
                 LOGGER.error("[EconomyCraft] Failed to load {}", file, ex);
             }

@@ -14,5 +14,7 @@
   "orders_enabled": true,
   "balance_separator": ".",
   "transaction_log_enabled": true,
-  "transaction_log_retention_days": 7
+  "transaction_log_retention_days": 7,
+  "order_expiration_hours": 168,
+  "auction_expiration_hours": 168
 }

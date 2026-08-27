@@ -31,7 +31,8 @@ public final class EconomyPaths {
             "deliveries.json",
             "auctions.json",
             "shop.json",
-            "orders.json"
+            "orders.json",
+            "notifications.json"
     );
 
     public static Path configDir(MinecraftServer server) {

@@ -87,6 +87,8 @@ In singleplayer each world gets that same folder inside its own save, at `saves/
 | `balance_separator`              | `"."`   | Thousands separator. Only the first character is used, so `","` gives `$1,000`. |
 | `transaction_log_enabled`        | `true`  | Record every balance change to a daily log file.                                |
 | `transaction_log_retention_days` | `7`     | How many days of transaction logs to keep.                                      |
+| `order_expiration_hours`         | `168`   | Hours before an unfulfilled order expires and its escrow is refunded. `0` disables expiration. |
+| `auction_expiration_hours`       | `168`   | Hours before an unsold auction listing expires and its item goes to deliveries. `0` disables expiration. |
 
 ### `webhook.json`
 

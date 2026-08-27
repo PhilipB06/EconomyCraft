@@ -1,11 +1,13 @@
 package com.reazip.economycraft.orders;
 
 import com.reazip.economycraft.EconomyConfig;
+import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyManager;
 import com.reazip.economycraft.EconomySources;
 import com.reazip.economycraft.PriceRegistry;
 import com.reazip.economycraft.SellService;
 import com.reazip.economycraft.util.ChatCompat;
+import com.reazip.economycraft.util.ExpirationUtil;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
@@ -181,6 +183,31 @@ public final class OrderFulfillment {
 
         orders.removeRequest(orderId);
         return CancelStatus.OK;
+    }
+
+    public static void expireOverdue(EconomyManager eco) {
+        OrderManager orders = eco.getOrders();
+        long now = System.currentTimeMillis();
+        for (OrderRequest order : orders.getRequests()) {
+            if (!ExpirationUtil.isExpired(order.expiresAt, now)) continue;
+
+            long refund = order.escrow;
+            if (refund > 0) {
+                var result = eco.addMoney(order.requester, refund, EconomySources.ORDER_ESCROW_REFUND);
+                if (!result.successful()) continue;
+                order.escrow = 0;
+            }
+
+            orders.removeRequest(order.id);
+            notifyExpired(eco, order, refund);
+        }
+    }
+
+    private static void notifyExpired(EconomyManager eco, OrderRequest order, long refund) {
+        String itemName = order.item.getHoverName().getString();
+        String message = "Your order for " + order.amount + "x " + itemName + " expired"
+                + (refund > 0 ? " and " + EconomyCraft.formatMoney(refund) + " was refunded." : ".");
+        eco.getNotifications().notify(order.requester, message);
     }
 
     public static List<OrderRequest> findBetterOrders(EconomyManager eco, ItemStack proto, UUID seller, long serverUnitSell) {

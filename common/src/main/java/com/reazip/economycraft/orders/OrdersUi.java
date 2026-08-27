@@ -14,6 +14,7 @@ import com.reazip.economycraft.util.IdentityCompat;
 import com.reazip.economycraft.util.ItemPickerUi;
 import com.reazip.economycraft.util.MenuUiSupport;
 import com.reazip.economycraft.util.NumberInputUi;
+import com.reazip.economycraft.util.ExpirationUtil;
 import com.reazip.economycraft.util.SortMode;
 import com.reazip.economycraft.util.TextInputUi;
 import net.minecraft.ChatFormatting;
@@ -136,6 +137,8 @@ public final class OrdersUi {
         request.item = prototype.copyWithCount(1);
         request.amount = amount;
         request.escrow = price;
+        request.createdAt = System.currentTimeMillis();
+        request.expiresAt = ExpirationUtil.expiresAt(request.createdAt, EconomyConfig.get().orderExpirationHours);
         eco.getOrders().addRequest(request);
 
         long tax = Math.round(price * EconomyConfig.get().taxRate);

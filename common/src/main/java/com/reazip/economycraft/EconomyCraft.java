@@ -1,6 +1,8 @@
 package com.reazip.economycraft;
 
 import com.mojang.logging.LogUtils;
+import com.reazip.economycraft.auction.AuctionExpiration;
+import com.reazip.economycraft.orders.OrderFulfillment;
 import com.reazip.economycraft.util.AsyncFileWriter;
 import com.reazip.economycraft.api.v1.EconomyCraftApiBootstrap;
 import com.reazip.economycraft.util.ChatCompat;
@@ -10,6 +12,7 @@ import com.reazip.economycraft.util.ProfileCompat;
 import dev.architectury.event.events.common.CommandRegistrationEvent;
 import dev.architectury.event.events.common.LifecycleEvent;
 import dev.architectury.event.events.common.PlayerEvent;
+import dev.architectury.event.events.common.TickEvent;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
@@ -29,6 +32,7 @@ public final class EconomyCraft {
     private static final Object MANAGER_LOCK = new Object();
     private static volatile EconomyManager manager;
     private static volatile MinecraftServer lastServer;
+    private static final int EXPIRATION_CHECK_INTERVAL_TICKS = 20 * 60;
 
     public static void registerEvents() {
         if (EconomyCraftApiBootstrap.INITIALIZED == null) {
@@ -52,6 +56,19 @@ public final class EconomyCraft {
         });
 
         PlayerEvent.PLAYER_JOIN.register(EconomyCraft::onPlayerJoin);
+        TickEvent.SERVER_POST.register(EconomyCraft::onServerTick);
+    }
+
+    private static void onServerTick(MinecraftServer server) {
+        if (server.getTickCount() % EXPIRATION_CHECK_INTERVAL_TICKS != 0) return;
+
+        try {
+            EconomyManager eco = getManager(server);
+            OrderFulfillment.expireOverdue(eco);
+            AuctionExpiration.expireOverdue(eco);
+        } catch (Exception e) {
+            LOGGER.error("[EconomyCraft] Failed to process order/auction expirations", e);
+        }
     }
 
     private static void onPlayerJoin(ServerPlayer player) {
@@ -65,6 +82,8 @@ public final class EconomyCraft {
             } else {
                 eco.refreshLeaderboard();
             }
+
+            eco.getNotifications().sendPending(player);
 
             if (eco.getDeliveries().hasDeliveries(player.getUUID())) {
                 sendPrompt(player, "You have unclaimed items: ", "[Claim]", "/eco orders claim");

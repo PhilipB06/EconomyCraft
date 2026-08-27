@@ -11,6 +11,7 @@ import com.reazip.economycraft.util.ClickKind;
 import com.reazip.economycraft.util.CompatMenu;
 import com.reazip.economycraft.util.ContainerPreviewUi;
 import com.reazip.economycraft.util.EconomySounds;
+import com.reazip.economycraft.util.ExpirationUtil;
 import com.reazip.economycraft.util.ItemPickerUi;
 import com.reazip.economycraft.util.MenuUiSupport;
 import com.reazip.economycraft.util.NumberInputUi;
@@ -141,6 +142,8 @@ public final class AuctionUi {
         listing.seller = player.getUUID();
         listing.price = price;
         listing.item = prototype.copyWithCount(amount);
+        listing.createdAt = System.currentTimeMillis();
+        listing.expiresAt = ExpirationUtil.expiresAt(listing.createdAt, EconomyConfig.get().auctionExpirationHours);
         auctions.addListing(listing);
 
         long tax = Math.round(price * EconomyConfig.get().taxRate);

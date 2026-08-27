@@ -5,9 +5,11 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
 import com.reazip.economycraft.DeliveryManager;
+import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.util.AsyncFileWriter;
 import com.reazip.economycraft.util.EconomyPaths;
+import com.reazip.economycraft.util.ExpirationUtil;
 import com.reazip.economycraft.util.IdentityCompat;
 import com.reazip.economycraft.util.EconomySounds;
 import net.minecraft.ChatFormatting;
@@ -132,6 +134,8 @@ public class AuctionManager {
                 JsonArray savedListings = root.has("listings")
                         ? root.getAsJsonArray("listings")
                         : new JsonArray();
+                long now = System.currentTimeMillis();
+                boolean migrated = false;
                 for (var el : savedListings) {
                     try {
                         AuctionListing l = AuctionListing.load(el.getAsJsonObject(), server.registryAccess());
@@ -139,11 +143,17 @@ public class AuctionManager {
                             LOGGER.error("[EconomyCraft] Dropping auction listing {} with an unreadable item in {}", l.id, file);
                             continue;
                         }
+                        if (l.createdAt <= 0) {
+                            l.createdAt = now;
+                            l.expiresAt = ExpirationUtil.expiresAt(now, EconomyConfig.get().auctionExpirationHours);
+                            migrated = true;
+                        }
                         listings.put(l.id, l);
                     } catch (Exception ex) {
                         LOGGER.error("[EconomyCraft] Dropping an unreadable auction listing in {}", file, ex);
                     }
                 }
+                if (migrated) save();
             } catch (Exception ex) {
                 LOGGER.error("[EconomyCraft] Failed to load {}", file, ex);
             }
