@@ -31,6 +31,12 @@ public final class OrderFulfillment {
         }
     }
 
+    public enum CancelStatus {
+        OK, ORDER_GONE, NOT_OWNER, REFUND_FAILED
+    }
+
+    private record PaymentOutcome(boolean success, long payout, long escrowUsed, Status failureStatus) {}
+
     public static Result fulfill(EconomyManager eco, ServerPlayer fulfiller, int orderId, int requestedAmount) {
         return fulfill(eco, fulfiller, orderId, requestedAmount, false);
     }
@@ -63,16 +69,9 @@ public final class OrderFulfillment {
         ItemStack itemProto = order.item.copy();
         UUID requester = order.requester;
 
-        long tax = Math.round(payment * EconomyConfig.get().taxRate);
-        long payout = payment - tax;
-        if (payment > 0) {
-            var transfer = eco.transferMoney(requester, fulfiller.getUUID(), payment, payout,
-                    EconomySources.ORDER_FULFILLMENT);
-            if (!transfer.successful()) {
-                Status status = transfer.status() == com.reazip.economycraft.api.v1.BalanceMutationStatus.MAX_BALANCE_EXCEEDED
-                        ? Status.FULFILLER_CANT_RECEIVE : Status.REQUESTER_CANT_PAY;
-                return new Result(status, 0, 0, order.amount, itemProto, order.requester);
-            }
+        PaymentOutcome outcome = settleOrderPayment(eco, order, fulfiller.getUUID(), payment);
+        if (!outcome.success()) {
+            return new Result(outcome.failureStatus(), 0, 0, order.amount, itemProto, order.requester);
         }
 
         removeItems(fulfiller, itemProto, give, excludeArmor);
@@ -81,6 +80,7 @@ public final class OrderFulfillment {
 
         order.amount -= give;
         order.price -= payment;
+        order.escrow -= outcome.escrowUsed();
         int remaining = order.amount;
         if (remaining <= 0) {
             orders.removeRequest(order.id);
@@ -90,7 +90,7 @@ public final class OrderFulfillment {
         }
 
         notifyRequester(eco.getServer(), requester, give, itemProto);
-        return new Result(Status.OK, give, payout, remaining, itemProto, requester);
+        return new Result(Status.OK, give, outcome.payout(), remaining, itemProto, requester);
     }
 
     public static Result fulfillExact(EconomyManager eco, ServerPlayer fulfiller, int orderId, int requestedAmount, ItemStack sourceStack) {
@@ -121,16 +121,9 @@ public final class OrderFulfillment {
         ItemStack itemProto = order.item.copy();
         UUID requester = order.requester;
 
-        long tax = Math.round(payment * EconomyConfig.get().taxRate);
-        long payout = payment - tax;
-        if (payment > 0) {
-            var transfer = eco.transferMoney(requester, fulfiller.getUUID(), payment, payout,
-                    EconomySources.ORDER_FULFILLMENT);
-            if (!transfer.successful()) {
-                Status status = transfer.status() == com.reazip.economycraft.api.v1.BalanceMutationStatus.MAX_BALANCE_EXCEEDED
-                        ? Status.FULFILLER_CANT_RECEIVE : Status.REQUESTER_CANT_PAY;
-                return new Result(status, 0, 0, order.amount, itemProto, order.requester);
-            }
+        PaymentOutcome outcome = settleOrderPayment(eco, order, fulfiller.getUUID(), payment);
+        if (!outcome.success()) {
+            return new Result(outcome.failureStatus(), 0, 0, order.amount, itemProto, order.requester);
         }
 
         sourceStack.shrink(give);
@@ -139,6 +132,7 @@ public final class OrderFulfillment {
 
         order.amount -= give;
         order.price -= payment;
+        order.escrow -= outcome.escrowUsed();
         int remaining = order.amount;
         if (remaining <= 0) {
             orders.removeRequest(order.id);
@@ -148,7 +142,45 @@ public final class OrderFulfillment {
         }
 
         notifyRequester(eco.getServer(), requester, give, itemProto);
-        return new Result(Status.OK, give, payout, remaining, itemProto, requester);
+        return new Result(Status.OK, give, outcome.payout(), remaining, itemProto, requester);
+    }
+
+    private static PaymentOutcome settleOrderPayment(EconomyManager eco, OrderRequest order, UUID fulfillerId, long payment) {
+        long tax = Math.round(payment * EconomyConfig.get().taxRate);
+        long payout = payment - tax;
+        long escrowUsed = Math.min(payment, Math.max(0, order.escrow));
+        long shortfall = payment - escrowUsed;
+
+        if (shortfall > 0) {
+            var transfer = eco.transferMoney(order.requester, fulfillerId, shortfall, payout, EconomySources.ORDER_FULFILLMENT);
+            if (!transfer.successful()) {
+                Status status = transfer.status() == com.reazip.economycraft.api.v1.BalanceMutationStatus.MAX_BALANCE_EXCEEDED
+                        ? Status.FULFILLER_CANT_RECEIVE : Status.REQUESTER_CANT_PAY;
+                return new PaymentOutcome(false, 0, 0, status);
+            }
+        } else if (payout > 0) {
+            var credit = eco.addMoney(fulfillerId, payout, EconomySources.ORDER_FULFILLMENT);
+            if (!credit.successful()) {
+                return new PaymentOutcome(false, 0, 0, Status.FULFILLER_CANT_RECEIVE);
+            }
+        }
+        return new PaymentOutcome(true, payout, escrowUsed, null);
+    }
+
+    public static CancelStatus cancel(EconomyManager eco, UUID requester, int orderId) {
+        OrderManager orders = eco.getOrders();
+        OrderRequest order = orders.getRequest(orderId);
+        if (order == null) return CancelStatus.ORDER_GONE;
+        if (!order.requester.equals(requester)) return CancelStatus.NOT_OWNER;
+
+        if (order.escrow > 0) {
+            var refund = eco.addMoney(order.requester, order.escrow, EconomySources.ORDER_ESCROW_REFUND);
+            if (!refund.successful()) return CancelStatus.REFUND_FAILED;
+            order.escrow = 0;
+        }
+
+        orders.removeRequest(orderId);
+        return CancelStatus.OK;
     }
 
     public static List<OrderRequest> findBetterOrders(EconomyManager eco, ItemStack proto, UUID seller, long serverUnitSell) {

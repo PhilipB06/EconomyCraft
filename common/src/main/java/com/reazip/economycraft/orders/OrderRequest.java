@@ -15,6 +15,7 @@ public class OrderRequest {
     public ItemStack item;
     public int amount;
     public long price;
+    public long escrow;
 
     public JsonObject save(HolderLookup.Provider provider) {
         JsonObject obj = new JsonObject();
@@ -22,6 +23,7 @@ public class OrderRequest {
         if (requester != null) obj.addProperty("requester", requester.toString());
         obj.addProperty("price", price);
         obj.addProperty("amount", amount);
+        obj.addProperty("escrow", escrow);
         JsonElement stackEl = ItemStack.CODEC.encodeStart(RegistryOps.create(JsonOps.INSTANCE, provider), item).result().orElse(new JsonObject());
         obj.add("stack", stackEl);
         return obj;
@@ -33,6 +35,9 @@ public class OrderRequest {
         if (obj.has("requester")) r.requester = UUID.fromString(obj.get("requester").getAsString());
         r.price = obj.get("price").getAsLong();
         r.amount = obj.get("amount").getAsInt();
+        if (obj.has("escrow")) {
+            r.escrow = obj.get("escrow").getAsLong();
+        }
         r.item = ItemStack.CODEC.parse(RegistryOps.create(JsonOps.INSTANCE, provider), obj.get("stack")).result().orElse(ItemStack.EMPTY);
         return r;
     }

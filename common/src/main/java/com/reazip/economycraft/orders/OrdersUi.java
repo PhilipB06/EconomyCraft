@@ -3,6 +3,7 @@ package com.reazip.economycraft.orders;
 import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyManager;
+import com.reazip.economycraft.EconomySources;
 import com.reazip.economycraft.HubUi;
 import com.reazip.economycraft.SellService;
 import com.reazip.economycraft.util.ClickKind;
@@ -112,7 +113,7 @@ public final class OrdersUi {
         lore.add(MenuUiSupport.labeledValue("Amount", String.valueOf(amount), MenuUiSupport.LABEL_PRIMARY_COLOR));
         lore.add(MenuUiSupport.labeledValue("You pay", EconomyCraft.formatMoney(price), MenuUiSupport.LABEL_PRIMARY_COLOR));
         addRewardLore(lore, price, tax, amount);
-        lore.add(MenuUiSupport.hint("You are charged as the order is filled."));
+        lore.add(MenuUiSupport.hint("The full amount is reserved when you post."));
         if (balance < price) {
             lore.add(MenuUiSupport.line("Your balance (" + EconomyCraft.formatMoney(balance) + ") is lower than this.",
                     ChatFormatting.RED));
@@ -121,11 +122,20 @@ public final class OrdersUi {
     }
 
     private static void createRequest(ServerPlayer player, EconomyManager eco, ItemStack prototype, int amount, long price) {
+        if (!eco.removeMoney(player.getUUID(), price, EconomySources.ORDER_ESCROW_HOLD).successful()) {
+            EconomySounds.failure(player);
+            player.sendSystemMessage(Component.literal("You can't afford to reserve " + EconomyCraft.formatMoney(price))
+                    .withStyle(ChatFormatting.RED));
+            open(player, eco);
+            return;
+        }
+
         OrderRequest request = new OrderRequest();
         request.requester = player.getUUID();
         request.price = price;
         request.item = prototype.copyWithCount(1);
         request.amount = amount;
+        request.escrow = price;
         eco.getOrders().addRequest(request);
 
         long tax = Math.round(price * EconomyConfig.get().taxRate);
@@ -533,16 +543,24 @@ public final class OrdersUi {
             if (kind != ClickKind.PICKUP) return false;
 
             if (slot == MenuUiSupport.ROW_CONFIRM) {
-                OrderRequest removed = parent.orders.removeRequest(request.id);
-                if (removed != null) {
-                    EconomySounds.itemPickedUp((ServerPlayer) player);
-                    ((ServerPlayer) player).sendSystemMessage(Component.literal("Request removed").withStyle(ChatFormatting.GREEN));
-                } else {
-                    EconomySounds.failure((ServerPlayer) player);
-                    ((ServerPlayer) player).sendSystemMessage(Component.literal("Request no longer available").withStyle(ChatFormatting.RED));
+                ServerPlayer serverPlayer = (ServerPlayer) player;
+                OrderFulfillment.CancelStatus status = OrderFulfillment.cancel(parent.eco, serverPlayer.getUUID(), request.id);
+                switch (status) {
+                    case OK -> {
+                        EconomySounds.itemPickedUp(serverPlayer);
+                        serverPlayer.sendSystemMessage(Component.literal("Request removed").withStyle(ChatFormatting.GREEN));
+                    }
+                    case REFUND_FAILED -> {
+                        EconomySounds.failure(serverPlayer);
+                        serverPlayer.sendSystemMessage(Component.literal("Your balance is too high to receive the refund").withStyle(ChatFormatting.RED));
+                    }
+                    default -> {
+                        EconomySounds.failure(serverPlayer);
+                        serverPlayer.sendSystemMessage(Component.literal("Request no longer available").withStyle(ChatFormatting.RED));
+                    }
                 }
                 player.closeContainer();
-                OrdersUi.open((ServerPlayer) player, parent.eco, 0, parent.query, parent.sort, parent.mineOnly);
+                OrdersUi.open(serverPlayer, parent.eco, 0, parent.query, parent.sort, parent.mineOnly);
                 return true;
             }
             if (slot == MenuUiSupport.ROW_CANCEL) {

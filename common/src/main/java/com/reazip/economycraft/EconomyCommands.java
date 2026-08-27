@@ -845,7 +845,8 @@ public final class EconomyCommands {
             source.sendFailure(Component.literal("Invalid item").withStyle(ChatFormatting.RED));
             return 0;
         }
-        OrderManager orders = EconomyCraft.getManager(source.getServer()).getOrders();
+        EconomyManager eco = EconomyCraft.getManager(source.getServer());
+        OrderManager orders = eco.getOrders();
         OrderRequest r = new OrderRequest();
         r.requester = player.getUUID();
         r.price = price;
@@ -857,6 +858,13 @@ public final class EconomyCommands {
             return 0;
         }
         r.amount = amount;
+
+        if (!eco.removeMoney(player.getUUID(), price, EconomySources.ORDER_ESCROW_HOLD).successful()) {
+            EconomySounds.failure(player);
+            source.sendFailure(Component.literal("You can't afford to reserve " + EconomyCraft.formatMoney(price)).withStyle(ChatFormatting.RED));
+            return 0;
+        }
+        r.escrow = price;
         orders.addRequest(r);
         long tax = Math.round(price * EconomyConfig.get().taxRate);
 

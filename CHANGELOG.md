@@ -1,4 +1,5 @@
 ### Features
+- New orders reserve payment upfront; cancelling refunds what's left.
 
 ### Improvements
 
