@@ -13,6 +13,7 @@ import com.reazip.economycraft.admin.AdminUi;
 import com.reazip.economycraft.util.AsyncFileWriter;
 import com.reazip.economycraft.util.EconomyPaths;
 import com.reazip.economycraft.util.EconomySounds;
+import com.reazip.economycraft.util.ExpirationUtil;
 import com.reazip.economycraft.util.IdentityCompat;
 import com.reazip.economycraft.util.ItemArgumentCompat;
 import com.reazip.economycraft.util.PermissionCompat;
@@ -35,6 +36,7 @@ import com.reazip.economycraft.auction.AuctionListing;
 import com.reazip.economycraft.auction.AuctionManager;
 import com.reazip.economycraft.auction.AuctionUi;
 import com.reazip.economycraft.shop.ShopUi;
+import com.reazip.economycraft.orders.OrderFulfillment;
 import com.reazip.economycraft.orders.OrderManager;
 import com.reazip.economycraft.orders.OrderRequest;
 import com.reazip.economycraft.orders.OrdersUi;
@@ -724,10 +726,18 @@ public final class EconomyCommands {
         }
 
         AuctionManager auctions = EconomyCraft.getManager(source.getServer()).getAuctions();
+        if (auctions.hasReachedLimit(player.getUUID())) {
+            EconomySounds.failure(player);
+            source.sendFailure(Component.literal("You have reached your limit of "
+                    + auctions.getEffectiveLimit(player.getUUID()) + " active listing(s).").withStyle(ChatFormatting.RED));
+            return 0;
+        }
         AuctionListing listing = new AuctionListing();
         listing.seller = player.getUUID();
         listing.price = price;
         listing.item = hand.copyWithCount(count);
+        listing.createdAt = System.currentTimeMillis();
+        listing.expiresAt = ExpirationUtil.expiresAt(listing.createdAt, EconomyConfig.get().auctionExpirationHours);
         hand.shrink(count);
         auctions.addListing(listing);
 
@@ -847,25 +857,25 @@ public final class EconomyCommands {
         }
         EconomyManager eco = EconomyCraft.getManager(source.getServer());
         OrderManager orders = eco.getOrders();
-        OrderRequest r = new OrderRequest();
-        r.requester = player.getUUID();
-        r.price = price;
-        r.item = item;
-        int maxAmount = MAIN_INVENTORY_SLOTS * r.item.getMaxStackSize();
+        if (orders.hasReachedLimit(player.getUUID())) {
+            EconomySounds.failure(player);
+            source.sendFailure(Component.literal("You have reached your limit of "
+                    + orders.getEffectiveLimit(player.getUUID()) + " active order request(s).").withStyle(ChatFormatting.RED));
+            return 0;
+        }
+        int maxAmount = MAIN_INVENTORY_SLOTS * item.getMaxStackSize();
         if (amount > maxAmount) {
             EconomySounds.failure(player);
             source.sendFailure(Component.literal("Amount exceeds " + MAIN_INVENTORY_SLOTS + " stacks (max " + maxAmount + ")").withStyle(ChatFormatting.RED));
             return 0;
         }
-        r.amount = amount;
 
-        if (!eco.removeMoney(player.getUUID(), price, EconomySources.ORDER_ESCROW_HOLD).successful()) {
+        OrderRequest r = OrderFulfillment.createEscrowedRequest(eco, player.getUUID(), item, amount, price);
+        if (r == null) {
             EconomySounds.failure(player);
             source.sendFailure(Component.literal("You can't afford to reserve " + EconomyCraft.formatMoney(price)).withStyle(ChatFormatting.RED));
             return 0;
         }
-        r.escrow = price;
-        orders.addRequest(r);
         long tax = Math.round(price * EconomyConfig.get().taxRate);
 
         Component msg = Component.literal("Created request" +

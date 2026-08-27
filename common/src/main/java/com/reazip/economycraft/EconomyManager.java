@@ -272,8 +272,9 @@ public class EconomyManager {
             if (resolveLocalName(server, id) == null) {
                 logUnresolvedName(id);
                 if (!resolved.contains(id)) {
+                    Set<UUID> scheduledLookups = scheduledProfileLookups;
                     CompletableFuture.delayedExecutor(LOOKUP_RETRY_COOLDOWN_MS, TimeUnit.MILLISECONDS, PROFILE_LOOKUP_EXECUTOR)
-                            .execute(() -> scheduledProfileLookups.remove(id));
+                            .execute(() -> scheduledLookups.remove(id));
                 }
             }
         }
@@ -454,7 +455,6 @@ public class EconomyManager {
             try {
                 server.execute(this::syncScoreboard);
             } catch (RuntimeException ignored) {
-                // The server is already shutting down.
             }
             return;
         }

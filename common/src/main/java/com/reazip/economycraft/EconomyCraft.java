@@ -62,12 +62,16 @@ public final class EconomyCraft {
     private static void onServerTick(MinecraftServer server) {
         if (server.getTickCount() % EXPIRATION_CHECK_INTERVAL_TICKS != 0) return;
 
+        EconomyManager eco = getManager(server);
         try {
-            EconomyManager eco = getManager(server);
             OrderFulfillment.expireOverdue(eco);
+        } catch (Exception e) {
+            LOGGER.error("[EconomyCraft] Failed to process order expirations", e);
+        }
+        try {
             AuctionExpiration.expireOverdue(eco);
         } catch (Exception e) {
-            LOGGER.error("[EconomyCraft] Failed to process order/auction expirations", e);
+            LOGGER.error("[EconomyCraft] Failed to process auction expirations", e);
         }
     }
 

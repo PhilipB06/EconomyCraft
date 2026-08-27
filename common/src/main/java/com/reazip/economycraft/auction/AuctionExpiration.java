@@ -20,6 +20,7 @@ public final class AuctionExpiration {
             auctions.addDelivery(removed.seller, stack);
             notifyExpired(eco, removed, stack);
         }
+        eco.getNotifications().flush();
     }
 
     private static void notifyExpired(EconomyManager eco, AuctionListing listing, ItemStack stack) {

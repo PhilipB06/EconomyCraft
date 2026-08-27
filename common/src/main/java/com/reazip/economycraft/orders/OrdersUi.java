@@ -3,7 +3,6 @@ package com.reazip.economycraft.orders;
 import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyManager;
-import com.reazip.economycraft.EconomySources;
 import com.reazip.economycraft.HubUi;
 import com.reazip.economycraft.SellService;
 import com.reazip.economycraft.util.ClickKind;
@@ -14,7 +13,6 @@ import com.reazip.economycraft.util.IdentityCompat;
 import com.reazip.economycraft.util.ItemPickerUi;
 import com.reazip.economycraft.util.MenuUiSupport;
 import com.reazip.economycraft.util.NumberInputUi;
-import com.reazip.economycraft.util.ExpirationUtil;
 import com.reazip.economycraft.util.SortMode;
 import com.reazip.economycraft.util.TextInputUi;
 import net.minecraft.ChatFormatting;
@@ -85,6 +83,14 @@ public final class OrdersUi {
     }
 
     public static void startRequest(ServerPlayer player, EconomyManager eco) {
+        if (eco.getOrders().hasReachedLimit(player.getUUID())) {
+            EconomySounds.failure(player);
+            player.sendSystemMessage(Component.literal("You have reached your limit of "
+                            + eco.getOrders().getEffectiveLimit(player.getUUID()) + " active order request(s).")
+                    .withStyle(ChatFormatting.RED));
+            open(player, eco);
+            return;
+        }
         ItemPickerUi.open(player, "What do you want?", ItemPickerUi.Source.INVENTORY_AND_ALL, null,
                 (picker, choice) -> chooseAmount(picker, eco, choice.prototype()),
                 p -> open(p, eco));
@@ -123,23 +129,22 @@ public final class OrdersUi {
     }
 
     private static void createRequest(ServerPlayer player, EconomyManager eco, ItemStack prototype, int amount, long price) {
-        if (!eco.removeMoney(player.getUUID(), price, EconomySources.ORDER_ESCROW_HOLD).successful()) {
+        if (eco.getOrders().hasReachedLimit(player.getUUID())) {
+            EconomySounds.failure(player);
+            player.sendSystemMessage(Component.literal("You have reached your limit of "
+                            + eco.getOrders().getEffectiveLimit(player.getUUID()) + " active order request(s).")
+                    .withStyle(ChatFormatting.RED));
+            open(player, eco);
+            return;
+        }
+        OrderRequest request = OrderFulfillment.createEscrowedRequest(eco, player.getUUID(), prototype.copyWithCount(1), amount, price);
+        if (request == null) {
             EconomySounds.failure(player);
             player.sendSystemMessage(Component.literal("You can't afford to reserve " + EconomyCraft.formatMoney(price))
                     .withStyle(ChatFormatting.RED));
             open(player, eco);
             return;
         }
-
-        OrderRequest request = new OrderRequest();
-        request.requester = player.getUUID();
-        request.price = price;
-        request.item = prototype.copyWithCount(1);
-        request.amount = amount;
-        request.escrow = price;
-        request.createdAt = System.currentTimeMillis();
-        request.expiresAt = ExpirationUtil.expiresAt(request.createdAt, EconomyConfig.get().orderExpirationHours);
-        eco.getOrders().addRequest(request);
 
         long tax = Math.round(price * EconomyConfig.get().taxRate);
         EconomySounds.success(player);

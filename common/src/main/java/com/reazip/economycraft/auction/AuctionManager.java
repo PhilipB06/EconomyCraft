@@ -30,6 +30,7 @@ public class AuctionManager {
     private final MinecraftServer server;
     private final Path file;
     private final Map<Integer, AuctionListing> listings = new ConcurrentHashMap<>();
+    private final Map<UUID, Integer> limitOverrides = new ConcurrentHashMap<>();
     private final DeliveryManager deliveries;
     private final List<Runnable> listeners = new ArrayList<>();
     private int nextId = 1;
@@ -121,6 +122,37 @@ public class AuctionManager {
         deliveries.addDelivery(player, stack);
     }
 
+    public int countActive(UUID player) {
+        int count = 0;
+        for (AuctionListing l : listings.values()) {
+            if (player.equals(l.seller)) count++;
+        }
+        return count;
+    }
+
+    public Integer getLimitOverride(UUID player) {
+        return limitOverrides.get(player);
+    }
+
+    public void setLimitOverride(UUID player, Integer limit) {
+        if (limit == null) {
+            limitOverrides.remove(player);
+        } else {
+            limitOverrides.put(player, limit);
+        }
+        save();
+    }
+
+    public int getEffectiveLimit(UUID player) {
+        Integer override = limitOverrides.get(player);
+        return override != null ? override : EconomyConfig.get().maxActiveAuctionsPerPlayer;
+    }
+
+    public boolean hasReachedLimit(UUID player) {
+        int limit = getEffectiveLimit(player);
+        return limit > 0 && countActive(player) >= limit;
+    }
+
     public void load() {
         if (Files.exists(file)) {
             try {
@@ -153,6 +185,15 @@ public class AuctionManager {
                         LOGGER.error("[EconomyCraft] Dropping an unreadable auction listing in {}", file, ex);
                     }
                 }
+                if (root.has("playerLimits")) {
+                    for (var e : root.getAsJsonObject("playerLimits").entrySet()) {
+                        try {
+                            limitOverrides.put(UUID.fromString(e.getKey()), e.getValue().getAsInt());
+                        } catch (Exception ex) {
+                            LOGGER.error("[EconomyCraft] Dropping an unreadable auction limit override in {}", file, ex);
+                        }
+                    }
+                }
                 if (migrated) save();
             } catch (Exception ex) {
                 LOGGER.error("[EconomyCraft] Failed to load {}", file, ex);
@@ -168,6 +209,11 @@ public class AuctionManager {
             listArr.add(l.save(server.registryAccess()));
         }
         root.add("listings", listArr);
+        JsonObject limitsObj = new JsonObject();
+        for (var e : limitOverrides.entrySet()) {
+            limitsObj.addProperty(e.getKey().toString(), e.getValue());
+        }
+        root.add("playerLimits", limitsObj);
         AsyncFileWriter.writeAsync(file, GSON.toJson(root));
     }
 

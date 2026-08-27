@@ -16,12 +16,13 @@ import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class NotificationManager {
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -31,6 +32,7 @@ public final class NotificationManager {
     private final MinecraftServer server;
     private final Path file;
     private final Map<UUID, List<String>> pending = new ConcurrentHashMap<>();
+    private final AtomicBoolean dirty = new AtomicBoolean(false);
 
     public NotificationManager(MinecraftServer server) {
         this.server = server;
@@ -46,8 +48,12 @@ public final class NotificationManager {
             send(online, message);
             return;
         }
-        pending.computeIfAbsent(player, k -> new ArrayList<>()).add(message);
-        save();
+        pending.computeIfAbsent(player, k -> new CopyOnWriteArrayList<>()).add(message);
+        dirty.set(true);
+    }
+
+    public void flush() {
+        if (dirty.compareAndSet(true, false)) save();
     }
 
     public void sendPending(ServerPlayer player) {
@@ -69,7 +75,7 @@ public final class NotificationManager {
             if (map != null) {
                 for (var entry : map.entrySet()) {
                     if (entry.getValue() != null && !entry.getValue().isEmpty()) {
-                        pending.put(entry.getKey(), new ArrayList<>(entry.getValue()));
+                        pending.put(entry.getKey(), new CopyOnWriteArrayList<>(entry.getValue()));
                     }
                 }
             }

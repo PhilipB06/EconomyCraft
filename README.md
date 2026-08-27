@@ -52,7 +52,7 @@ Covers every option in `config.json`: starting balance, daily reward, daily sell
 
 ### Players
 
-Select any player, online or not, to give, take or set their balance, or remove them from the economy.
+Select any player, online or not, to give, take or set their balance, remove them from the economy, or override their max active orders / max active auctions. Right-click either limit to clear the override and fall back to the server default.
 
 ### Admin commands
 
@@ -89,6 +89,8 @@ In singleplayer each world gets that same folder inside its own save, at `saves/
 | `transaction_log_retention_days` | `7`     | How many days of transaction logs to keep.                                      |
 | `order_expiration_hours`         | `168`   | Hours before an unfulfilled order expires and its escrow is refunded. `0` disables expiration. |
 | `auction_expiration_hours`       | `168`   | Hours before an unsold auction listing expires and its item goes to deliveries. `0` disables expiration. |
+| `max_active_orders_per_player`   | `0`     | Most open order requests a player can have at once. `0` allows unlimited. Overridable per player in the admin Players menu. |
+| `max_active_auctions_per_player` | `0`     | Most active auction listings a player can have at once. `0` allows unlimited. Overridable per player in the admin Players menu. |
 
 ### `webhook.json`
 

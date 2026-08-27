@@ -52,6 +52,10 @@ public class EconomyConfig {
     public int orderExpirationHours = 168;
     @SerializedName("auction_expiration_hours")
     public int auctionExpirationHours = 168;
+    @SerializedName("max_active_orders_per_player")
+    public int maxActiveOrdersPerPlayer = 0;
+    @SerializedName("max_active_auctions_per_player")
+    public int maxActiveAuctionsPerPlayer = 0;
 
     public static final int MIN_TRANSACTION_LOG_RETENTION_DAYS = 1;
     public static final int WARN_TRANSACTION_LOG_RETENTION_DAYS = 90;
@@ -89,8 +93,10 @@ public class EconomyConfig {
                 parsed.balanceSeparator = ".";
             }
             parsed.transactionLogRetentionDays = clampRetentionDays(parsed.transactionLogRetentionDays);
-            parsed.orderExpirationHours = clampExpirationHours("order_expiration_hours", parsed.orderExpirationHours);
-            parsed.auctionExpirationHours = clampExpirationHours("auction_expiration_hours", parsed.auctionExpirationHours);
+            parsed.orderExpirationHours = clampNonNegative("order_expiration_hours", parsed.orderExpirationHours);
+            parsed.auctionExpirationHours = clampNonNegative("auction_expiration_hours", parsed.auctionExpirationHours);
+            parsed.maxActiveOrdersPerPlayer = clampNonNegative("max_active_orders_per_player", parsed.maxActiveOrdersPerPlayer);
+            parsed.maxActiveAuctionsPerPlayer = clampNonNegative("max_active_auctions_per_player", parsed.maxActiveAuctionsPerPlayer);
             INSTANCE = parsed;
         } catch (Exception e) {
             throw new IllegalStateException("[EconomyCraft] Failed to read/parse config.json at " + file, e);
@@ -119,12 +125,12 @@ public class EconomyConfig {
         return days;
     }
 
-    private static int clampExpirationHours(String fieldName, int hours) {
-        if (hours < 0) {
-            LOGGER.warn("[EconomyCraft] {} ({}) is negative; clamping to 0 (unlimited).", fieldName, hours);
+    private static int clampNonNegative(String fieldName, int value) {
+        if (value < 0) {
+            LOGGER.warn("[EconomyCraft] {} ({}) is negative; clamping to 0 (unlimited).", fieldName, value);
             return 0;
         }
-        return hours;
+        return value;
     }
 
     public static void save() {

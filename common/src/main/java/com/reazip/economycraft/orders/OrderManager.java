@@ -24,6 +24,7 @@ public class OrderManager {
     private final MinecraftServer server;
     private final Path file;
     private final Map<Integer, OrderRequest> requests = new ConcurrentHashMap<>();
+    private final Map<UUID, Integer> limitOverrides = new ConcurrentHashMap<>();
     private final DeliveryManager deliveries;
     private final List<Runnable> listeners = new ArrayList<>();
     private int nextId = 1;
@@ -66,6 +67,37 @@ public class OrderManager {
         save();
     }
 
+    public int countActive(UUID player) {
+        int count = 0;
+        for (OrderRequest r : requests.values()) {
+            if (player.equals(r.requester)) count++;
+        }
+        return count;
+    }
+
+    public Integer getLimitOverride(UUID player) {
+        return limitOverrides.get(player);
+    }
+
+    public void setLimitOverride(UUID player, Integer limit) {
+        if (limit == null) {
+            limitOverrides.remove(player);
+        } else {
+            limitOverrides.put(player, limit);
+        }
+        save();
+    }
+
+    public int getEffectiveLimit(UUID player) {
+        Integer override = limitOverrides.get(player);
+        return override != null ? override : EconomyConfig.get().maxActiveOrdersPerPlayer;
+    }
+
+    public boolean hasReachedLimit(UUID player) {
+        int limit = getEffectiveLimit(player);
+        return limit > 0 && countActive(player) >= limit;
+    }
+
     public void addDelivery(UUID player, ItemStack stack) {
         deliveries.addDelivery(player, stack);
     }
@@ -102,6 +134,15 @@ public class OrderManager {
                         LOGGER.error("[EconomyCraft] Dropping an unreadable order request in {}", file, ex);
                     }
                 }
+                if (root.has("playerLimits")) {
+                    for (var e : root.getAsJsonObject("playerLimits").entrySet()) {
+                        try {
+                            limitOverrides.put(UUID.fromString(e.getKey()), e.getValue().getAsInt());
+                        } catch (Exception ex) {
+                            LOGGER.error("[EconomyCraft] Dropping an unreadable order limit override in {}", file, ex);
+                        }
+                    }
+                }
                 if (migrated) save();
             } catch (Exception ex) {
                 LOGGER.error("[EconomyCraft] Failed to load {}", file, ex);
@@ -117,6 +158,11 @@ public class OrderManager {
             reqArr.add(r.save(server.registryAccess()));
         }
         root.add("requests", reqArr);
+        JsonObject limitsObj = new JsonObject();
+        for (var e : limitOverrides.entrySet()) {
+            limitsObj.addProperty(e.getKey().toString(), e.getValue());
+        }
+        root.add("playerLimits", limitsObj);
         AsyncFileWriter.writeAsync(file, GSON.toJson(root));
     }
 

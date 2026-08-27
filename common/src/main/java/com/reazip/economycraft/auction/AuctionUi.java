@@ -77,6 +77,13 @@ public final class AuctionUi {
     }
 
     private static void startListing(ServerPlayer player, AuctionManager auctions) {
+        if (auctions.hasReachedLimit(player.getUUID())) {
+            EconomySounds.failure(player);
+            player.sendSystemMessage(MenuUiSupport.line("You have reached your limit of "
+                    + auctions.getEffectiveLimit(player.getUUID()) + " active listing(s).", ChatFormatting.RED));
+            open(player, auctions);
+            return;
+        }
         ItemPickerUi.open(player, "Pick an item to sell", ItemPickerUi.Source.INVENTORY, null,
                 (picker, choice) -> chooseAmount(picker, auctions, choice),
                 p -> open(p, auctions));
@@ -130,6 +137,13 @@ public final class AuctionUi {
     }
 
     private static void createListing(ServerPlayer player, AuctionManager auctions, ItemStack prototype, int amount, long price) {
+        if (auctions.hasReachedLimit(player.getUUID())) {
+            EconomySounds.failure(player);
+            player.sendSystemMessage(MenuUiSupport.line("You have reached your limit of "
+                    + auctions.getEffectiveLimit(player.getUUID()) + " active listing(s).", ChatFormatting.RED));
+            open(player, auctions);
+            return;
+        }
         if (!takeFromInventory(player, prototype, amount)) {
             EconomySounds.failure(player);
             player.sendSystemMessage(MenuUiSupport.line("You no longer have " + amount + "x "

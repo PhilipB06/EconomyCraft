@@ -1,5 +1,6 @@
 package com.reazip.economycraft.orders;
 
+import com.mojang.logging.LogUtils;
 import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyManager;
@@ -14,6 +15,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
+import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +23,8 @@ import java.util.UUID;
 
 public final class OrderFulfillment {
     private OrderFulfillment() {}
+
+    private static final Logger LOGGER = LogUtils.getLogger();
 
     public enum Status {
         OK, ORDER_GONE, OWN_ORDER, INVALID_AMOUNT, NOT_ENOUGH_ITEMS, REQUESTER_CANT_PAY,
@@ -38,6 +42,23 @@ public final class OrderFulfillment {
     }
 
     private record PaymentOutcome(boolean success, long payout, long escrowUsed, Status failureStatus) {}
+
+    public static OrderRequest createEscrowedRequest(EconomyManager eco, UUID requester, ItemStack item, int amount, long price) {
+        if (!eco.removeMoney(requester, price, EconomySources.ORDER_ESCROW_HOLD).successful()) {
+            return null;
+        }
+
+        OrderRequest request = new OrderRequest();
+        request.requester = requester;
+        request.price = price;
+        request.item = item;
+        request.amount = amount;
+        request.escrow = price;
+        request.createdAt = System.currentTimeMillis();
+        request.expiresAt = ExpirationUtil.expiresAt(request.createdAt, EconomyConfig.get().orderExpirationHours);
+        eco.getOrders().addRequest(request);
+        return request;
+    }
 
     public static Result fulfill(EconomyManager eco, ServerPlayer fulfiller, int orderId, int requestedAmount) {
         return fulfill(eco, fulfiller, orderId, requestedAmount, false);
@@ -69,30 +90,9 @@ public final class OrderFulfillment {
         payment = Math.min(payment, order.price);
 
         ItemStack itemProto = order.item.copy();
-        UUID requester = order.requester;
-
-        PaymentOutcome outcome = settleOrderPayment(eco, order, fulfiller.getUUID(), payment);
-        if (!outcome.success()) {
-            return new Result(outcome.failureStatus(), 0, 0, order.amount, itemProto, order.requester);
-        }
-
-        removeItems(fulfiller, itemProto, give, excludeArmor);
-
-        deliver(orders, requester, itemProto, give);
-
-        order.amount -= give;
-        order.price -= payment;
-        order.escrow -= outcome.escrowUsed();
-        int remaining = order.amount;
-        if (remaining <= 0) {
-            orders.removeRequest(order.id);
-            remaining = 0;
-        } else {
-            orders.markChanged();
-        }
-
-        notifyRequester(eco.getServer(), requester, give, itemProto);
-        return new Result(Status.OK, give, outcome.payout(), remaining, itemProto, requester);
+        int giveAmount = give;
+        return applyFulfillment(eco, orders, order, fulfiller.getUUID(), itemProto, give, payment,
+                () -> removeItems(fulfiller, itemProto, giveAmount, excludeArmor));
     }
 
     public static Result fulfillExact(EconomyManager eco, ServerPlayer fulfiller, int orderId, int requestedAmount, ItemStack sourceStack) {
@@ -121,14 +121,20 @@ public final class OrderFulfillment {
         payment = Math.min(payment, order.price);
 
         ItemStack itemProto = order.item.copy();
-        UUID requester = order.requester;
+        int giveAmount = give;
+        return applyFulfillment(eco, orders, order, fulfiller.getUUID(), itemProto, give, payment,
+                () -> sourceStack.shrink(giveAmount));
+    }
 
-        PaymentOutcome outcome = settleOrderPayment(eco, order, fulfiller.getUUID(), payment);
+    private static Result applyFulfillment(EconomyManager eco, OrderManager orders, OrderRequest order, UUID fulfillerId,
+                                            ItemStack itemProto, int give, long payment, Runnable takeItems) {
+        PaymentOutcome outcome = settleOrderPayment(eco, order, fulfillerId, payment);
         if (!outcome.success()) {
             return new Result(outcome.failureStatus(), 0, 0, order.amount, itemProto, order.requester);
         }
 
-        sourceStack.shrink(give);
+        UUID requester = order.requester;
+        takeItems.run();
 
         deliver(orders, requester, itemProto, give);
 
@@ -194,13 +200,18 @@ public final class OrderFulfillment {
             long refund = order.escrow;
             if (refund > 0) {
                 var result = eco.addMoney(order.requester, refund, EconomySources.ORDER_ESCROW_REFUND);
-                if (!result.successful()) continue;
+                if (!result.successful()) {
+                    LOGGER.warn("[EconomyCraft] Expired order {} escrow refund of {} to {} failed ({}); will retry next sweep",
+                            order.id, refund, order.requester, result.status());
+                    continue;
+                }
                 order.escrow = 0;
             }
 
             orders.removeRequest(order.id);
             notifyExpired(eco, order, refund);
         }
+        eco.getNotifications().flush();
     }
 
     private static void notifyExpired(EconomyManager eco, OrderRequest order, long refund) {
