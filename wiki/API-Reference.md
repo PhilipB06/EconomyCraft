@@ -207,11 +207,14 @@ public record BalanceChangeEvent(
         long newBalance,
         BalanceMutationType type,
         Optional<UUID> counterpartyId,
-        Optional<MutationSource> source
+        Optional<MutationSource> source,
+        Optional<String> detail
 ) {
     long difference();
 }
 ```
+
+`detail` is a short, human-readable description of what caused the change (e.g. `"12x Iron Ingot"`) when EconomyCraft's own shop, auction or order features triggered it. It's empty for payments, admin commands, rewards, and for changes made through `addMoney`/`removeMoney`/`setMoney`/`pay` without a detail argument.
 
 ## ListenerRegistration
 

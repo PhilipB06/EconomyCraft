@@ -78,6 +78,7 @@ final class TransactionLogger {
         obj.addProperty("balance_before", event.previousBalance());
         obj.addProperty("balance_after", event.newBalance());
         if (source != null) obj.addProperty("source", source);
+        event.detail().ifPresent(detail -> obj.addProperty("detail", detail));
         return GSON.toJson(obj);
     }
 
@@ -88,9 +89,9 @@ final class TransactionLogger {
         String suffix = source != null ? " (" + source + ")" : "";
 
         return switch (event.type()) {
-            case ADD -> player + " received " + signedMoney(event.difference())
+            case ADD -> player + " received " + EconomyCraft.signedMoney(event.difference())
                     + ", balance now " + EconomyCraft.formatMoney(event.newBalance()) + suffix;
-            case REMOVE -> player + " lost " + signedMoney(event.difference())
+            case REMOVE -> player + " lost " + EconomyCraft.signedMoney(event.difference())
                     + ", balance now " + EconomyCraft.formatMoney(event.newBalance()) + suffix;
             case SET -> player + "'s balance was set to " + EconomyCraft.formatMoney(event.newBalance()) + suffix;
             case PAYMENT_SENT -> player + " paid " + EconomyCraft.formatMoney(-event.difference())
@@ -112,9 +113,5 @@ final class TransactionLogger {
             message += ", who received " + EconomyCraft.formatMoney(credit);
         }
         return message + suffix;
-    }
-
-    private static String signedMoney(long amount) {
-        return (amount < 0 ? "-" : "+") + EconomyCraft.formatMoney(Math.abs(amount));
     }
 }

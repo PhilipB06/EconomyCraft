@@ -564,7 +564,8 @@ public final class ShopUi {
                 return;
             }
 
-            if (!eco.removeMoney(viewer.getUUID(), total, EconomySources.SHOP_PURCHASE).successful()) {
+            String detail = EconomyCraft.describeItem(amount, base.getHoverName().getString());
+            if (!eco.removeMoney(viewer.getUUID(), total, EconomySources.SHOP_PURCHASE, detail).successful()) {
                 EconomySounds.failure(viewer);
                 viewer.sendSystemMessage(Component.literal("Not enough balance.")
                         .withStyle(ChatFormatting.RED));
@@ -618,7 +619,10 @@ public final class ShopUi {
                 return;
             }
 
-            var result = eco.addMoney(viewer.getUUID(), total, EconomySources.SHOP_SALE);
+            ItemStack disp = ShopDisplay.createDisplayStack(entry, viewer);
+            String name = disp.isEmpty() ? entry.id().path() : disp.getHoverName().getString();
+
+            var result = eco.addMoney(viewer.getUUID(), total, EconomySources.SHOP_SALE, EconomyCraft.describeItem(toSell, name));
             if (!result.successful()) {
                 EconomySounds.failure(viewer);
                 viewer.sendSystemMessage(Component.literal("Your balance is too high to receive this sale.")
@@ -629,8 +633,6 @@ public final class ShopUi {
                 eco.tryRecordDailySell(viewer.getUUID(), total);
             }
 
-            ItemStack disp = ShopDisplay.createDisplayStack(entry, viewer);
-            String name = disp.isEmpty() ? entry.id().path() : disp.getHoverName().getString();
             SellService.removeMatching(viewer, prices, entry, toSell, excludeEnchanted);
 
             EconomySounds.success(viewer);

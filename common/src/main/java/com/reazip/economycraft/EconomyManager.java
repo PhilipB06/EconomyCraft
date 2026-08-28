@@ -316,8 +316,12 @@ public class EconomyManager {
     }
 
     public BalanceMutationResult addMoney(UUID player, long amount, @Nullable MutationSource source) {
+        return addMoney(player, amount, source, null);
+    }
+
+    public BalanceMutationResult addMoney(UUID player, long amount, @Nullable MutationSource source, @Nullable String detail) {
         requireServerThread();
-        return balanceMutations.add(player, amount, source);
+        return balanceMutations.add(player, amount, source, detail);
     }
 
     public void setMoney(UUID player, long amount) {
@@ -325,8 +329,12 @@ public class EconomyManager {
     }
 
     public BalanceMutationResult setMoney(UUID player, long amount, @Nullable MutationSource source) {
+        return setMoney(player, amount, source, null);
+    }
+
+    public BalanceMutationResult setMoney(UUID player, long amount, @Nullable MutationSource source, @Nullable String detail) {
         requireServerThread();
-        return balanceMutations.set(player, amount, source);
+        return balanceMutations.set(player, amount, source, detail);
     }
 
     public boolean removeMoney(UUID player, long amount) {
@@ -334,8 +342,12 @@ public class EconomyManager {
     }
 
     public BalanceMutationResult removeMoney(UUID player, long amount, @Nullable MutationSource source) {
+        return removeMoney(player, amount, source, null);
+    }
+
+    public BalanceMutationResult removeMoney(UUID player, long amount, @Nullable MutationSource source, @Nullable String detail) {
         requireServerThread();
-        return balanceMutations.remove(player, amount, source);
+        return balanceMutations.remove(player, amount, source, detail);
     }
 
     public boolean pay(UUID from, UUID to, long amount) {
@@ -343,14 +355,23 @@ public class EconomyManager {
     }
 
     public PaymentResult pay(UUID from, UUID to, long amount, @Nullable MutationSource source) {
+        return pay(from, to, amount, source, null);
+    }
+
+    public PaymentResult pay(UUID from, UUID to, long amount, @Nullable MutationSource source, @Nullable String detail) {
         requireServerThread();
-        return balanceMutations.pay(from, to, amount, source);
+        return balanceMutations.pay(from, to, amount, source, detail);
     }
 
     public PaymentResult transferMoney(UUID from, UUID to, long debitAmount, long creditAmount,
                                        MutationSource source) {
+        return transferMoney(from, to, debitAmount, creditAmount, source, null);
+    }
+
+    public PaymentResult transferMoney(UUID from, UUID to, long debitAmount, long creditAmount,
+                                       MutationSource source, @Nullable String detail) {
         requireServerThread();
-        return balanceMutations.transfer(from, to, debitAmount, creditAmount, source);
+        return balanceMutations.transfer(from, to, debitAmount, creditAmount, source, detail);
     }
 
     public BalanceEvents getBalanceEvents() {

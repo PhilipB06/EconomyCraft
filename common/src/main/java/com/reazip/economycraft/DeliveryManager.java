@@ -33,8 +33,12 @@ public final class DeliveryManager {
     }
 
     public void addDelivery(UUID player, ItemStack stack) {
+        addDelivery(player, stack, true);
+    }
+
+    public void addDelivery(UUID player, ItemStack stack, boolean persist) {
         ledger.add(player, stack);
-        save();
+        if (persist) save();
     }
 
     public List<ItemStack> getDeliveries(UUID player) {

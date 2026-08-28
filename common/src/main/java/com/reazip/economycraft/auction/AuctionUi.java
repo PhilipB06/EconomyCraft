@@ -226,14 +226,14 @@ public final class AuctionUi {
 
         private AuctionMenu(int id, Inventory inv, AuctionManager auctions, ServerPlayer viewer, int page, @Nullable String query,
                          SortMode sort, boolean mineOnly, List<AuctionListing> resolved) {
-            super(MenuUiSupport.getMenuType(layoutRows(resolved.size())), id);
+            super(MenuUiSupport.getMenuType(MenuUiSupport.listMenuRows(resolved.size())), id);
             this.auctions = auctions;
             this.viewer = viewer;
             this.page = page;
             this.query = query;
             this.sort = sort;
             this.mineOnly = mineOnly;
-            this.rows = layoutRows(resolved.size());
+            this.rows = MenuUiSupport.listMenuRows(resolved.size());
             this.itemsPerPage = (rows - 1) * 9;
             this.navRowStart = itemsPerPage;
             this.container = new SimpleContainer(rows * 9);
@@ -267,13 +267,9 @@ public final class AuctionUi {
             return list;
         }
 
-        private static int layoutRows(int listingCount) {
-            return listingCount == 0 ? 2 : 6;
-        }
-
         private void updatePage() {
             List<AuctionListing> updated = resolveListings(auctions, query, sort, mineOnly, viewer);
-            if (layoutRows(updated.size()) != rows) {
+            if (MenuUiSupport.listMenuRows(updated.size()) != rows) {
                 AuctionUi.open(viewer, auctions, 0, query, sort, mineOnly);
                 return;
             }

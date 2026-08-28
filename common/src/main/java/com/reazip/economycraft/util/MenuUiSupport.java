@@ -174,6 +174,10 @@ public final class MenuUiSupport {
         return Math.clamp(contentRows + 1, 2, 6);
     }
 
+    public static int listMenuRows(int itemCount) {
+        return itemCount == 0 ? 2 : 6;
+    }
+
     public static Component labeledValue(String label, String value, ChatFormatting labelColor) {
         return labeledValues(label, labelColor, value);
     }

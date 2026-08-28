@@ -157,6 +157,14 @@ public final class EconomyCraft {
         return "$" + new DecimalFormat("#,##0", symbols).format(amount);
     }
 
+    public static String describeItem(int count, String name) {
+        return count == 1 ? name : count + "x " + name;
+    }
+
+    public static String signedMoney(long amount) {
+        return (amount < 0 ? "-" : "+") + formatMoney(Math.abs(amount));
+    }
+
     private static final String[] SHORT_MONEY_SUFFIXES = {"", "k", "M", "B", "T"};
 
     public static String formatMoneyShort(long amount) {

@@ -1,6 +1,7 @@
 package com.reazip.economycraft.auction;
 
 import com.reazip.economycraft.EconomyConfig;
+import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyManager;
 import com.reazip.economycraft.EconomySources;
 import com.reazip.economycraft.api.v1.PaymentResult;
@@ -47,7 +48,8 @@ public final class AuctionTrade {
         long tax = Math.round(cost * EconomyConfig.get().taxRate);
         long total = cost + tax;
 
-        PaymentResult payment = eco.transferMoney(buyer.getUUID(), claimed.seller, total, cost, EconomySources.AUCTION_PURCHASE);
+        String detail = EconomyCraft.describeItem(claimed.item.getCount(), claimed.item.getHoverName().getString());
+        PaymentResult payment = eco.transferMoney(buyer.getUUID(), claimed.seller, total, cost, EconomySources.AUCTION_PURCHASE, detail);
         if (!payment.successful()) {
             auctions.restoreListing(claimed);
             PurchaseStatus status = payment.status() == com.reazip.economycraft.api.v1.BalanceMutationStatus.MAX_BALANCE_EXCEEDED

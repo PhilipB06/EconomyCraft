@@ -21,8 +21,8 @@ public final class TransactionLogWriter {
     private TransactionLogWriter() {}
 
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final String FILE_PREFIX = "transactions-";
-    private static final String FILE_SUFFIX = ".log";
+    static final String FILE_PREFIX = "transactions-";
+    static final String FILE_SUFFIX = ".log";
     private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "EconomyCraft-TxLog");
         t.setDaemon(true);

@@ -9,6 +9,7 @@ import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.util.AsyncFileWriter;
 import com.reazip.economycraft.util.EconomyPaths;
 import com.reazip.economycraft.util.ExpirationUtil;
+import com.reazip.economycraft.util.PlayerLimitOverrides;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.ItemStack;
 import org.slf4j.Logger;
@@ -24,7 +25,7 @@ public class OrderManager {
     private final MinecraftServer server;
     private final Path file;
     private final Map<Integer, OrderRequest> requests = new ConcurrentHashMap<>();
-    private final Map<UUID, Integer> limitOverrides = new ConcurrentHashMap<>();
+    private final PlayerLimitOverrides limitOverrides = new PlayerLimitOverrides();
     private final DeliveryManager deliveries;
     private final List<Runnable> listeners = new ArrayList<>();
     private int nextId = 1;
@@ -52,10 +53,14 @@ public class OrderManager {
     }
 
     public OrderRequest removeRequest(int id) {
+        return removeRequest(id, true);
+    }
+
+    OrderRequest removeRequest(int id, boolean persist) {
         OrderRequest r = requests.remove(id);
         if (r != null) {
             notifyListeners();
-            save();
+            if (persist) save();
         }
         return r;
     }
@@ -146,22 +151,16 @@ public class OrderManager {
     }
 
     public void setLimitOverride(UUID player, Integer limit) {
-        if (limit == null) {
-            limitOverrides.remove(player);
-        } else {
-            limitOverrides.put(player, limit);
-        }
+        limitOverrides.set(player, limit);
         save();
     }
 
     public int getEffectiveLimit(UUID player) {
-        Integer override = limitOverrides.get(player);
-        return override != null ? override : EconomyConfig.get().maxActiveOrdersPerPlayer;
+        return limitOverrides.effectiveLimit(player, EconomyConfig.get().maxActiveOrdersPerPlayer);
     }
 
     public boolean hasReachedLimit(UUID player) {
-        int limit = getEffectiveLimit(player);
-        return limit > 0 && countActive(player) >= limit;
+        return limitOverrides.hasReachedLimit(player, countActive(player), EconomyConfig.get().maxActiveOrdersPerPlayer);
     }
 
     public void addDelivery(UUID player, ItemStack stack) {
@@ -200,15 +199,7 @@ public class OrderManager {
                         LOGGER.error("[EconomyCraft] Dropping an unreadable order request in {}", file, ex);
                     }
                 }
-                if (root.has("playerLimits")) {
-                    for (var e : root.getAsJsonObject("playerLimits").entrySet()) {
-                        try {
-                            limitOverrides.put(UUID.fromString(e.getKey()), e.getValue().getAsInt());
-                        } catch (Exception ex) {
-                            LOGGER.error("[EconomyCraft] Dropping an unreadable order limit override in {}", file, ex);
-                        }
-                    }
-                }
+                limitOverrides.loadFrom(root);
                 if (migrated) save();
             } catch (Exception ex) {
                 LOGGER.error("[EconomyCraft] Failed to load {}", file, ex);
@@ -224,11 +215,7 @@ public class OrderManager {
             reqArr.add(r.save(server.registryAccess()));
         }
         root.add("requests", reqArr);
-        JsonObject limitsObj = new JsonObject();
-        for (var e : limitOverrides.entrySet()) {
-            limitsObj.addProperty(e.getKey().toString(), e.getValue());
-        }
-        root.add("playerLimits", limitsObj);
+        limitOverrides.saveTo(root);
         AsyncFileWriter.writeAsync(file, GSON.toJson(root));
     }
 

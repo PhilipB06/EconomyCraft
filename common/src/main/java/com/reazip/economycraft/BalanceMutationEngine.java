@@ -49,7 +49,7 @@ final class BalanceMutationEngine {
         return initialized;
     }
 
-    BalanceMutationResult add(UUID playerId, long amount, MutationSource source) {
+    BalanceMutationResult add(UUID playerId, long amount, MutationSource source, String detail) {
         Objects.requireNonNull(playerId, "playerId");
         BalanceState state = state(playerId);
         if (amount <= 0) return result(BalanceMutationStatus.INVALID_AMOUNT, BalanceMutationType.ADD,
@@ -58,10 +58,10 @@ final class BalanceMutationEngine {
             return result(BalanceMutationStatus.MAX_BALANCE_EXCEEDED, BalanceMutationType.ADD,
                     playerId, amount, state.balance(), state.balance(), source);
         }
-        return commitSingle(state, amount, state.balance() + amount, BalanceMutationType.ADD, source);
+        return commitSingle(state, amount, state.balance() + amount, BalanceMutationType.ADD, source, detail);
     }
 
-    BalanceMutationResult remove(UUID playerId, long amount, MutationSource source) {
+    BalanceMutationResult remove(UUID playerId, long amount, MutationSource source, String detail) {
         Objects.requireNonNull(playerId, "playerId");
         BalanceState state = state(playerId);
         if (amount <= 0) return result(BalanceMutationStatus.INVALID_AMOUNT, BalanceMutationType.REMOVE,
@@ -70,10 +70,10 @@ final class BalanceMutationEngine {
             return result(BalanceMutationStatus.INSUFFICIENT_FUNDS, BalanceMutationType.REMOVE,
                     playerId, amount, state.balance(), state.balance(), source);
         }
-        return commitSingle(state, amount, state.balance() - amount, BalanceMutationType.REMOVE, source);
+        return commitSingle(state, amount, state.balance() - amount, BalanceMutationType.REMOVE, source, detail);
     }
 
-    BalanceMutationResult set(UUID playerId, long requestedBalance, MutationSource source) {
+    BalanceMutationResult set(UUID playerId, long requestedBalance, MutationSource source, String detail) {
         Objects.requireNonNull(playerId, "playerId");
         BalanceState state = state(playerId);
         if (requestedBalance < 0) {
@@ -92,14 +92,14 @@ final class BalanceMutationEngine {
             return result(BalanceMutationStatus.NO_CHANGE, BalanceMutationType.SET,
                     playerId, requestedBalance, state.balance(), state.balance(), source);
         }
-        return commitSingle(state, requestedBalance, requestedBalance, BalanceMutationType.SET, source);
+        return commitSingle(state, requestedBalance, requestedBalance, BalanceMutationType.SET, source, detail);
     }
 
-    PaymentResult pay(UUID senderId, UUID receiverId, long amount, MutationSource source) {
-        return transfer(senderId, receiverId, amount, amount, source);
+    PaymentResult pay(UUID senderId, UUID receiverId, long amount, MutationSource source, String detail) {
+        return transfer(senderId, receiverId, amount, amount, source, detail);
     }
 
-    PaymentResult transfer(UUID senderId, UUID receiverId, long debitAmount, long creditAmount, MutationSource source) {
+    PaymentResult transfer(UUID senderId, UUID receiverId, long debitAmount, long creditAmount, MutationSource source, String detail) {
         Objects.requireNonNull(senderId, "senderId");
         Objects.requireNonNull(receiverId, "receiverId");
         BalanceState sender = state(senderId);
@@ -129,13 +129,14 @@ final class BalanceMutationEngine {
         onMutationCommitted.run();
 
         Optional<MutationSource> optionalSource = Optional.ofNullable(source);
+        Optional<String> optionalDetail = Optional.ofNullable(detail);
         PaymentResult result = new PaymentResult(BalanceMutationStatus.SUCCESS, senderId, receiverId, debitAmount,
                 sender.balance(), senderNew, receiver.balance(), receiverNew, optionalSource);
         events.emit(new BalanceChangeEvent(senderId, sender.balance(), senderNew,
-                BalanceMutationType.PAYMENT_SENT, Optional.of(receiverId), optionalSource));
+                BalanceMutationType.PAYMENT_SENT, Optional.of(receiverId), optionalSource, optionalDetail));
         if (creditAmount > 0) {
             events.emit(new BalanceChangeEvent(receiverId, receiver.balance(), receiverNew,
-                    BalanceMutationType.PAYMENT_RECEIVED, Optional.of(senderId), optionalSource));
+                    BalanceMutationType.PAYMENT_RECEIVED, Optional.of(senderId), optionalSource, optionalDetail));
         }
         onTransfer.accept(result);
         return result;
@@ -151,7 +152,8 @@ final class BalanceMutationEngine {
             long requestedAmount,
             long newBalance,
             BalanceMutationType type,
-            MutationSource source
+            MutationSource source,
+            String detail
     ) {
         balances.put(state.playerId(), newBalance);
         onMutationCommitted.run();
@@ -159,7 +161,7 @@ final class BalanceMutationEngine {
         BalanceMutationResult result = new BalanceMutationResult(BalanceMutationStatus.SUCCESS, type,
                 state.playerId(), requestedAmount, state.balance(), newBalance, optionalSource);
         events.emit(new BalanceChangeEvent(state.playerId(), state.balance(), newBalance, type,
-                Optional.empty(), optionalSource));
+                Optional.empty(), optionalSource, Optional.ofNullable(detail)));
         return result;
     }
 

@@ -10,13 +10,15 @@ public record BalanceChangeEvent(
         long newBalance,
         BalanceMutationType type,
         Optional<UUID> counterpartyId,
-        Optional<MutationSource> source
+        Optional<MutationSource> source,
+        Optional<String> detail
 ) {
     public BalanceChangeEvent {
         Objects.requireNonNull(playerId, "playerId");
         Objects.requireNonNull(type, "type");
         counterpartyId = Objects.requireNonNull(counterpartyId, "counterpartyId");
         source = Objects.requireNonNull(source, "source");
+        detail = Objects.requireNonNull(detail, "detail");
     }
 
     public long difference() {

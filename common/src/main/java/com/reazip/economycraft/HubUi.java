@@ -42,6 +42,7 @@ public final class HubUi {
     private static final int PAY = 21;
     private static final int TOP = 23;
     private static final int WORTH = 25;
+    private static final int TRANSACTIONS = 28;
     private static final int DELIVERIES = 30;
     private static final int HELP = 32;
     private static final int CLOSE = 40;
@@ -213,6 +214,9 @@ public final class HubUi {
                         MenuUiSupport.hint("and sells for.")));
             }
 
+            container.setItem(TRANSACTIONS, MenuUiSupport.button(Items.MAP, "Transactions", ChatFormatting.AQUA,
+                    MenuUiSupport.hint("Your recent balance history.")));
+
             container.setItem(DELIVERIES, MenuUiSupport.button(Items.ENDER_CHEST, "Deliveries",
                     ChatFormatting.LIGHT_PURPLE,
                     MenuUiSupport.hint(eco.getDeliveries().hasDeliveries(viewer.getUUID())
@@ -266,6 +270,11 @@ public final class HubUi {
                         EconomySounds.click(viewer);
                         OrdersUi.open(viewer, eco);
                     }
+                }
+                case TRANSACTIONS -> {
+                    EconomySounds.click(viewer);
+                    viewer.closeContainer();
+                    TransactionsUi.open(viewer);
                 }
                 case DELIVERIES -> {
                     EconomySounds.click(viewer);

@@ -28,8 +28,9 @@ Default configuration works without manual changes.
 | **Top Balances**  | The richest players on the server.                                                                                                            |
 | **Item Value**    | The buy and sell price of any item.                                                                                                           |
 | **Deliveries**    | Items bought while the inventory was full or orders that have been completed while being offline.                                             |
+| **Transactions**  | Your recent balance history, newest first. Hover an entry for the full detail: type, amount, balance before/after, and date.                  |
 
-Each screen also has a command: `/bal`, `/bal top`, `/pay`, `/daily`, `/shop`, `/ah`, `/auction`, `/sell`, `/worth`, `/orders`, `/orders claim`.
+Each screen also has a command: `/bal`, `/bal top`, `/pay`, `/daily`, `/shop`, `/ah`, `/auction`, `/sell`, `/worth`, `/orders`, `/orders claim`, `/transactions`.
 
 ---
 
@@ -135,6 +136,8 @@ One JSON-lines file per day, at `logs/transactions-YYYY-MM-DD.log` inside the co
 ```json
 {"time":"2026-08-19T13:45:12.345Z","type":"PAYMENT_SENT","player":"<uuid>","player_name":"Notch","counterparty":"<uuid>","counterparty_name":"Dinnerbone","amount":-500,"balance_before":1500,"balance_after":1000,"source":"economycraft:player_payment"}
 ```
+
+`detail` is an extra, optional field on shop, auction and order entries describing what was actually bought, sold or fulfilled, e.g. `"detail":"12x Iron Ingot"`. Entries logged before this was added won't have it.
 
 Files older than `transaction_log_retention_days` (default `7`) are deleted automatically. Setting it above 90 logs a console warning on start.
 

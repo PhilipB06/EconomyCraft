@@ -69,6 +69,7 @@ public final class EconomyCommands {
         registerStandalone(dispatcher, buildShop());
         dispatcher.register(buildOrders(buildContext).requires(s -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(buildDaily().requires(s -> EconomyConfig.get().standaloneCommands));
+        dispatcher.register(buildTransactions().requires(s -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(WorthCommand.register(buildContext).requires(s ->
                 EconomyConfig.get().standaloneCommands && EconomyConfig.get().worthEnabled));
 
@@ -131,6 +132,7 @@ public final class EconomyCommands {
         root.then(buildShop());
         root.then(buildOrders(buildContext));
         root.then(buildDaily());
+        root.then(buildTransactions());
         root.then(WorthCommand.register(buildContext).requires(s -> EconomyConfig.get().worthEnabled));
 
         root.then(addMoney);
@@ -929,6 +931,22 @@ public final class EconomyCommands {
                     .withStyle(ChatFormatting.RED));
         }
         return 1;
+    }
+
+    private static LiteralArgumentBuilder<CommandSourceStack> buildTransactions() {
+        return literal("transactions")
+                .executes(ctx -> openTransactions(ctx.getSource().getPlayerOrException(), ctx.getSource()));
+    }
+
+    private static int openTransactions(ServerPlayer player, CommandSourceStack source) {
+        try {
+            TransactionsUi.open(player);
+            return 1;
+        } catch (Exception e) {
+            LOGGER.error("[EconomyCraft] Failed to open /transactions for {}", player.getDisplayName().getString(), e);
+            source.sendFailure(Component.literal("Failed to open transactions. Check server logs."));
+            return 0;
+        }
     }
 
     @Nullable

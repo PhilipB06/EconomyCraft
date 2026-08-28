@@ -46,7 +46,8 @@ public final class OrderFulfillment {
     private record PaymentOutcome(boolean success, long payout, Status failureStatus) {}
 
     public static OrderRequest createEscrowedRequest(EconomyManager eco, UUID requester, ItemStack item, int amount, long price) {
-        if (!eco.removeMoney(requester, price, EconomySources.ORDER_ESCROW_HOLD).successful()) {
+        String detail = EconomyCraft.describeItem(amount, item.getHoverName().getString());
+        if (!eco.removeMoney(requester, price, EconomySources.ORDER_ESCROW_HOLD, detail).successful()) {
             return null;
         }
 
@@ -120,7 +121,8 @@ public final class OrderFulfillment {
             default -> {}
         }
 
-        PaymentOutcome outcome = settleOrderPayment(eco, requester, fulfillerId, claim.payment(), claim.escrowUsed());
+        String detail = EconomyCraft.describeItem(claim.given(), itemProto.getHoverName().getString());
+        PaymentOutcome outcome = settleOrderPayment(eco, requester, fulfillerId, claim.payment(), claim.escrowUsed(), detail);
         if (!outcome.success()) {
             orders.rollbackClaim(claim.order(), claim.given(), claim.payment(), claim.escrowUsed(), claim.exhausted());
             return new Result(outcome.failureStatus(), 0, 0, claim.order().amount, itemProto, requester);
@@ -135,20 +137,21 @@ public final class OrderFulfillment {
         return new Result(Status.OK, claim.given(), outcome.payout(), remaining, itemProto, requester);
     }
 
-    private static PaymentOutcome settleOrderPayment(EconomyManager eco, UUID requester, UUID fulfillerId, long payment, long escrowUsed) {
+    private static PaymentOutcome settleOrderPayment(EconomyManager eco, UUID requester, UUID fulfillerId, long payment,
+                                                       long escrowUsed, String detail) {
         long tax = Math.round(payment * EconomyConfig.get().taxRate);
         long payout = payment - tax;
         long shortfall = payment - escrowUsed;
 
         if (shortfall > 0) {
-            var transfer = eco.transferMoney(requester, fulfillerId, shortfall, payout, EconomySources.ORDER_FULFILLMENT);
+            var transfer = eco.transferMoney(requester, fulfillerId, shortfall, payout, EconomySources.ORDER_FULFILLMENT, detail);
             if (!transfer.successful()) {
                 Status status = transfer.status() == com.reazip.economycraft.api.v1.BalanceMutationStatus.MAX_BALANCE_EXCEEDED
                         ? Status.FULFILLER_CANT_RECEIVE : Status.REQUESTER_CANT_PAY;
                 return new PaymentOutcome(false, 0, status);
             }
         } else if (payout > 0) {
-            var credit = eco.addMoney(fulfillerId, payout, EconomySources.ORDER_FULFILLMENT);
+            var credit = eco.addMoney(fulfillerId, payout, EconomySources.ORDER_FULFILLMENT, detail);
             if (!credit.successful()) {
                 return new PaymentOutcome(false, 0, Status.FULFILLER_CANT_RECEIVE);
             }
@@ -174,11 +177,13 @@ public final class OrderFulfillment {
     public static void expireOverdue(EconomyManager eco) {
         OrderManager orders = eco.getOrders();
         long now = System.currentTimeMillis();
+        boolean anyExpired = false;
         for (OrderRequest snapshot : orders.getRequests()) {
             if (!ExpirationUtil.isExpired(snapshot.expiresAt, now)) continue;
 
-            OrderRequest order = orders.removeRequest(snapshot.id);
+            OrderRequest order = orders.removeRequest(snapshot.id, false);
             if (order == null) continue;
+            anyExpired = true;
 
             long refund = order.escrow;
             var result = refundEscrow(eco, orders, order);
@@ -190,12 +195,14 @@ public final class OrderFulfillment {
 
             notifyExpired(eco, order, refund);
         }
+        if (anyExpired) orders.save();
         eco.getNotifications().flush();
     }
 
     private static BalanceMutationResult refundEscrow(EconomyManager eco, OrderManager orders, OrderRequest order) {
         if (order.escrow <= 0) return null;
-        var refund = eco.addMoney(order.requester, order.escrow, EconomySources.ORDER_ESCROW_REFUND);
+        String detail = EconomyCraft.describeItem(order.amount, order.item.getHoverName().getString());
+        var refund = eco.addMoney(order.requester, order.escrow, EconomySources.ORDER_ESCROW_REFUND, detail);
         if (refund.successful()) {
             order.escrow = 0;
         } else {

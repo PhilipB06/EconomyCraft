@@ -4,6 +4,7 @@ import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyManager;
 import com.reazip.economycraft.EconomySources;
+import com.reazip.economycraft.TransactionsUi;
 import com.reazip.economycraft.util.ClickKind;
 import com.reazip.economycraft.util.CompatMenu;
 import com.reazip.economycraft.util.ConfirmUi;
@@ -34,6 +35,7 @@ public final class AdminPlayersUi {
     private static final int MAX_ORDERS = 9;
     private static final int GIVE = 10;
     private static final int TAKE = 12;
+    private static final int TRANSACTIONS = 13;
     private static final int SET = 14;
     private static final int WIPE = 16;
     private static final int MAX_AUCTIONS = 17;
@@ -110,6 +112,8 @@ public final class AdminPlayersUi {
                     MenuUiSupport.hint("Add to this player's balance.")));
             container.setItem(TAKE, MenuUiSupport.button(Items.REDSTONE, "Take money", ChatFormatting.RED,
                     MenuUiSupport.hint("Remove from this player's balance.")));
+            container.setItem(TRANSACTIONS, MenuUiSupport.button(Items.MAP, "Transactions", ChatFormatting.AQUA,
+                    MenuUiSupport.hint("Browse this player's balance history.")));
             container.setItem(SET, MenuUiSupport.button(Items.GOLD_INGOT, "Set balance", ChatFormatting.GOLD,
                     MenuUiSupport.hint("Overwrite the balance with an exact amount.")));
             container.setItem(WIPE, MenuUiSupport.button(Items.BARRIER, "Remove from economy",
@@ -142,7 +146,7 @@ public final class AdminPlayersUi {
 
             long balance = eco.getBalance(target.id(), true);
             if (slot == GIVE || slot == TAKE || slot == SET || slot == WIPE || slot == BACK
-                    || slot == MAX_ORDERS || slot == MAX_AUCTIONS) {
+                    || slot == MAX_ORDERS || slot == MAX_AUCTIONS || slot == TRANSACTIONS) {
                 EconomySounds.click(viewer);
             }
             switch (slot) {
@@ -218,6 +222,10 @@ public final class AdminPlayersUi {
                             openTarget(p, eco, target);
                         },
                         p -> openTarget(p, eco, target));
+                case TRANSACTIONS -> {
+                    viewer.closeContainer();
+                    TransactionsUi.openAdmin(viewer, target, p -> openTarget(p, eco, target));
+                }
                 case WIPE -> ConfirmUi.open(viewer, "Remove " + target.name() + "?", subject(), "Remove them",
                         List.of(MenuUiSupport.balanceLore(balance),
                                 MenuUiSupport.line("Their balance is deleted.", ChatFormatting.RED),
