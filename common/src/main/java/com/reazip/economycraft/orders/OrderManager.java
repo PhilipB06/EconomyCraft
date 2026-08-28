@@ -48,9 +48,7 @@ public class OrderManager {
 
     public void addRequest(OrderRequest r) {
         r.id = nextId++;
-        requests.put(r.id, r);
-        notifyListeners();
-        save();
+        putAndPersist(r);
     }
 
     public OrderRequest removeRequest(int id) {
@@ -62,9 +60,77 @@ public class OrderManager {
         return r;
     }
 
+    public void restoreRequest(OrderRequest request) {
+        putAndPersist(request);
+    }
+
+    private void putAndPersist(OrderRequest request) {
+        requests.put(request.id, request);
+        notifyListeners();
+        save();
+    }
+
     public void markChanged() {
         notifyListeners();
         save();
+    }
+
+    public enum ClaimStatus { OK, ORDER_GONE, INVALID_AMOUNT, FULL_AMOUNT_REQUIRED, NOT_ENOUGH_ITEMS }
+
+    public record ClaimResult(ClaimStatus status, OrderRequest order, int given, long payment, long escrowUsed, boolean exhausted) {
+        public boolean success() {
+            return status == ClaimStatus.OK;
+        }
+    }
+
+    public ClaimResult claim(int id, int requestedAmount, int held, boolean clampToHeld) {
+        ClaimResult[] outcome = new ClaimResult[1];
+        requests.computeIfPresent(id, (key, order) -> {
+            int give = requestedAmount <= 0 ? order.amount : Math.min(requestedAmount, order.amount);
+            if (clampToHeld) {
+                give = Math.min(give, held);
+            }
+            if (give <= 0) {
+                outcome[0] = new ClaimResult(ClaimStatus.INVALID_AMOUNT, order, 0, 0, 0, false);
+                return order;
+            }
+            if (OrderFulfillment.requiresCompleteFulfillment(order) && give < order.amount) {
+                outcome[0] = new ClaimResult(ClaimStatus.FULL_AMOUNT_REQUIRED, order, 0, 0, 0, false);
+                return order;
+            }
+            if (!clampToHeld && held < give) {
+                outcome[0] = new ClaimResult(ClaimStatus.NOT_ENOUGH_ITEMS, order, 0, 0, 0, false);
+                return order;
+            }
+
+            long payment = OrderFulfillment.partialPayment(order, give);
+            long escrowUsed = Math.min(payment, Math.max(0, order.escrow));
+
+            order.amount -= give;
+            order.price -= payment;
+            order.escrow -= escrowUsed;
+            boolean exhausted = order.amount <= 0;
+
+            outcome[0] = new ClaimResult(ClaimStatus.OK, order, give, payment, escrowUsed, exhausted);
+            return exhausted ? null : order;
+        });
+
+        return outcome[0] != null
+                ? outcome[0]
+                : new ClaimResult(ClaimStatus.ORDER_GONE, null, 0, 0, 0, false);
+    }
+
+    public void rollbackClaim(OrderRequest order, int give, long payment, long escrowUsed, boolean exhausted) {
+        requests.compute(order.id, (key, existing) -> {
+            if (existing == null && !exhausted) {
+                return null;
+            }
+            OrderRequest target = existing != null ? existing : order;
+            target.amount += give;
+            target.price += payment;
+            target.escrow += escrowUsed;
+            return target;
+        });
     }
 
     public int countActive(UUID player) {

@@ -3,7 +3,6 @@ package com.reazip.economycraft.auction;
 import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyManager;
-import com.reazip.economycraft.EconomySources;
 import com.reazip.economycraft.HubUi;
 import com.reazip.economycraft.orders.OrdersUi;
 import com.reazip.economycraft.util.ChatCompat;
@@ -488,49 +487,29 @@ public final class AuctionUi {
             if (kind != ClickKind.PICKUP) return false;
 
             if (slot == MenuUiSupport.ROW_CONFIRM) {
-                AuctionListing current = auctions.getListing(listing.id);
                 ServerPlayer sp = (ServerPlayer) player;
                 var server = sp.level().getServer();
+                EconomyManager eco = EconomyCraft.getManager(server);
 
-                if (current == null) {
-                    EconomySounds.failure(sp);
-                    sp.sendSystemMessage(Component.literal("Listing no longer available").withStyle(ChatFormatting.RED));
-                } else {
-                    EconomyManager eco = EconomyCraft.getManager(server);
-                    long cost = current.price;
-                    long tax = Math.round(cost * EconomyConfig.get().taxRate);
-                    long total = cost + tax;
-
-                    var payment = eco.transferMoney(player.getUUID(), current.seller, total, cost,
-                            EconomySources.AUCTION_PURCHASE);
-                    if (!payment.successful()) {
-                        EconomySounds.failure(sp);
-                        String message = payment.status() == com.reazip.economycraft.api.v1.BalanceMutationStatus.MAX_BALANCE_EXCEEDED
-                                ? "Seller cannot receive this payment"
-                                : "Not enough balance";
-                        sp.sendSystemMessage(Component.literal(message).withStyle(ChatFormatting.RED));
-                    } else {
-                        AuctionListing sold = auctions.removeListing(current.id);
-                        if (sold != null) {
-                            auctions.notifySellerSale(sold, sp);
-                        }
-                        ItemStack stack = current.item.copy();
-                        int count = stack.getCount();
-                        Component name = stack.getHoverName();
-
-                        String sellerName = MenuUiSupport.resolvePlayerName(server, current.seller);
+                AuctionTrade.PurchaseResult result = AuctionTrade.purchase(eco, sp, listing.id);
+                switch (result.status()) {
+                    case OK -> {
                         EconomySounds.success(sp);
-
-                        if (!player.getInventory().add(stack)) {
-                            auctions.addDelivery(player.getUUID(), stack);
+                        if (result.stored()) {
                             sendStoredMessage(sp);
                         } else {
+                            String sellerName = MenuUiSupport.resolvePlayerName(server, result.seller());
                             sp.sendSystemMessage(
-                                    Component.literal("Purchased " + count + "x " + name.getString() + " from " + sellerName +
-                                                    " for " + EconomyCraft.formatMoney(total))
+                                    Component.literal("Purchased " + result.item().getCount() + "x "
+                                                    + result.item().getHoverName().getString() + " from " + sellerName +
+                                                    " for " + EconomyCraft.formatMoney(result.totalPaid()))
                                             .withStyle(ChatFormatting.GREEN));
                         }
                     }
+                    case OWN_LISTING -> fail(sp, "You cannot buy your own listing");
+                    case CANT_AFFORD -> fail(sp, "Not enough balance");
+                    case SELLER_CANT_RECEIVE -> fail(sp, "Seller cannot receive this payment");
+                    default -> fail(sp, "Listing no longer available");
                 }
                 player.closeContainer();
                 AuctionUi.open(sp, auctions, 0, query, sort, mineOnly);
@@ -544,6 +523,11 @@ public final class AuctionUi {
                 return true;
             }
             return false;
+        }
+
+        private static void fail(ServerPlayer player, String message) {
+            EconomySounds.failure(player);
+            player.sendSystemMessage(Component.literal(message).withStyle(ChatFormatting.RED));
         }
     }
 
@@ -592,22 +576,28 @@ public final class AuctionUi {
             if (kind != ClickKind.PICKUP) return false;
 
             if (slot == MenuUiSupport.ROW_CONFIRM) {
-                AuctionListing removed = auctions.removeListing(listing.id);
-                if (removed != null) {
-                    EconomySounds.itemPickedUp(viewer);
-                    ItemStack stack = removed.item.copy();
-                    if (!player.getInventory().add(stack)) {
-                        auctions.addDelivery(player.getUUID(), stack);
-                        sendStoredMessage((ServerPlayer) player);
-                    } else {
-                        viewer.sendSystemMessage(Component.literal("Listing removed"));
+                ServerPlayer sp = (ServerPlayer) player;
+                AuctionTrade.CancelResult result = AuctionTrade.cancel(auctions, sp, listing.id);
+                switch (result.status()) {
+                    case OK -> {
+                        EconomySounds.itemPickedUp(viewer);
+                        if (result.stored()) {
+                            sendStoredMessage(sp);
+                        } else {
+                            viewer.sendSystemMessage(Component.literal("Listing removed"));
+                        }
                     }
-                } else {
-                    EconomySounds.failure(viewer);
-                    viewer.sendSystemMessage(Component.literal("Listing no longer available"));
+                    case NOT_OWNER -> {
+                        EconomySounds.failure(viewer);
+                        viewer.sendSystemMessage(Component.literal("You don't own this listing").withStyle(ChatFormatting.RED));
+                    }
+                    default -> {
+                        EconomySounds.failure(viewer);
+                        viewer.sendSystemMessage(Component.literal("Listing no longer available"));
+                    }
                 }
                 player.closeContainer();
-                AuctionUi.open((ServerPlayer) player, auctions, 0, query, sort, mineOnly);
+                AuctionUi.open(sp, auctions, 0, query, sort, mineOnly);
                 return true;
             }
             if (slot == MenuUiSupport.ROW_CANCEL) {

@@ -76,9 +76,7 @@ public class AuctionManager {
 
     public void addListing(AuctionListing listing) {
         listing.id = nextId++;
-        listings.put(listing.id, listing);
-        notifyListeners();
-        save();
+        putAndPersist(listing);
     }
 
     public AuctionListing removeListing(int id) {
@@ -88,6 +86,16 @@ public class AuctionManager {
             save();
         }
         return l;
+    }
+
+    public void restoreListing(AuctionListing listing) {
+        putAndPersist(listing);
+    }
+
+    private void putAndPersist(AuctionListing listing) {
+        listings.put(listing.id, listing);
+        notifyListeners();
+        save();
     }
 
     public void notifySellerSale(AuctionListing listing, ServerPlayer buyer) {

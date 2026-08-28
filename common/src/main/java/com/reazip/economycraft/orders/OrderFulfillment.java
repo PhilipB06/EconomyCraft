@@ -7,6 +7,7 @@ import com.reazip.economycraft.EconomyManager;
 import com.reazip.economycraft.EconomySources;
 import com.reazip.economycraft.PriceRegistry;
 import com.reazip.economycraft.SellService;
+import com.reazip.economycraft.api.v1.BalanceMutationResult;
 import com.reazip.economycraft.util.ChatCompat;
 import com.reazip.economycraft.util.ExpirationUtil;
 import net.minecraft.ChatFormatting;
@@ -20,6 +21,7 @@ import org.slf4j.Logger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.IntConsumer;
 
 public final class OrderFulfillment {
     private OrderFulfillment() {}
@@ -41,7 +43,7 @@ public final class OrderFulfillment {
         OK, ORDER_GONE, NOT_OWNER, REFUND_FAILED
     }
 
-    private record PaymentOutcome(boolean success, long payout, long escrowUsed, Status failureStatus) {}
+    private record PaymentOutcome(boolean success, long payout, Status failureStatus) {}
 
     public static OrderRequest createEscrowedRequest(EconomyManager eco, UUID requester, ItemStack item, int amount, long price) {
         if (!eco.removeMoney(requester, price, EconomySources.ORDER_ESCROW_HOLD).successful()) {
@@ -66,152 +68,140 @@ public final class OrderFulfillment {
 
     public static Result fulfill(EconomyManager eco, ServerPlayer fulfiller, int orderId, int requestedAmount, boolean excludeArmor) {
         OrderManager orders = eco.getOrders();
-        OrderRequest order = orders.getRequest(orderId);
-        if (order == null || order.item == null || order.item.isEmpty()) {
+        OrderRequest peek = orders.getRequest(orderId);
+        if (peek == null || peek.item == null || peek.item.isEmpty()) {
             return new Result(Status.ORDER_GONE, 0, 0, 0, ItemStack.EMPTY, null);
         }
-        if (fulfiller.getUUID().equals(order.requester)) {
-            return new Result(Status.OWN_ORDER, 0, 0, order.amount, order.item.copy(), order.requester);
+        if (fulfiller.getUUID().equals(peek.requester)) {
+            return new Result(Status.OWN_ORDER, 0, 0, peek.amount, peek.item.copy(), peek.requester);
         }
 
-        int give = requestedAmount <= 0 ? order.amount : Math.min(requestedAmount, order.amount);
-        if (give <= 0) {
-            return new Result(Status.INVALID_AMOUNT, 0, 0, order.amount, order.item.copy(), order.requester);
-        }
-        if (requiresCompleteFulfillment(order) && give < order.amount) {
-            return new Result(Status.FULL_AMOUNT_REQUIRED, 0, 0, order.amount, order.item.copy(), order.requester);
-        }
+        ItemStack itemProto = peek.item.copy();
+        int held = countHeld(fulfiller, itemProto, excludeArmor);
 
-        if (countHeld(fulfiller, order.item, excludeArmor) < give) {
-            return new Result(Status.NOT_ENOUGH_ITEMS, 0, 0, order.amount, order.item.copy(), order.requester);
-        }
-
-        long payment = order.amount <= 0 ? 0 : Math.round((double) order.price * give / order.amount);
-        payment = Math.min(payment, order.price);
-
-        ItemStack itemProto = order.item.copy();
-        int giveAmount = give;
-        return applyFulfillment(eco, orders, order, fulfiller.getUUID(), itemProto, give, payment,
-                () -> removeItems(fulfiller, itemProto, giveAmount, excludeArmor));
+        OrderManager.ClaimResult claim = orders.claim(orderId, requestedAmount, held, false);
+        return applyFulfillment(eco, orders, claim, peek.requester, fulfiller.getUUID(), itemProto,
+                give -> removeItems(fulfiller, itemProto, give, excludeArmor));
     }
 
     public static Result fulfillExact(EconomyManager eco, ServerPlayer fulfiller, int orderId, int requestedAmount, ItemStack sourceStack) {
         OrderManager orders = eco.getOrders();
-        OrderRequest order = orders.getRequest(orderId);
-        if (order == null || order.item == null || order.item.isEmpty()) {
+        OrderRequest peek = orders.getRequest(orderId);
+        if (peek == null || peek.item == null || peek.item.isEmpty()) {
             return new Result(Status.ORDER_GONE, 0, 0, 0, ItemStack.EMPTY, null);
         }
-        if (fulfiller.getUUID().equals(order.requester)) {
-            return new Result(Status.OWN_ORDER, 0, 0, order.amount, order.item.copy(), order.requester);
+        if (fulfiller.getUUID().equals(peek.requester)) {
+            return new Result(Status.OWN_ORDER, 0, 0, peek.amount, peek.item.copy(), peek.requester);
         }
-        if (sourceStack == null || !ItemStack.isSameItemSameComponents(sourceStack, order.item)) {
-            return new Result(Status.NOT_ENOUGH_ITEMS, 0, 0, order.amount, order.item.copy(), order.requester);
-        }
-
-        int give = requestedAmount <= 0 ? order.amount : Math.min(requestedAmount, order.amount);
-        give = Math.min(give, sourceStack.getCount());
-        if (give <= 0) {
-            return new Result(Status.INVALID_AMOUNT, 0, 0, order.amount, order.item.copy(), order.requester);
-        }
-        if (requiresCompleteFulfillment(order) && give < order.amount) {
-            return new Result(Status.FULL_AMOUNT_REQUIRED, 0, 0, order.amount, order.item.copy(), order.requester);
+        if (sourceStack == null || !ItemStack.isSameItemSameComponents(sourceStack, peek.item)) {
+            return new Result(Status.NOT_ENOUGH_ITEMS, 0, 0, peek.amount, peek.item.copy(), peek.requester);
         }
 
-        long payment = order.amount <= 0 ? 0 : Math.round((double) order.price * give / order.amount);
-        payment = Math.min(payment, order.price);
-
-        ItemStack itemProto = order.item.copy();
-        int giveAmount = give;
-        return applyFulfillment(eco, orders, order, fulfiller.getUUID(), itemProto, give, payment,
-                () -> sourceStack.shrink(giveAmount));
+        ItemStack itemProto = peek.item.copy();
+        OrderManager.ClaimResult claim = orders.claim(orderId, requestedAmount, sourceStack.getCount(), true);
+        return applyFulfillment(eco, orders, claim, peek.requester, fulfiller.getUUID(), itemProto, sourceStack::shrink);
     }
 
-    private static Result applyFulfillment(EconomyManager eco, OrderManager orders, OrderRequest order, UUID fulfillerId,
-                                            ItemStack itemProto, int give, long payment, Runnable takeItems) {
-        PaymentOutcome outcome = settleOrderPayment(eco, order, fulfillerId, payment);
+    private static Result applyFulfillment(EconomyManager eco, OrderManager orders, OrderManager.ClaimResult claim,
+                                            UUID requester, UUID fulfillerId, ItemStack itemProto, IntConsumer takeItems) {
+        switch (claim.status()) {
+            case ORDER_GONE -> {
+                return new Result(Status.ORDER_GONE, 0, 0, 0, ItemStack.EMPTY, null);
+            }
+            case INVALID_AMOUNT -> {
+                return new Result(Status.INVALID_AMOUNT, 0, 0, claim.order().amount, itemProto, requester);
+            }
+            case FULL_AMOUNT_REQUIRED -> {
+                return new Result(Status.FULL_AMOUNT_REQUIRED, 0, 0, claim.order().amount, itemProto, requester);
+            }
+            case NOT_ENOUGH_ITEMS -> {
+                return new Result(Status.NOT_ENOUGH_ITEMS, 0, 0, claim.order().amount, itemProto, requester);
+            }
+            default -> {}
+        }
+
+        PaymentOutcome outcome = settleOrderPayment(eco, requester, fulfillerId, claim.payment(), claim.escrowUsed());
         if (!outcome.success()) {
-            return new Result(outcome.failureStatus(), 0, 0, order.amount, itemProto, order.requester);
+            orders.rollbackClaim(claim.order(), claim.given(), claim.payment(), claim.escrowUsed(), claim.exhausted());
+            return new Result(outcome.failureStatus(), 0, 0, claim.order().amount, itemProto, requester);
         }
 
-        UUID requester = order.requester;
-        takeItems.run();
+        takeItems.accept(claim.given());
+        deliver(orders, requester, itemProto, claim.given());
+        notifyRequester(eco.getServer(), requester, claim.given(), itemProto);
+        orders.markChanged();
 
-        deliver(orders, requester, itemProto, give);
-
-        order.amount -= give;
-        order.price -= payment;
-        order.escrow -= outcome.escrowUsed();
-        int remaining = order.amount;
-        if (remaining <= 0) {
-            orders.removeRequest(order.id);
-            remaining = 0;
-        } else {
-            orders.markChanged();
-        }
-
-        notifyRequester(eco.getServer(), requester, give, itemProto);
-        return new Result(Status.OK, give, outcome.payout(), remaining, itemProto, requester);
+        int remaining = claim.exhausted() ? 0 : claim.order().amount;
+        return new Result(Status.OK, claim.given(), outcome.payout(), remaining, itemProto, requester);
     }
 
-    private static PaymentOutcome settleOrderPayment(EconomyManager eco, OrderRequest order, UUID fulfillerId, long payment) {
+    private static PaymentOutcome settleOrderPayment(EconomyManager eco, UUID requester, UUID fulfillerId, long payment, long escrowUsed) {
         long tax = Math.round(payment * EconomyConfig.get().taxRate);
         long payout = payment - tax;
-        long escrowUsed = Math.min(payment, Math.max(0, order.escrow));
         long shortfall = payment - escrowUsed;
 
         if (shortfall > 0) {
-            var transfer = eco.transferMoney(order.requester, fulfillerId, shortfall, payout, EconomySources.ORDER_FULFILLMENT);
+            var transfer = eco.transferMoney(requester, fulfillerId, shortfall, payout, EconomySources.ORDER_FULFILLMENT);
             if (!transfer.successful()) {
                 Status status = transfer.status() == com.reazip.economycraft.api.v1.BalanceMutationStatus.MAX_BALANCE_EXCEEDED
                         ? Status.FULFILLER_CANT_RECEIVE : Status.REQUESTER_CANT_PAY;
-                return new PaymentOutcome(false, 0, 0, status);
+                return new PaymentOutcome(false, 0, status);
             }
         } else if (payout > 0) {
             var credit = eco.addMoney(fulfillerId, payout, EconomySources.ORDER_FULFILLMENT);
             if (!credit.successful()) {
-                return new PaymentOutcome(false, 0, 0, Status.FULFILLER_CANT_RECEIVE);
+                return new PaymentOutcome(false, 0, Status.FULFILLER_CANT_RECEIVE);
             }
         }
-        return new PaymentOutcome(true, payout, escrowUsed, null);
+        return new PaymentOutcome(true, payout, null);
     }
 
     public static CancelStatus cancel(EconomyManager eco, UUID requester, int orderId) {
         OrderManager orders = eco.getOrders();
-        OrderRequest order = orders.getRequest(orderId);
+        OrderRequest peek = orders.getRequest(orderId);
+        if (peek == null) return CancelStatus.ORDER_GONE;
+        if (!peek.requester.equals(requester)) return CancelStatus.NOT_OWNER;
+
+        OrderRequest order = orders.removeRequest(orderId);
         if (order == null) return CancelStatus.ORDER_GONE;
-        if (!order.requester.equals(requester)) return CancelStatus.NOT_OWNER;
 
-        if (order.escrow > 0) {
-            var refund = eco.addMoney(order.requester, order.escrow, EconomySources.ORDER_ESCROW_REFUND);
-            if (!refund.successful()) return CancelStatus.REFUND_FAILED;
-            order.escrow = 0;
-        }
+        var refund = refundEscrow(eco, orders, order);
+        if (refund != null && !refund.successful()) return CancelStatus.REFUND_FAILED;
 
-        orders.removeRequest(orderId);
         return CancelStatus.OK;
     }
 
     public static void expireOverdue(EconomyManager eco) {
         OrderManager orders = eco.getOrders();
         long now = System.currentTimeMillis();
-        for (OrderRequest order : orders.getRequests()) {
-            if (!ExpirationUtil.isExpired(order.expiresAt, now)) continue;
+        for (OrderRequest snapshot : orders.getRequests()) {
+            if (!ExpirationUtil.isExpired(snapshot.expiresAt, now)) continue;
+
+            OrderRequest order = orders.removeRequest(snapshot.id);
+            if (order == null) continue;
 
             long refund = order.escrow;
-            if (refund > 0) {
-                var result = eco.addMoney(order.requester, refund, EconomySources.ORDER_ESCROW_REFUND);
-                if (!result.successful()) {
-                    LOGGER.warn("[EconomyCraft] Expired order {} escrow refund of {} to {} failed ({}); will retry next sweep",
-                            order.id, refund, order.requester, result.status());
-                    continue;
-                }
-                order.escrow = 0;
+            var result = refundEscrow(eco, orders, order);
+            if (result != null && !result.successful()) {
+                LOGGER.warn("[EconomyCraft] Expired order {} escrow refund of {} to {} failed ({}); will retry next sweep",
+                        order.id, refund, order.requester, result.status());
+                continue;
             }
 
-            orders.removeRequest(order.id);
             notifyExpired(eco, order, refund);
         }
         eco.getNotifications().flush();
+    }
+
+    private static BalanceMutationResult refundEscrow(EconomyManager eco, OrderManager orders, OrderRequest order) {
+        if (order.escrow <= 0) return null;
+        var refund = eco.addMoney(order.requester, order.escrow, EconomySources.ORDER_ESCROW_REFUND);
+        if (refund.successful()) {
+            order.escrow = 0;
+        } else {
+            orders.restoreRequest(order);
+        }
+        return refund;
     }
 
     private static void notifyExpired(EconomyManager eco, OrderRequest order, long refund) {
@@ -262,10 +252,14 @@ public final class OrderFulfillment {
     }
 
     public static long payoutFor(OrderRequest order, int give) {
-        if (order == null || order.amount <= 0 || give <= 0) return 0;
-        long payment = Math.min(Math.round((double) order.price * give / order.amount), order.price);
+        long payment = partialPayment(order, give);
         long tax = Math.round(payment * EconomyConfig.get().taxRate);
         return payment - tax;
+    }
+
+    static long partialPayment(OrderRequest order, int give) {
+        if (order == null || order.amount <= 0 || give <= 0) return 0;
+        return Math.min(Math.round((double) order.price * give / order.amount), order.price);
     }
 
     public static long rewardPerItem(long reward, int amount) {
