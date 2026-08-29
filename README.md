@@ -70,27 +70,27 @@ In singleplayer each world gets that same folder inside its own save, at `saves/
 
 ### `config.json`
 
-| Key                              | Default | Description                                                                     |
-|----------------------------------|---------|---------------------------------------------------------------------------------|
-| `startingBalance`                | `1000`  | Money new players start with.                                                   |
-| `dailyAmount`                    | `100`   | Money given by the daily reward.                                                |
-| `dailySellLimit`                 | `10000` | Most a player can earn per day from selling. `0` disables the limit.            |
-| `taxRate`                        | `0.1`   | Tax on trades and orders, as a decimal (`0.1` = 10%).                           |
-| `pvp_balance_loss_percentage`    | `0`     | Share of a balance the killer takes on a PvP death. `0` disables it.            |
-| `standalone_commands`            | `true`  | Allow `/pay`, `/daily` and similar without the `/eco` prefix.                   |
-| `standalone_admin_commands`      | `false` | Allow `/addmoney`, `/setmoney` and similar without the `/eco` prefix.           |
-| `scoreboard_enabled`             | `true`  | Show the balance sidebar.                                                       |
-| `shop_enabled`                   | `true`  | Enable the fixed-price shop.                                                    |
-| `auction_enabled`                | `true`  | Enable the auction house.                                                       |
-| `orders_enabled`                 | `true`  | Enable the orders board. Collecting deliveries works either way.                |
-| `sell_enabled`                   | `true`  | Enable selling.                                                                 |
-| `worth_enabled`                  | `true`  | Enable item value lookups through `/worth` and the `/eco` menu.                 |
-| `balance_separator`              | `"."`   | Thousands separator. Only the first character is used, so `","` gives `$1,000`. |
-| `transaction_log_enabled`        | `true`  | Record every balance change to a daily log file.                                |
-| `transaction_log_retention_days` | `7`     | How many days of transaction logs to keep.                                      |
-| `order_expiration_hours`         | `168`   | Hours before an unfulfilled order expires and its escrow is refunded. `0` disables expiration. |
-| `auction_expiration_hours`       | `168`   | Hours before an unsold auction listing expires and its item goes to deliveries. `0` disables expiration. |
-| `max_active_orders_per_player`   | `0`     | Most open order requests a player can have at once. `0` allows unlimited. Overridable per player in the admin Players menu. |
+| Key                              | Default | Description                                                                                                                     |
+|----------------------------------|---------|---------------------------------------------------------------------------------------------------------------------------------|
+| `startingBalance`                | `1000`  | Money new players start with.                                                                                                   |
+| `dailyAmount`                    | `100`   | Money given by the daily reward.                                                                                                |
+| `dailySellLimit`                 | `10000` | Most a player can earn per day from selling. `0` disables the limit.                                                            |
+| `taxRate`                        | `0.1`   | Tax on trades and orders, as a decimal (`0.1` = 10%).                                                                           |
+| `pvp_balance_loss_percentage`    | `0`     | Share of a balance the killer takes on a PvP death. `0` disables it.                                                            |
+| `standalone_commands`            | `true`  | Allow `/pay`, `/daily` and similar without the `/eco` prefix.                                                                   |
+| `standalone_admin_commands`      | `false` | Allow `/addmoney`, `/setmoney` and similar without the `/eco` prefix.                                                           |
+| `scoreboard_enabled`             | `true`  | Show the balance sidebar.                                                                                                       |
+| `shop_enabled`                   | `true`  | Enable the fixed-price shop.                                                                                                    |
+| `auction_enabled`                | `true`  | Enable the auction house.                                                                                                       |
+| `orders_enabled`                 | `true`  | Enable the orders board. Collecting deliveries works either way.                                                                |
+| `sell_enabled`                   | `true`  | Enable selling.                                                                                                                 |
+| `worth_enabled`                  | `true`  | Enable item value lookups through `/worth` and the `/eco` menu.                                                                 |
+| `balance_separator`              | `"."`   | Thousands separator. Only the first character is used, so `","` gives `$1,000`.                                                 |
+| `transaction_log_enabled`        | `true`  | Record every balance change to a daily log file.                                                                                |
+| `transaction_log_retention_days` | `7`     | How many days of transaction logs to keep.                                                                                      |
+| `order_expiration_hours`         | `168`   | Hours before an unfulfilled order expires and its escrow is refunded. `0` disables expiration.                                  |
+| `auction_expiration_hours`       | `168`   | Hours before an unsold auction listing expires and its item goes to deliveries. `0` disables expiration.                        |
+| `max_active_orders_per_player`   | `0`     | Most open order requests a player can have at once. `0` allows unlimited. Overridable per player in the admin Players menu.     |
 | `max_active_auctions_per_player` | `0`     | Most active auction listings a player can have at once. `0` allows unlimited. Overridable per player in the admin Players menu. |
 
 ### `webhook.json`
@@ -127,40 +127,6 @@ Two further keys are written by the editor:
 
 ---
 
-## Transaction logs and webhook
-
-### Log files
-
-One JSON-lines file per day, at `logs/transactions-YYYY-MM-DD.log` inside the config folder. Each line is a single JSON object:
-
-```json
-{"time":"2026-08-19T13:45:12.345Z","type":"PAYMENT_SENT","player":"<uuid>","player_name":"Notch","counterparty":"<uuid>","counterparty_name":"Dinnerbone","amount":-500,"balance_before":1500,"balance_after":1000,"source":"economycraft:player_payment"}
-```
-
-`detail` is an extra, optional field on shop, auction and order entries describing what was actually bought, sold or fulfilled, e.g. `"detail":"12x Iron Ingot"`. Entries logged before this was added won't have it.
-
-Files older than `transaction_log_retention_days` (default `7`) are deleted automatically. Setting it above 90 logs a console warning on start.
-
-### Webhook
-
-Configured through `webhook.json`, see [webhook.json](#webhookjson) above. 
-
-When `webhook_enabled` is `true`, each transaction is POSTed as `{"content": "<message>"}` to `webhook_url`. 
-
-Set `webhook_min_amount` to only notify on larger transactions.
-
----
-
-## Developer API
-
-The normal EconomyCraft jar includes API v1 for other server-side mods. There is no separate runtime API mod to install.
-
-The API covers balances and payments, official money formatting, read-only item prices, leaderboard data and successful balance-change events. Public classes are under `com.reazip.economycraft.api.v1`.
-
-See the [Developer API wiki](https://github.com/PhilipB06/EconomyCraft/wiki) for setup, examples, behavior rules and the complete reference.
-
----
-
 ## Placeholders
 
 EconomyCraft can expose economy data to other mods through [Text Placeholder API](https://modrinth.com/mod/placeholder-api) on Fabric, or the unofficial [Placeholder API NeoForge](https://modrinth.com/mod/placeholder-api-neoforge) port on NeoForge.
@@ -179,5 +145,39 @@ Both are optional and not bundled. The mod works without them, but the matching 
 | `%economycraft:top_balance_short 1%`     | Abbreviated balance of the player ranked `1`.                                              |
 
 The `top_*` placeholders take the rank as an argument, e.g. `%economycraft:top_name 3%` for third place. Ranks beyond the number of players resolve as invalid.
+
+---
+
+## Transaction logs and webhook
+
+### Log files
+
+One JSON-lines file per day, at `logs/transactions-YYYY-MM-DD.log` inside the config folder. Each line is a single JSON object:
+
+```json
+{"time":"2026-08-19T13:45:12.345Z","type":"PAYMENT_SENT","player":"<uuid>","player_name":"Notch","counterparty":"<uuid>","counterparty_name":"Dinnerbone","amount":-500,"balance_before":1500,"balance_after":1000,"source":"economycraft:player_payment"}
+```
+
+`detail` is an extra, optional field on shop, auction and order entries describing what was actually bought, sold or fulfilled, e.g. `"detail":"12x Iron Ingot"`. Entries logged before this was added won't have it.
+
+Files older than `transaction_log_retention_days` (default `7`) are deleted automatically. Setting it above 90 logs a console warning on start.
+
+### Webhook
+
+Configured through `webhook.json`, see [webhook.json](#webhookjson) above.
+
+When `webhook_enabled` is `true`, each transaction is POSTed as `{"content": "<message>"}` to `webhook_url`.
+
+Set `webhook_min_amount` to only notify on larger transactions.
+
+---
+
+## Developer API
+
+The normal EconomyCraft jar includes API v1 for other server-side mods. There is no separate runtime API mod to install.
+
+The API covers balances and payments, official money formatting, read-only item prices, leaderboard data and successful balance-change events. Public classes are under `com.reazip.economycraft.api.v1`.
+
+See the [Developer API wiki](https://github.com/PhilipB06/EconomyCraft/wiki) for setup, examples, behavior rules and the complete reference.
 
 ---

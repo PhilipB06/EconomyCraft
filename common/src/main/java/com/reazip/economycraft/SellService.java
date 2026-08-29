@@ -5,7 +5,9 @@ import com.reazip.economycraft.orders.OrderFulfillment;
 import com.reazip.economycraft.orders.OrderRequest;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.ShulkerBoxBlock;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -17,15 +19,31 @@ public final class SellService {
 
     @Nullable
     public static PriceEntry sellableResolved(PriceRegistry prices, ItemStack stack) {
+        return sellableResolved(prices, stack, true);
+    }
+
+    @Nullable
+    public static PriceEntry sellableIgnoringContents(PriceRegistry prices, ItemStack stack) {
+        return sellableResolved(prices, stack, false);
+    }
+
+    @Nullable
+    private static PriceEntry sellableResolved(PriceRegistry prices, ItemStack stack, boolean checkContents) {
         if (stack == null || stack.isEmpty()) return null;
         PriceEntry entry = prices.resolve(stack);
         if (entry == null) return null;
         if (entry.customItem() == null) {
             if (prices.isSellBlockedByDamage(stack)) return null;
-            if (prices.isSellBlockedByContents(stack)) return null;
+            if (checkContents && prices.isSellBlockedByContents(stack)) return null;
         }
         if (prices.getUnitSell(stack) == null) return null;
         return entry;
+    }
+
+    public static boolean isShulkerBox(ItemStack stack) {
+        return stack != null && !stack.isEmpty()
+                && stack.getItem() instanceof BlockItem blockItem
+                && blockItem.getBlock() instanceof ShulkerBoxBlock;
     }
 
     private static boolean isMatching(PriceRegistry prices, ItemStack stack, PriceEntry expected, boolean excludeEnchanted) {
