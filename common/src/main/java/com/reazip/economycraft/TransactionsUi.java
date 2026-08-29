@@ -212,12 +212,16 @@ public final class TransactionsUi {
             String rowText = amountText + "  " + rowSummary(entry, style);
             ChatFormatting color = positive ? ChatFormatting.GREEN : ChatFormatting.RED;
 
-            return MenuUiSupport.button(style.icon(), rowText, color,
-                    MenuUiSupport.labeledValue("Type", style.typeLabel(), MenuUiSupport.LABEL_PRIMARY_COLOR),
-                    MenuUiSupport.labeledValue("Amount", amountText, MenuUiSupport.LABEL_PRIMARY_COLOR),
-                    MenuUiSupport.labeledValue("Balance Before", EconomyCraft.formatMoney(entry.balanceBefore()), MenuUiSupport.LABEL_PRIMARY_COLOR),
-                    MenuUiSupport.labeledValue("Balance After", EconomyCraft.formatMoney(entry.balanceAfter()), MenuUiSupport.LABEL_PRIMARY_COLOR),
-                    MenuUiSupport.labeledValue("Date", formatDate(entry.time()), MenuUiSupport.LABEL_PRIMARY_COLOR));
+            List<Component> lore = new ArrayList<>();
+            lore.add(MenuUiSupport.labeledValue("Type", style.typeLabel(), MenuUiSupport.LABEL_PRIMARY_COLOR));
+            lore.add(MenuUiSupport.labeledValue("Amount", amountText, MenuUiSupport.LABEL_PRIMARY_COLOR));
+            if (adminMode) {
+                lore.add(MenuUiSupport.labeledValue("Balance Before", EconomyCraft.formatMoney(entry.balanceBefore()), MenuUiSupport.LABEL_PRIMARY_COLOR));
+                lore.add(MenuUiSupport.labeledValue("Balance After", EconomyCraft.formatMoney(entry.balanceAfter()), MenuUiSupport.LABEL_PRIMARY_COLOR));
+            }
+            lore.add(MenuUiSupport.labeledValue("Date", formatDate(entry.time()), MenuUiSupport.LABEL_PRIMARY_COLOR));
+
+            return MenuUiSupport.button(style.icon(), rowText, color, lore.toArray(new Component[0]));
         }
 
         private ItemStack headerItem() {

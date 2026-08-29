@@ -9,6 +9,7 @@ import com.reazip.economycraft.util.ClickKind;
 import com.reazip.economycraft.util.CompatMenu;
 import com.reazip.economycraft.util.ContainerPreviewUi;
 import com.reazip.economycraft.util.EconomySounds;
+import com.reazip.economycraft.util.ExpirationUtil;
 import com.reazip.economycraft.util.IdentityCompat;
 import com.reazip.economycraft.util.ItemPickerUi;
 import com.reazip.economycraft.util.MenuUiSupport;
@@ -267,6 +268,7 @@ public final class OrdersUi {
                 addRewardLore(lore, r.price, tax, r.amount);
                 lore.add(MenuUiSupport.labeledValue("Amount", String.valueOf(r.amount), MenuUiSupport.LABEL_PRIMARY_COLOR));
                 lore.add(MenuUiSupport.labeledValue("Requester", mine ? "you" : reqName, MenuUiSupport.LABEL_PRIMARY_COLOR));
+                lore.add(MenuUiSupport.hint(ExpirationUtil.expiresInLabel(r.expiresAt)));
                 lore.add(MenuUiSupport.labeledValue("Click", mine ? "Cancel request" : "Fulfill it",
                         MenuUiSupport.LABEL_SECONDARY_COLOR));
                 if (MenuUiSupport.hasContainerContents(r.item)) {
@@ -430,6 +432,7 @@ public final class OrdersUi {
             addRewardLore(itemLore, req.price, tax, req.amount);
             itemLore.add(MenuUiSupport.labeledValue("Amount", String.valueOf(req.amount), MenuUiSupport.LABEL_PRIMARY_COLOR));
             itemLore.add(MenuUiSupport.labeledValue("Requester", requesterName, MenuUiSupport.LABEL_PRIMARY_COLOR));
+            itemLore.add(MenuUiSupport.hint(ExpirationUtil.expiresInLabel(req.expiresAt)));
             if (MenuUiSupport.hasContainerContents(req.item)) {
                 itemLore.add(MenuUiSupport.labeledValue("Ctrl+Q", "Preview contents", MenuUiSupport.LABEL_SECONDARY_COLOR));
             }
@@ -527,6 +530,7 @@ public final class OrdersUi {
             List<Component> itemLore = new ArrayList<>();
             addRewardLore(itemLore, req.price, tax, req.amount);
             itemLore.add(MenuUiSupport.labeledValue("Amount", String.valueOf(req.amount), MenuUiSupport.LABEL_PRIMARY_COLOR));
+            itemLore.add(MenuUiSupport.hint(ExpirationUtil.expiresInLabel(req.expiresAt)));
             itemLore.add(MenuUiSupport.line("This will remove the request", ChatFormatting.RED));
             item.set(DataComponents.LORE, new ItemLore(itemLore));
             container.setItem(MenuUiSupport.ROW_SUBJECT, item);

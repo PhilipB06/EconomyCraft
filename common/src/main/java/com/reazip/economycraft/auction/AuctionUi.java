@@ -311,6 +311,7 @@ public final class AuctionUi {
                 List<Component> lore = new ArrayList<>();
                 lore.add(createPriceLore(l.price, tax));
                 lore.add(MenuUiSupport.labeledValue("Seller", mine ? "you" : sellerName, MenuUiSupport.LABEL_PRIMARY_COLOR));
+                lore.add(MenuUiSupport.hint(ExpirationUtil.expiresInLabel(l.expiresAt)));
                 lore.add(MenuUiSupport.labeledValue("Click", mine ? "Remove listing" : "Buy it", MenuUiSupport.LABEL_SECONDARY_COLOR));
                 if (MenuUiSupport.hasContainerContents(l.item)) {
                     lore.add(MenuUiSupport.labeledValue("Ctrl+Q", "Preview contents", MenuUiSupport.LABEL_SECONDARY_COLOR));
@@ -456,6 +457,7 @@ public final class AuctionUi {
             List<Component> lore = new ArrayList<>();
             lore.add(createPriceLore(listing.price, tax));
             lore.add(MenuUiSupport.labeledValue("Seller", sellerName, MenuUiSupport.LABEL_PRIMARY_COLOR));
+            lore.add(MenuUiSupport.hint(ExpirationUtil.expiresInLabel(listing.expiresAt)));
             if (MenuUiSupport.hasContainerContents(listing.item)) {
                 lore.add(MenuUiSupport.labeledValue("Ctrl+Q", "Preview contents", MenuUiSupport.LABEL_SECONDARY_COLOR));
             }
@@ -553,6 +555,7 @@ public final class AuctionUi {
             item.set(DataComponents.LORE, new ItemLore(List.of(
                     createPriceLore(listing.price, tax),
                     MenuUiSupport.labeledValue("Seller", "you", MenuUiSupport.LABEL_PRIMARY_COLOR),
+                    MenuUiSupport.hint(ExpirationUtil.expiresInLabel(listing.expiresAt)),
                     MenuUiSupport.line("This will remove the listing", ChatFormatting.RED))));
             container.setItem(MenuUiSupport.ROW_SUBJECT, item);
 

@@ -180,7 +180,7 @@ public final class SellUi {
             navContainer.setItem(NAV_SHULKER, MenuUiSupport.button(Items.SHULKER_BOX, "Shulker boxes",
                     ChatFormatting.LIGHT_PURPLE,
                     MenuUiSupport.italicHint("Click to cycle"),
-                    MenuUiSupport.toggleOption("Don't accept shulkers", shulkerMode == ShulkerSellMode.DISALLOW),
+                    MenuUiSupport.toggleOption("Don't accept filled shulkers", shulkerMode == ShulkerSellMode.DISALLOW),
                     MenuUiSupport.toggleOption("Sell only contents", shulkerMode == ShulkerSellMode.CONTENTS_ONLY),
                     MenuUiSupport.toggleOption("Sell everything incl. box", shulkerMode == ShulkerSellMode.EVERYTHING)));
 

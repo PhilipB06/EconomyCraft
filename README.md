@@ -17,18 +17,18 @@ Default configuration works without manual changes.
 
 ## The `/eco` menu
 
-| Button            | Description                                                                                                                                   |
-|-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
-| **Shop**          | Buy and sell at fixed prices with unlimited stock. Left click buys, right click sells, shift-click uses the bulk amount.                      |
-| **Auction House** | Buy items other players have listed. **Sell an item** walks through picking an item and setting a price.                                      |
-| **Sell Items**    | Put items in the slots, check the total, confirm. Items without a sell price will not fit, and closing without confirming returns everything. |
-| **Orders**        | **New request** picks any item in the game, an amount and a price. Other players fill the request and get paid.                               |
-| **Daily Reward**  | Claims the daily payout, once per day.                                                                                                        |
-| **Pay a Player**  | Select a player and an amount.                                                                                                                |
-| **Top Balances**  | The richest players on the server.                                                                                                            |
-| **Item Value**    | The buy and sell price of any item.                                                                                                           |
-| **Deliveries**    | Items bought while the inventory was full or orders that have been completed while being offline.                                             |
-| **Transactions**  | Your recent balance history, newest first. Hover an entry for the full detail: type, amount, balance before/after, and date.                  |
+| Button            | Description                                                                                                                                                                                  |
+|-------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Shop**          | Buy and sell at fixed prices with unlimited stock. Left click buys, right click sells, shift-click uses the bulk amount.                                                                     |
+| **Auction House** | Buy items other players have listed. **Sell an item** walks through picking an item and setting a price.                                                                                     |
+| **Sell Items**    | Put items in the slots, check the total, confirm. Items without a sell price will not fit, and closing without confirming returns everything.                                                |
+| **Orders**        | **New request** picks any item in the game, an amount and a price. Other players fill the request and get paid.                                                                              |
+| **Daily Reward**  | Claims the daily payout, once per day.                                                                                                                                                       |
+| **Pay a Player**  | Select a player and an amount.                                                                                                                                                               |
+| **Top Balances**  | The richest players on the server.                                                                                                                                                           |
+| **Item Value**    | The buy and sell price of any item.                                                                                                                                                          |
+| **Deliveries**    | Items bought while the inventory was full or orders that have been completed while being offline.                                                                                            |
+| **Transactions**  | Your recent balance history, newest first. Hover an entry for the full detail: type, amount, and date. Admins viewing another player's history also see the balance before/after each entry. |
 
 Each screen also has a command: `/bal`, `/bal top`, `/pay`, `/daily`, `/shop`, `/ah`, `/auction`, `/sell`, `/worth`, `/orders`, `/orders claim`, `/transactions`.
 
@@ -62,7 +62,7 @@ Opt out a whole category from its category editor, or a single item from its ite
 
 ### Settings
 
-Covers every option in `config.json`: starting balance, daily reward, daily sell limit, tax rate, PvP money loss, thousands separator, log retention, dynamic shop pricing, and switches for the shop, auction house, orders, selling, the balance sidebar, the short command aliases and transaction logging.
+Paginated, and covers every option in `config.json`: starting balance, daily reward, daily sell limit, tax rate, PvP money loss, thousands separator, log retention, order/auction expiration hours, max active orders/auctions per player, dynamic shop pricing, and switches for the shop, auction house, orders, selling, the balance sidebar, the short command aliases and transaction logging.
 
 ### Players
 
@@ -108,7 +108,7 @@ In singleplayer each world gets that same folder inside its own save, at `saves/
 | `dynamic_prices_enabled`         | `false` | Scale shop buy prices with the active-player median balance. See [Dynamic shop pricing](#dynamic-shop-pricing).                 |
 | `dynamic_price_min_multiplier`   | `0.5`   | Lowest allowed price scale, even if the median balance craters.                                                                 |
 | `dynamic_price_max_multiplier`   | `5.0`   | Highest allowed price scale, even if the median balance soars.                                                                  |
-| `dynamic_price_min_active_days`  | `30`    | Players must have logged in within this many days to count toward the median. `0` includes every player.                       |
+| `dynamic_price_min_active_days`  | `30`    | Players must have logged in within this many days to count toward the median. `0` includes every player.                        |
 
 ### `webhook.json`
 
@@ -194,7 +194,7 @@ Set `webhook_min_amount` to only notify on larger transactions.
 
 The normal EconomyCraft jar includes API v1 for other server-side mods. There is no separate runtime API mod to install.
 
-The API covers balances and payments, official money formatting, read-only item prices, leaderboard data and successful balance-change events. Public classes are under `com.reazip.economycraft.api.v1`. `ItemPrice.unitBuyPrice()` reflects what a player would actually pay right now, so it moves with [dynamic shop pricing](#dynamic-shop-pricing) when that's enabled.
+The API covers balances and payments, official money formatting, read-only item prices, leaderboard data and successful balance-change events. Public classes are under `com.reazip.economycraft.api.v1`.
 
 See the [Developer API wiki](https://github.com/PhilipB06/EconomyCraft/wiki) for setup, examples, behavior rules and the complete reference.
 
