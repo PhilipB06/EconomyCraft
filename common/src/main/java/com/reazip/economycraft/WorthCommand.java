@@ -59,14 +59,14 @@ public final class WorthCommand {
     }
 
     private static int showWorth(CommandSourceStack source, ItemStack stack, String itemName, int amount) {
-        PriceRegistry prices = EconomyCraft.getManager(source.getServer()).getPrices();
-        PriceEntry entry = prices.resolve(stack);
+        EconomyManager eco = EconomyCraft.getManager(source.getServer());
+        PriceEntry entry = eco.getPrices().resolve(stack);
         if (entry == null || (entry.unitBuy() <= 0 && entry.unitSell() <= 0)) {
             source.sendFailure(Component.literal(itemName + " has no configured price.").withStyle(ChatFormatting.RED));
             return 0;
         }
 
-        String buy = formatBuy(entry.unitBuy(), amount);
+        String buy = formatBuy(entry.unitBuy() > 0 ? eco.getEffectiveBuyPrice(entry) : 0, amount);
         String sell = formatSell(entry.unitSell(), amount);
         if (buy == null || sell == null) {
             source.sendFailure(Component.literal("Amount is too large.").withStyle(ChatFormatting.RED));

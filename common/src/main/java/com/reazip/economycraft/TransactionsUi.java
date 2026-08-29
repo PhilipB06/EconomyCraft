@@ -1,5 +1,6 @@
 package com.reazip.economycraft;
 
+import com.mojang.logging.LogUtils;
 import com.reazip.economycraft.api.v1.BalanceMutationType;
 import com.reazip.economycraft.util.ClickKind;
 import com.reazip.economycraft.util.CompatMenu;
@@ -20,6 +21,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
 
 import java.time.Instant;
 import java.time.ZoneId;
@@ -28,13 +30,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 public final class TransactionsUi {
     private TransactionsUi() {}
 
+    private static final Logger LOGGER = LogUtils.getLogger();
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("d MMM yyyy HH:mm", Locale.ROOT);
+    private static final Set<String> LOGGED_UNKNOWN_SOURCES = ConcurrentHashMap.newKeySet();
 
     record SourceStyle(Item icon, String typeLabel, @Nullable String verb, @Nullable TransactionCategory category) {}
 
@@ -97,6 +103,9 @@ public final class TransactionsUi {
         }
 
         String fallbackLabel = entry.source() != null ? entry.source() : entry.type().name();
+        if (entry.source() != null && LOGGED_UNKNOWN_SOURCES.add(entry.source())) {
+            LOGGER.warn("[EconomyCraft] Transaction source '{}' has no entry in TransactionsUi.SOURCE_STYLES; it will only show under the \"All\" category filter.", entry.source());
+        }
         return new SourceStyle(Items.GOLD_INGOT, fallbackLabel, null, null);
     }
 

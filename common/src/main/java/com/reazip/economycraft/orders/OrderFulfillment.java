@@ -259,22 +259,9 @@ public final class OrderFulfillment {
     }
 
     public static long payoutFor(OrderRequest order, int give) {
-        long payment = partialPayment(order, give);
+        long payment = OrderManager.partialPayment(order, give);
         long tax = Math.round(payment * EconomyConfig.get().taxRate);
         return payment - tax;
-    }
-
-    static long partialPayment(OrderRequest order, int give) {
-        if (order == null || order.amount <= 0 || give <= 0) return 0;
-        return Math.min(Math.round((double) order.price * give / order.amount), order.price);
-    }
-
-    public static long rewardPerItem(long reward, int amount) {
-        return amount <= 0 ? 0 : Math.round((double) reward / amount);
-    }
-
-    public static boolean requiresCompleteFulfillment(OrderRequest order) {
-        return order != null && order.amount > 1 && rewardPerItem(order.price, order.amount) == 0;
     }
 
     private static double netRatePerUnit(OrderRequest order) {

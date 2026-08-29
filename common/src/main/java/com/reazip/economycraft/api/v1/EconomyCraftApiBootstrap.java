@@ -214,7 +214,7 @@ final class PriceApiImpl implements PriceApi {
                 entry.id().asString(),
                 entry.category(),
                 entry.stack(),
-                entry.unitBuy() > 0 ? OptionalLong.of(entry.unitBuy()) : OptionalLong.empty(),
+                entry.unitBuy() > 0 ? OptionalLong.of(manager.getEffectiveBuyPrice(entry)) : OptionalLong.empty(),
                 entry.unitSell() > 0 ? OptionalLong.of(entry.unitSell()) : OptionalLong.empty(),
                 entry.customItem() != null,
                 manager.getPrices().createPrototype(entry)

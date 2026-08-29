@@ -15,6 +15,7 @@ import com.reazip.economycraft.util.EconomyPaths;
 import com.reazip.economycraft.util.IdentityCompat;
 import com.reazip.economycraft.util.ProfileCompat;
 import com.reazip.economycraft.util.TransactionLogWriter;
+import com.reazip.economycraft.util.UuidLongMapStore;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.numbers.FixedFormat;
@@ -69,6 +70,7 @@ public class EconomyManager {
     private final PriceRegistry prices;
     private final BalanceEventDispatcher balanceEvents;
     private final BalanceMutationEngine balanceMutations;
+    private final DynamicPriceEngine dynamicPrices;
 
     private Objective objective;
     private final DeliveryManager deliveries;
@@ -117,6 +119,8 @@ public class EconomyManager {
         this.orders = new OrderManager(server, deliveries);
         this.notifications = new NotificationManager(server);
         this.prices = new PriceRegistry(server);
+        this.dynamicPrices = new DynamicPriceEngine(dataDir);
+        dynamicPrices.refresh(server, balances);
 
         balanceEvents.register(transactionLogger::onBalanceChanged);
 
@@ -395,22 +399,13 @@ public class EconomyManager {
 
     public void save() {
         AsyncFileWriter.writeAsync(file, GSON.toJson(new HashMap<>(balances), TYPE));
-        AsyncFileWriter.writeAsync(dailyFile, GSON.toJson(new HashMap<>(lastDaily), new TypeToken<Map<UUID, Long>>(){}.getType()));
+        UuidLongMapStore.persist(dailyFile, lastDaily);
         AsyncFileWriter.writeAsync(dailySellFile, GSON.toJson(new HashMap<>(dailySells), DAILY_SELL_TYPE));
+        dynamicPrices.flush();
     }
 
     private void loadDaily() {
-        if (Files.exists(dailyFile)) {
-            try {
-                String json = Files.readString(dailyFile);
-                Map<UUID, Long> map = GSON.fromJson(json, new TypeToken<Map<UUID, Long>>(){}.getType());
-                if (map != null) {
-                    for (Map.Entry<UUID, Long> e : map.entrySet()) {
-                        if (e.getValue() != null) lastDaily.put(e.getKey(), e.getValue());
-                    }
-                }
-            } catch (IOException ignored) {}
-        }
+        UuidLongMapStore.load(dailyFile, lastDaily);
     }
 
     private void loadDailySells() {
@@ -601,6 +596,40 @@ public class EconomyManager {
 
     public PriceRegistry getPrices() {
         return prices;
+    }
+
+    public void markActive(UUID player) {
+        dynamicPrices.markActive(player);
+    }
+
+    public void maybeRefreshDynamicPrices() {
+        dynamicPrices.maybeRefresh(server, balances);
+    }
+
+    public void refreshDynamicPrices() {
+        dynamicPrices.refresh(server, balances);
+    }
+
+    public double getDynamicPriceMultiplier() {
+        return dynamicPrices.getMultiplier();
+    }
+
+    public boolean isDynamicPricingActive(String category, boolean itemEnabled) {
+        return EconomyConfig.get().dynamicPricesEnabled && prices.isDynamicPricingEnabled(category, itemEnabled);
+    }
+
+    public long getEffectiveBuyPrice(long baseBuyPrice, boolean dynamicPricingActive) {
+        if (baseBuyPrice <= 0 || !dynamicPricingActive) return baseBuyPrice;
+        return dynamicPrices.applyMultiplier(baseBuyPrice);
+    }
+
+    public long getEffectiveBuyPrice(long baseBuyPrice, String category, boolean itemEnabled) {
+        if (baseBuyPrice <= 0) return baseBuyPrice;
+        return getEffectiveBuyPrice(baseBuyPrice, isDynamicPricingActive(category, itemEnabled));
+    }
+
+    public long getEffectiveBuyPrice(PriceRegistry.PriceEntry entry) {
+        return getEffectiveBuyPrice(entry.unitBuy(), entry.category(), entry.dynamicPriceEnabled());
     }
 
     public Map<UUID, Long> getBalances() {

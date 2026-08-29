@@ -40,16 +40,29 @@ Each screen also has a command: `/bal`, `/bal top`, `/pay`, `/daily`, `/shop`, `
 
 Browse categories and click an item to change it.
 
-- **Category editor**: right-click a category to change its displayed name, color, icon, or visibility. Deleting a category moves all of its items to `misc` and sets their buy prices to `0`.
+- **Category editor**: right-click a category to change its displayed name, color, icon, visibility, or whether it takes part in dynamic pricing. Deleting a category moves all of its items to `misc` and sets their buy prices to `0`.
 - **Add item**: select any item in the game or one from the inventory. Custom names, enchantments and container contents are stored with the entry.
-- **Buy Price / Sell Price**: the price of one item. `0` disables that direction.
+- **Buy Price / Sell Price**: the price of one item. `0` disables that direction. When dynamic pricing applies to the item, the Buy Price button also shows the Base Buy Price (what you configured), the Current Buy Price (what players pay right now) and the Current Multiplier.
+- **Dynamic Pricing**: per-item switch to opt this item out of dynamic pricing even while it's enabled server-wide.
 - **Bulk Amount**: how many a shift-click buys or sells.
 - **Category**: which page of the shop the item appears on. `blocks.wood` creates a sub-page.
 - **Delete**: removes the entry.
 
+### Dynamic shop pricing
+
+Optional, off by default (`dynamic_prices_enabled`). When on, every buy price (except items or categories that opted out) is scaled by:
+
+```
+current price = base price × current active-player median balance / starting balance
+```
+
+Sell prices are never affected, and the configured price is always the base price used in that formula. The scale factor is clamped between `dynamic_price_min_multiplier` and `dynamic_price_max_multiplier`, cached, and recalculated at most once an hour. "Active" players are those who logged in within `dynamic_price_min_active_days` days, so accounts that never come back and sit at the starting balance don't drag the median down.
+
+Opt out a whole category from its category editor, or a single item from its item editor, in the Shop editor above.
+
 ### Settings
 
-Covers every option in `config.json`: starting balance, daily reward, daily sell limit, tax rate, PvP money loss, thousands separator, log retention, and switches for the shop, auction house, orders, selling, the balance sidebar, the short command aliases and transaction logging.
+Covers every option in `config.json`: starting balance, daily reward, daily sell limit, tax rate, PvP money loss, thousands separator, log retention, dynamic shop pricing, and switches for the shop, auction house, orders, selling, the balance sidebar, the short command aliases and transaction logging.
 
 ### Players
 
@@ -63,7 +76,7 @@ Select any player, online or not, to give, take or set their balance, remove the
 
 ## Config files
 
-On a server, config and player data are stored in `config/economycraft/`: `config.json`, `webhook.json` and `prices.json` at the top, balances, auctions, orders and deliveries under `data/`.
+On a server, config and player data are stored in `config/economycraft/`: `config.json`, `webhook.json` and `prices.json` at the top, balances, auctions, orders, deliveries and player activity (for dynamic pricing) under `data/`.
 
 In singleplayer each world gets that same folder inside its own save, at `saves/<world>/economycraft/`.
 
@@ -92,6 +105,10 @@ In singleplayer each world gets that same folder inside its own save, at `saves/
 | `auction_expiration_hours`       | `168`   | Hours before an unsold auction listing expires and its item goes to deliveries. `0` disables expiration.                        |
 | `max_active_orders_per_player`   | `0`     | Most open order requests a player can have at once. `0` allows unlimited. Overridable per player in the admin Players menu.     |
 | `max_active_auctions_per_player` | `0`     | Most active auction listings a player can have at once. `0` allows unlimited. Overridable per player in the admin Players menu. |
+| `dynamic_prices_enabled`         | `false` | Scale shop buy prices with the active-player median balance. See [Dynamic shop pricing](#dynamic-shop-pricing).                 |
+| `dynamic_price_min_multiplier`   | `0.5`   | Lowest allowed price scale, even if the median balance craters.                                                                 |
+| `dynamic_price_max_multiplier`   | `5.0`   | Highest allowed price scale, even if the median balance soars.                                                                  |
+| `dynamic_price_min_active_days`  | `30`    | Players must have logged in within this many days to count toward the median. `0` includes every player.                       |
 
 ### `webhook.json`
 
@@ -120,10 +137,11 @@ One entry per shop item, keyed by item id:
 
 Items from installed mods are added automatically with their mod ID as the category and both prices set to `0`.
 
-Two further keys are written by the editor:
+Further keys are written by the editor:
 
 - `components` holds NBT for custom items such as a name, enchantments or shulker contents. JSON keys must be unique, so a second variant of the same item takes a `#label` suffix, e.g.: `minecraft:shulker_box#loot_rare`. The suffix is stripped on load and is not shown to players.
 - `"removed": true` marks a bundled default that was deleted, so it is not restored on the next start. Delete the entry to restore it.
+- `"dynamic_price_enabled": false` opts that item out of [dynamic shop pricing](#dynamic-shop-pricing) even while it's enabled server-wide. Omitted (defaults to enabled) unless the item was opted out. The `_categories` block at the bottom takes the same key per category.
 
 ---
 
@@ -176,7 +194,7 @@ Set `webhook_min_amount` to only notify on larger transactions.
 
 The normal EconomyCraft jar includes API v1 for other server-side mods. There is no separate runtime API mod to install.
 
-The API covers balances and payments, official money formatting, read-only item prices, leaderboard data and successful balance-change events. Public classes are under `com.reazip.economycraft.api.v1`.
+The API covers balances and payments, official money formatting, read-only item prices, leaderboard data and successful balance-change events. Public classes are under `com.reazip.economycraft.api.v1`. `ItemPrice.unitBuyPrice()` reflects what a player would actually pay right now, so it moves with [dynamic shop pricing](#dynamic-shop-pricing) when that's enabled.
 
 See the [Developer API wiki](https://github.com/PhilipB06/EconomyCraft/wiki) for setup, examples, behavior rules and the complete reference.
 

@@ -73,6 +73,11 @@ public final class EconomyCraft {
         } catch (Exception e) {
             LOGGER.error("[EconomyCraft] Failed to process auction expirations", e);
         }
+        try {
+            eco.maybeRefreshDynamicPrices();
+        } catch (Exception e) {
+            LOGGER.error("[EconomyCraft] Failed to refresh dynamic shop prices", e);
+        }
     }
 
     private static void onPlayerJoin(ServerPlayer player) {
@@ -87,6 +92,7 @@ public final class EconomyCraft {
                 eco.refreshLeaderboard();
             }
 
+            eco.markActive(player.getUUID());
             eco.getNotifications().sendPending(player);
 
             if (eco.getDeliveries().hasDeliveries(player.getUUID())) {
@@ -163,6 +169,11 @@ public final class EconomyCraft {
 
     public static String signedMoney(long amount) {
         return (amount < 0 ? "-" : "+") + formatMoney(Math.abs(amount));
+    }
+
+    public static String formatMultiplier(double multiplier) {
+        DecimalFormatSymbols symbols = DecimalFormatSymbols.getInstance(Locale.ROOT);
+        return new DecimalFormat("0.##", symbols).format(multiplier) + "x";
     }
 
     private static final String[] SHORT_MONEY_SUFFIXES = {"", "k", "M", "B", "T"};

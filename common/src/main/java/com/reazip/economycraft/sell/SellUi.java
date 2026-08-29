@@ -123,6 +123,7 @@ public final class SellUi {
             if (inner == null) return true;
 
             boolean allSellable = true;
+            long before = acc.total;
             for (ItemStack innerStack : inner) {
                 if (innerStack.isEmpty()) continue;
                 if (SellService.sellableResolved(prices, innerStack) == null) {
@@ -130,6 +131,15 @@ public final class SellUi {
                     continue;
                 }
                 addPreview(acc, innerStack, prices.getUnitSell(innerStack));
+            }
+
+            long contentsValue = acc.total - before;
+            if (allSellable && EconomyConfig.get().dailySellLimit > 0
+                    && contentsValue > manager.getDailySellRemaining(viewer.getUUID())) {
+                allSellable = false;
+            }
+            if (allSellable && contentsValue > EconomyManager.MAX - manager.getBalance(viewer.getUUID(), true)) {
+                allSellable = false;
             }
             return allSellable;
         }

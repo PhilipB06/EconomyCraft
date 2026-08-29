@@ -1,4 +1,5 @@
 ### Features
+- Added optional dynamic shop pricing: buy prices scale with the median balance of active players, so purchasing power stays roughly constant as the server economy grows. Sell prices are never affected. Configurable multiplier bounds and active-player window, cached and recalculated hourly. Categories and individual items can opt out.
 - The Sell UI can now sell shulker boxes. Can be cycled between rejecting them, selling only their contents, and selling the box together with its contents.
 - Added in-game transactions viewer: players browse their own balance history, while admins can browse any player's history.
 - Orders and auction listings now expire after a configurable time.

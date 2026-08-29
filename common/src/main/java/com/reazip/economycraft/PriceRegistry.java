@@ -134,8 +134,9 @@ public final class PriceRegistry {
                 int stack = getInt(obj);
                 long unitBuy = getLong(obj, "unit_buy");
                 long unitSell = getLong(obj, "unit_sell");
+                boolean dynamicPriceEnabled = getBoolean(obj, "dynamic_price_enabled", true);
 
-                PriceEntry entry = new PriceEntry(key, id, category, stack, unitBuy, unitSell, customItem);
+                PriceEntry entry = new PriceEntry(key, id, category, stack, unitBuy, unitSell, customItem, dynamicPriceEnabled);
                 prices.computeIfAbsent(id, k -> new ArrayList<>()).add(entry);
                 entryCount++;
             }
@@ -378,16 +379,32 @@ public final class PriceRegistry {
     }
 
     public boolean isCategoryEnabled(String category) {
+        return cascadesEnabled(category, CategorySettings::enabled);
+    }
+
+    public boolean isCategoryDynamicPricingEnabled(String category) {
+        return cascadesEnabled(category, CategorySettings::dynamicPriceEnabled);
+    }
+
+    private boolean cascadesEnabled(String category, Predicate<CategorySettings> enabled) {
         String current = normalizeCategory(category);
         if (current.isBlank()) return true;
 
         while (true) {
             CategorySettings settings = categorySettings.get(current);
-            if (settings != null && !settings.enabled()) return false;
+            if (settings != null && !enabled.test(settings)) return false;
             int dot = current.lastIndexOf('.');
             if (dot < 0) return true;
             current = current.substring(0, dot);
         }
+    }
+
+    public boolean isDynamicPricingEnabled(String category, boolean itemEnabled) {
+        return itemEnabled && isCategoryDynamicPricingEnabled(category);
+    }
+
+    public boolean isDynamicPricingEnabled(PriceEntry entry) {
+        return isDynamicPricingEnabled(entry.category(), entry.dynamicPriceEnabled());
     }
 
     public int categoryItemCount(String category) {
@@ -504,7 +521,7 @@ public final class PriceRegistry {
     }
 
     public synchronized boolean upsert(String key, String category, int stack, long unitBuy, long unitSell,
-                                       @Nullable ItemStack customItem) {
+                                       @Nullable ItemStack customItem, boolean dynamicPriceEnabled) {
         if (key == null || key.isBlank()) return false;
         return mutate(root -> {
             JsonObject obj = new JsonObject();
@@ -512,6 +529,7 @@ public final class PriceRegistry {
             obj.addProperty("stack", Math.max(1, stack));
             obj.addProperty("unit_buy", Math.max(0, unitBuy));
             obj.addProperty("unit_sell", Math.max(0, unitSell));
+            if (!dynamicPriceEnabled) obj.addProperty("dynamic_price_enabled", false);
             JsonElement components = customItem == null ? null : encodeComponents(key, customItem);
             if (components != null) obj.add("components", components);
             root.add(key, obj);
@@ -532,7 +550,7 @@ public final class PriceRegistry {
     }
 
     public synchronized boolean upsertCategory(String category, @Nullable String name, @Nullable String color,
-                                               @Nullable String icon, boolean enabled) {
+                                               @Nullable String icon, boolean enabled, boolean dynamicPriceEnabled) {
         String normalized = normalizeCategory(category);
         if (normalized.isBlank()) return false;
 
@@ -550,6 +568,7 @@ public final class PriceRegistry {
             if (color != null && !color.isBlank()) settings.addProperty("color", color.trim().toLowerCase(Locale.ROOT));
             if (iconId != null) settings.addProperty("icon", iconId.asString());
             settings.addProperty("enabled", enabled);
+            settings.addProperty("dynamic_price_enabled", dynamicPriceEnabled);
             categories.add(normalized, settings);
         });
     }
@@ -635,7 +654,8 @@ public final class PriceRegistry {
             String color = getOptionalString(value, "color");
             IdentifierCompat.Id icon = IdentifierCompat.tryParse(getOptionalString(value, "icon"));
             boolean enabled = getBoolean(value, "enabled", true);
-            categorySettings.put(key, new CategorySettings(name, color, icon, enabled));
+            boolean dynamicPriceEnabled = getBoolean(value, "dynamic_price_enabled", true);
+            categorySettings.put(key, new CategorySettings(name, color, icon, enabled, dynamicPriceEnabled));
         }
     }
 
@@ -1040,9 +1060,11 @@ public final class PriceRegistry {
             int stack,
             long unitBuy,
             long unitSell,
-            ItemStack customItem
+            ItemStack customItem,
+            boolean dynamicPriceEnabled
     ) { }
 
     public record CategorySettings(@Nullable String name, @Nullable String color,
-                                   @Nullable IdentifierCompat.Id icon, boolean enabled) { }
+                                   @Nullable IdentifierCompat.Id icon, boolean enabled,
+                                   boolean dynamicPriceEnabled) { }
 }

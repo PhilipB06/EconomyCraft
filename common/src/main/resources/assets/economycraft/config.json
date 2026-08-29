@@ -18,5 +18,9 @@
   "order_expiration_hours": 168,
   "auction_expiration_hours": 168,
   "max_active_orders_per_player": 0,
-  "max_active_auctions_per_player": 0
+  "max_active_auctions_per_player": 0,
+  "dynamic_prices_enabled": false,
+  "dynamic_price_min_multiplier": 0.5,
+  "dynamic_price_max_multiplier": 5.0,
+  "dynamic_price_min_active_days": 30
 }

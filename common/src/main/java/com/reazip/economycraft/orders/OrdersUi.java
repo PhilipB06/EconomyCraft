@@ -74,7 +74,7 @@ public final class OrdersUi {
     private static void addRewardLore(List<Component> lore, long reward, long tax, int amount) {
         lore.add(createRewardLore(reward, tax));
         if (amount > 1) {
-            long rewardPerItem = OrderFulfillment.rewardPerItem(reward, amount);
+            long rewardPerItem = OrderManager.rewardPerItem(reward, amount);
             if (rewardPerItem > 0) {
                 long taxPerItem = Math.round(rewardPerItem * EconomyConfig.get().taxRate);
                 lore.add(createRewardLore("Reward per item", rewardPerItem, taxPerItem));
@@ -338,7 +338,7 @@ public final class OrdersUi {
                         EconomySounds.failure(viewer);
                         viewer.sendSystemMessage(Component.literal("You have no " + req.item.getHoverName().getString() +
                                 " to fulfill this.").withStyle(ChatFormatting.RED));
-                    } else if (OrderFulfillment.requiresCompleteFulfillment(req) && held < req.amount) {
+                    } else if (OrderManager.requiresCompleteFulfillment(req) && held < req.amount) {
                         EconomySounds.failure(viewer);
                         viewer.sendSystemMessage(Component.literal("This request must be fulfilled all at once.")
                                 .withStyle(ChatFormatting.RED));

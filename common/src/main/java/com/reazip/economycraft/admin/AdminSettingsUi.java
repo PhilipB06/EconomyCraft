@@ -63,7 +63,12 @@ public final class AdminSettingsUi {
         STANDALONE(24, "Short Commands", "Allow /pay, /shop and /ah without the /eco prefix."),
         STANDALONE_ADMIN(25, "Short Admin Commands", "Allow /addmoney without the /eco prefix."),
         TRANSACTION_LOG(28, "Transaction Logs", "Record every balance change to a daily log file."),
-        TRANSACTION_LOG_RETENTION(29, "Log Retention", "How many days of transaction logs to keep before deleting them.");
+        TRANSACTION_LOG_RETENTION(29, "Log Retention", "How many days of transaction logs to keep before deleting them."),
+        DYNAMIC_PRICES(30, "Dynamic Prices", "Scale shop buy prices with the active-player median balance."),
+        DYNAMIC_PRICE_MIN_MULT(31, "Min Multiplier", "Lowest allowed price scale, even if the median balance craters."),
+        DYNAMIC_PRICE_MAX_MULT(32, "Max Multiplier", "Highest allowed price scale, even if the median balance soars."),
+        DYNAMIC_PRICE_ACTIVE_DAYS(33, "Active Player Window", "Players must have logged in within this many days to count toward the median.",
+                "0 = include every player, active or not.");
 
         final int slot;
         final String label;
@@ -131,6 +136,23 @@ public final class AdminSettingsUi {
             toggle(Setting.TRANSACTION_LOG, config.transactionLogEnabled);
             value(Setting.TRANSACTION_LOG_RETENTION, Items.MAP, days(config.transactionLogRetentionDays));
 
+            List<Component> dynamicPricesLore = new ArrayList<>();
+            dynamicPricesLore.add(MenuUiSupport.hint(Setting.DYNAMIC_PRICES.description));
+            dynamicPricesLore.add(MenuUiSupport.labeledValue("Now", config.dynamicPricesEnabled ? "On" : "Off",
+                    MenuUiSupport.LABEL_PRIMARY_COLOR));
+            dynamicPricesLore.add(MenuUiSupport.labeledValue("Current multiplier",
+                    EconomyCraft.formatMultiplier(eco.getDynamicPriceMultiplier()), MenuUiSupport.LABEL_PRIMARY_COLOR));
+            dynamicPricesLore.add(MenuUiSupport.labeledValue("Click", config.dynamicPricesEnabled ? "Turn off" : "Turn on",
+                    MenuUiSupport.LABEL_SECONDARY_COLOR));
+            container.setItem(Setting.DYNAMIC_PRICES.slot, MenuUiSupport.button(
+                    config.dynamicPricesEnabled ? ItemsCompat.limeStainedGlassPane() : ItemsCompat.redStainedGlassPane(),
+                    Setting.DYNAMIC_PRICES.label, config.dynamicPricesEnabled ? ChatFormatting.GREEN : ChatFormatting.RED,
+                    dynamicPricesLore.toArray(new Component[0])));
+
+            value(Setting.DYNAMIC_PRICE_MIN_MULT, Items.PAPER, EconomyCraft.formatMultiplier(config.dynamicPriceMinMultiplier));
+            value(Setting.DYNAMIC_PRICE_MAX_MULT, Items.PAPER, EconomyCraft.formatMultiplier(config.dynamicPriceMaxMultiplier));
+            value(Setting.DYNAMIC_PRICE_ACTIVE_DAYS, Items.CLOCK, activeDaysLabel(config.dynamicPriceMinActiveDays));
+
             container.setItem(BACK, MenuUiSupport.backButton());
             MenuUiSupport.fillBackground(container);
         }
@@ -165,6 +187,10 @@ public final class AdminSettingsUi {
 
         private static String days(long value) {
             return value + (value == 1 ? " day" : " days");
+        }
+
+        private static String activeDaysLabel(long value) {
+            return value <= 0 ? "All players" : days(value);
         }
 
         private void editMoney(Setting setting, long current, long min, net.minecraft.world.item.Item icon,
@@ -202,6 +228,39 @@ public final class AdminSettingsUi {
                     (p, next) -> {
                         apply.accept(next);
                         save(p);
+                        EconomySounds.click(p);
+                        open(p, eco);
+                    },
+                    p -> open(p, eco));
+        }
+
+        private void editMultiplier(Setting setting, double current, net.minecraft.world.item.Item icon,
+                                    java.util.function.DoubleConsumer apply) {
+            long initial = Math.round(current * 100);
+            NumberInputUi.open(viewer, setting.label, new ItemStack(icon), setting.label, initial,
+                    0, Math.round(EconomyConfig.MAX_DYNAMIC_PRICE_MULTIPLIER * 100),
+                    new int[]{1000, 100, 25, 1}, v -> EconomyCraft.formatMultiplier(v / 100.0),
+                    "Confirm", null,
+                    (p, next) -> {
+                        apply.accept(next / 100.0);
+                        EconomyConfig.normalizeDynamicPriceBounds();
+                        save(p);
+                        eco.refreshDynamicPrices();
+                        EconomySounds.click(p);
+                        open(p, eco);
+                    },
+                    p -> open(p, eco));
+        }
+
+        private void editActiveDays(Setting setting, long current, net.minecraft.world.item.Item icon,
+                                    java.util.function.LongConsumer apply) {
+            NumberInputUi.open(viewer, setting.label, new ItemStack(icon), setting.label, current,
+                    0, Integer.MAX_VALUE, new int[]{30, 7, 1}, SettingsMenu::activeDaysLabel,
+                    "Confirm", null,
+                    (p, next) -> {
+                        apply.accept(next);
+                        save(p);
+                        eco.refreshDynamicPrices();
                         EconomySounds.click(p);
                         open(p, eco);
                     },
@@ -290,6 +349,18 @@ public final class AdminSettingsUi {
                     }
                     case TRANSACTION_LOG_RETENTION -> editRetentionDays(setting, config.transactionLogRetentionDays,
                             Items.MAP, v -> EconomyConfig.get().transactionLogRetentionDays = (int) v);
+                    case DYNAMIC_PRICES -> {
+                        config.dynamicPricesEnabled = !config.dynamicPricesEnabled;
+                        save(viewer);
+                        eco.refreshDynamicPrices();
+                        render();
+                    }
+                    case DYNAMIC_PRICE_MIN_MULT -> editMultiplier(setting, config.dynamicPriceMinMultiplier, Items.PAPER,
+                            v -> EconomyConfig.get().dynamicPriceMinMultiplier = v);
+                    case DYNAMIC_PRICE_MAX_MULT -> editMultiplier(setting, config.dynamicPriceMaxMultiplier, Items.PAPER,
+                            v -> EconomyConfig.get().dynamicPriceMaxMultiplier = v);
+                    case DYNAMIC_PRICE_ACTIVE_DAYS -> editActiveDays(setting, config.dynamicPriceMinActiveDays, Items.CLOCK,
+                            v -> EconomyConfig.get().dynamicPriceMinActiveDays = (int) v);
                 }
                 return true;
             }

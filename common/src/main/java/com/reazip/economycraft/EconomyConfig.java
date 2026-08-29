@@ -56,9 +56,18 @@ public class EconomyConfig {
     public int maxActiveOrdersPerPlayer = 0;
     @SerializedName("max_active_auctions_per_player")
     public int maxActiveAuctionsPerPlayer = 0;
+    @SerializedName("dynamic_prices_enabled")
+    public boolean dynamicPricesEnabled = false;
+    @SerializedName("dynamic_price_min_multiplier")
+    public double dynamicPriceMinMultiplier = 0.5;
+    @SerializedName("dynamic_price_max_multiplier")
+    public double dynamicPriceMaxMultiplier = 5.0;
+    @SerializedName("dynamic_price_min_active_days")
+    public int dynamicPriceMinActiveDays = 30;
 
     public static final int MIN_TRANSACTION_LOG_RETENTION_DAYS = 1;
     public static final int WARN_TRANSACTION_LOG_RETENTION_DAYS = 90;
+    public static final double MAX_DYNAMIC_PRICE_MULTIPLIER = 100.0;
 
     private static EconomyConfig INSTANCE = new EconomyConfig();
     private static Path file;
@@ -97,19 +106,25 @@ public class EconomyConfig {
             parsed.auctionExpirationHours = clampNonNegative("auction_expiration_hours", parsed.auctionExpirationHours);
             parsed.maxActiveOrdersPerPlayer = clampNonNegative("max_active_orders_per_player", parsed.maxActiveOrdersPerPlayer);
             parsed.maxActiveAuctionsPerPlayer = clampNonNegative("max_active_auctions_per_player", parsed.maxActiveAuctionsPerPlayer);
+            parsed.dynamicPriceMinActiveDays = clampNonNegative("dynamic_price_min_active_days", parsed.dynamicPriceMinActiveDays);
             INSTANCE = parsed;
+            normalizeDynamicPriceBounds();
         } catch (Exception e) {
             throw new IllegalStateException("[EconomyCraft] Failed to read/parse config.json at " + file, e);
         }
     }
 
-    private static double clampPercentage(String fieldName, double value) {
-        double clamped = Math.clamp(value, 0.0, 1.0);
+    private static double clampRange(String fieldName, double value, double min, double max, String reason) {
+        double clamped = Math.clamp(value, min, max);
         if (clamped != value) {
-            LOGGER.warn("[EconomyCraft] {} ({}) is outside the valid 0.0-1.0 range (decimal factor, e.g. 0.1 = 10%); clamping to {}.",
-                    fieldName, value, clamped);
+            LOGGER.warn("[EconomyCraft] {} ({}) is outside the valid {}-{} range{}; clamping to {}.",
+                    fieldName, value, min, max, reason, clamped);
         }
         return clamped;
+    }
+
+    private static double clampPercentage(String fieldName, double value) {
+        return clampRange(fieldName, value, 0.0, 1.0, " (decimal factor, e.g. 0.1 = 10%)");
     }
 
     private static int clampRetentionDays(int days) {
@@ -131,6 +146,21 @@ public class EconomyConfig {
             return 0;
         }
         return value;
+    }
+
+    public static void normalizeDynamicPriceBounds() {
+        EconomyConfig config = INSTANCE;
+        config.dynamicPriceMinMultiplier = clampMultiplierRange("dynamic_price_min_multiplier", config.dynamicPriceMinMultiplier);
+        config.dynamicPriceMaxMultiplier = clampMultiplierRange("dynamic_price_max_multiplier", config.dynamicPriceMaxMultiplier);
+        if (config.dynamicPriceMaxMultiplier < config.dynamicPriceMinMultiplier) {
+            LOGGER.warn("[EconomyCraft] dynamic_price_max_multiplier ({}) is below dynamic_price_min_multiplier ({}); raising it to match.",
+                    config.dynamicPriceMaxMultiplier, config.dynamicPriceMinMultiplier);
+            config.dynamicPriceMaxMultiplier = config.dynamicPriceMinMultiplier;
+        }
+    }
+
+    private static double clampMultiplierRange(String fieldName, double value) {
+        return clampRange(fieldName, value, 0.0, MAX_DYNAMIC_PRICE_MULTIPLIER, "");
     }
 
     public static void save() {

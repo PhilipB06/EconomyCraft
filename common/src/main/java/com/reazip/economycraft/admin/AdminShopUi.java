@@ -50,41 +50,49 @@ public final class AdminShopUi {
     }
 
     public record Draft(String key, ItemStack display, @Nullable ItemStack customItem, String category,
-                        int stack, long unitBuy, long unitSell) {
+                        int stack, long unitBuy, long unitSell, boolean dynamicPriceEnabled) {
 
         Draft withCategory(String value) {
-            return new Draft(key, display, customItem, value, stack, unitBuy, unitSell);
+            return new Draft(key, display, customItem, value, stack, unitBuy, unitSell, dynamicPriceEnabled);
         }
 
         Draft withStack(int value) {
-            return new Draft(key, display, customItem, category, value, unitBuy, unitSell);
+            return new Draft(key, display, customItem, category, value, unitBuy, unitSell, dynamicPriceEnabled);
         }
 
         Draft withBuy(long value) {
-            return new Draft(key, display, customItem, category, stack, value, unitSell);
+            return new Draft(key, display, customItem, category, stack, value, unitSell, dynamicPriceEnabled);
         }
 
         Draft withSell(long value) {
-            return new Draft(key, display, customItem, category, stack, unitBuy, value);
+            return new Draft(key, display, customItem, category, stack, unitBuy, value, dynamicPriceEnabled);
+        }
+
+        Draft withDynamicPriceEnabled(boolean value) {
+            return new Draft(key, display, customItem, category, stack, unitBuy, unitSell, value);
         }
     }
 
     private record CategoryDraft(String key, @Nullable String name, @Nullable ChatFormatting color,
-                                 @Nullable String icon, boolean enabled) {
+                                 @Nullable String icon, boolean enabled, boolean dynamicPriceEnabled) {
         CategoryDraft withName(String value) {
-            return new CategoryDraft(key, value, color, icon, enabled);
+            return new CategoryDraft(key, value, color, icon, enabled, dynamicPriceEnabled);
         }
 
         CategoryDraft withColor(@Nullable ChatFormatting value) {
-            return new CategoryDraft(key, name, value, icon, enabled);
+            return new CategoryDraft(key, name, value, icon, enabled, dynamicPriceEnabled);
         }
 
         CategoryDraft withIcon(@Nullable String value) {
-            return new CategoryDraft(key, name, color, value, enabled);
+            return new CategoryDraft(key, name, color, value, enabled, dynamicPriceEnabled);
         }
 
         CategoryDraft withEnabled(boolean value) {
-            return new CategoryDraft(key, name, color, icon, value);
+            return new CategoryDraft(key, name, color, icon, value, dynamicPriceEnabled);
+        }
+
+        CategoryDraft withDynamicPriceEnabled(boolean value) {
+            return new CategoryDraft(key, name, color, icon, enabled, value);
         }
     }
 
@@ -160,7 +168,7 @@ public final class AdminShopUi {
                     String key = custom ? prices.uniqueKeyFor(id, labelFor(prototype)) : id.asString();
                     Draft draft = new Draft(key, prototype, custom ? prototype : null,
                             category != null ? category : "misc",
-                            prototype.getMaxStackSize(), DEFAULT_BUY, DEFAULT_SELL);
+                            prototype.getMaxStackSize(), DEFAULT_BUY, DEFAULT_SELL, true);
 
                     if (!store(picker, eco, draft)) {
                         openList(picker, eco, origin, category, null, 0);
@@ -175,7 +183,7 @@ public final class AdminShopUi {
 
     private static boolean store(ServerPlayer player, EconomyManager eco, Draft draft) {
         boolean ok = eco.getPrices().upsert(draft.key(), draft.category(), draft.stack(),
-                draft.unitBuy(), draft.unitSell(), draft.customItem());
+                draft.unitBuy(), draft.unitSell(), draft.customItem(), draft.dynamicPriceEnabled());
         if (!ok) {
             EconomySounds.failure(player);
             player.sendSystemMessage(MenuUiSupport.line("Could not write prices.json. Check the server log.",
@@ -194,14 +202,40 @@ public final class AdminShopUi {
         ItemStack display = ShopDisplay.createDisplayStack(entry, viewer);
         if (display.isEmpty()) display = new ItemStack(Items.BARRIER);
         return new Draft(entry.key(), display, entry.customItem(), entry.category(),
-                Math.max(1, entry.stack()), entry.unitBuy(), entry.unitSell());
+                Math.max(1, entry.stack()), entry.unitBuy(), entry.unitSell(), entry.dynamicPriceEnabled());
     }
 
-    private static List<Component> draftLore(Draft draft) {
+    private static List<Component> dynamicPriceLines(EconomyManager eco, Draft draft) {
+        boolean active = draft.unitBuy() > 0 && eco.isDynamicPricingActive(draft.category(), draft.dynamicPriceEnabled());
+        if (!active) {
+            return List.of();
+        }
+        long current = eco.getEffectiveBuyPrice(draft.unitBuy(), active);
+        return List.of(
+                MenuUiSupport.labeledValue("Base Buy Price", EconomyCraft.formatMoney(draft.unitBuy()), MenuUiSupport.LABEL_PRIMARY_COLOR),
+                MenuUiSupport.labeledValue("Current Buy Price", EconomyCraft.formatMoney(current), MenuUiSupport.LABEL_PRIMARY_COLOR),
+                MenuUiSupport.labeledValue("Current Multiplier", EconomyCraft.formatMultiplier(eco.getDynamicPriceMultiplier()), MenuUiSupport.LABEL_PRIMARY_COLOR)
+        );
+    }
+
+    private static ItemStack dynamicPriceToggleButton(boolean enabled, String hint) {
+        return MenuUiSupport.button(
+                enabled ? ItemsCompat.limeStainedGlassPane() : ItemsCompat.redStainedGlassPane(),
+                "Dynamic Pricing", enabled ? ChatFormatting.GREEN : ChatFormatting.RED,
+                MenuUiSupport.hint(hint),
+                MenuUiSupport.labeledValue("Now", enabled ? "On" : "Off", MenuUiSupport.LABEL_PRIMARY_COLOR),
+                MenuUiSupport.labeledValue("Click", enabled ? "Turn off" : "Turn on", MenuUiSupport.LABEL_SECONDARY_COLOR));
+    }
+
+    private static List<Component> draftLore(Draft draft, List<Component> dynamicLines) {
         List<Component> lore = new ArrayList<>();
         lore.add(MenuUiSupport.labeledValue("Category", draft.category(), MenuUiSupport.LABEL_PRIMARY_COLOR));
-        lore.add(MenuUiSupport.labeledValue("Buy", draft.unitBuy() > 0
-                ? EconomyCraft.formatMoney(draft.unitBuy()) : "not for sale", MenuUiSupport.LABEL_PRIMARY_COLOR));
+        if (!dynamicLines.isEmpty()) {
+            lore.addAll(dynamicLines);
+        } else {
+            lore.add(MenuUiSupport.labeledValue("Buy", draft.unitBuy() > 0
+                    ? EconomyCraft.formatMoney(draft.unitBuy()) : "not for sale", MenuUiSupport.LABEL_PRIMARY_COLOR));
+        }
         lore.add(MenuUiSupport.labeledValue("Sell", draft.unitSell() > 0
                 ? EconomyCraft.formatMoney(draft.unitSell()) : "not sellable", MenuUiSupport.LABEL_PRIMARY_COLOR));
         lore.add(MenuUiSupport.labeledValue("Bulk amount", String.valueOf(draft.stack()),
@@ -231,7 +265,8 @@ public final class AdminShopUi {
             }
         }
         String icon = settings != null && settings.icon() != null ? settings.icon().asString() : null;
-        return new CategoryDraft(category, name, color, icon, settings == null || settings.enabled());
+        return new CategoryDraft(category, name, color, icon, settings == null || settings.enabled(),
+                settings == null || settings.dynamicPriceEnabled());
     }
 
     private static String categoryDraftName(CategoryDraft draft) {
@@ -241,7 +276,7 @@ public final class AdminShopUi {
     private static boolean storeCategory(ServerPlayer player, EconomyManager eco, CategoryDraft draft) {
         boolean ok = eco.getPrices().upsertCategory(draft.key(), draft.name(),
                 draft.color() != null ? draft.color().name().toLowerCase(Locale.ROOT) : null,
-                draft.icon(), draft.enabled());
+                draft.icon(), draft.enabled(), draft.dynamicPriceEnabled());
         if (!ok) {
             EconomySounds.failure(player);
             player.sendSystemMessage(MenuUiSupport.line("Could not write prices.json. Check the server log.",
@@ -474,7 +509,8 @@ public final class AdminShopUi {
                 if (display.isEmpty()) display = new ItemStack(Items.BARRIER);
                 display.setCount(1);
 
-                List<Component> lore = new ArrayList<>(draftLore(toDraft(entry, viewer)));
+                Draft itemDraft = toDraft(entry, viewer);
+                List<Component> lore = new ArrayList<>(draftLore(itemDraft, dynamicPriceLines(eco, itemDraft)));
                 lore.add(MenuUiSupport.labeledValue("Click", "Edit", MenuUiSupport.LABEL_SECONDARY_COLOR));
                 display.set(DataComponents.LORE, new ItemLore(lore));
                 container.setItem(i, display);
@@ -551,6 +587,7 @@ public final class AdminShopUi {
         private static final int COLOR = 12;
         private static final int ICON = 14;
         private static final int ENABLED = 16;
+        private static final int DYNAMIC_PRICE = 17;
         private static final int BACK = 18;
 
         private final ServerPlayer viewer;
@@ -631,6 +668,9 @@ public final class AdminShopUi {
                     MenuUiSupport.labeledValue("Click", draft.enabled() ? "Turn off" : "Turn on",
                             MenuUiSupport.LABEL_SECONDARY_COLOR)));
 
+            container.setItem(DYNAMIC_PRICE, dynamicPriceToggleButton(draft.dynamicPriceEnabled(),
+                    "Whether buy prices here scale with the server economy."));
+
             Component deleteHint = "misc".equalsIgnoreCase(draft.key())
                     ? MenuUiSupport.hint("The fallback category cannot be deleted.")
                     : MenuUiSupport.hint("Moves its items to misc and disables buying them.");
@@ -686,6 +726,10 @@ public final class AdminShopUi {
                 case ENABLED -> {
                     EconomySounds.click(viewer);
                     updateCategory(viewer, eco, origin, draft.withEnabled(!draft.enabled()), returnPage);
+                }
+                case DYNAMIC_PRICE -> {
+                    EconomySounds.click(viewer);
+                    updateCategory(viewer, eco, origin, draft.withDynamicPriceEnabled(!draft.dynamicPriceEnabled()), returnPage);
                 }
                 case DELETE -> {
                     if ("misc".equalsIgnoreCase(draft.key())) {
@@ -818,6 +862,7 @@ public final class AdminShopUi {
         private static final int SELL = 12;
         private static final int STACK = 14;
         private static final int CATEGORY = 16;
+        private static final int DYNAMIC_PRICE = 17;
         private static final int BACK = 18;
 
         private final ServerPlayer viewer;
@@ -848,18 +893,26 @@ public final class AdminShopUi {
         private void render() {
             container.clearContent();
 
+            List<Component> dynamicLines = dynamicPriceLines(eco, draft);
+
             ItemStack display = draft.display().copy();
             display.setCount(1);
-            List<Component> lore = new ArrayList<>(draftLore(draft));
+            List<Component> lore = new ArrayList<>(draftLore(draft, dynamicLines));
             lore.add(MenuUiSupport.italicHint(draft.key()));
             display.set(DataComponents.LORE, new ItemLore(lore));
             container.setItem(ITEM, display);
 
+            List<Component> buyLore = new ArrayList<>();
+            buyLore.add(MenuUiSupport.hint("What players pay for one."));
+            if (!dynamicLines.isEmpty()) {
+                buyLore.addAll(dynamicLines);
+            } else {
+                buyLore.add(MenuUiSupport.labeledValue("Now", draft.unitBuy() > 0
+                        ? EconomyCraft.formatMoney(draft.unitBuy()) : "not for sale", MenuUiSupport.LABEL_PRIMARY_COLOR));
+            }
+            buyLore.add(MenuUiSupport.italicHint("Set to 0 to hide it from the shop."));
             container.setItem(BUY, MenuUiSupport.button(Items.GOLD_INGOT, "Buy Price", ChatFormatting.GOLD,
-                    MenuUiSupport.hint("What players pay for one."),
-                    MenuUiSupport.labeledValue("Now", draft.unitBuy() > 0
-                            ? EconomyCraft.formatMoney(draft.unitBuy()) : "not for sale", MenuUiSupport.LABEL_PRIMARY_COLOR),
-                    MenuUiSupport.italicHint("Set to 0 to hide it from the shop.")));
+                    buyLore.toArray(new Component[0])));
 
             container.setItem(SELL, MenuUiSupport.button(Items.EMERALD, "Sell Price", ChatFormatting.GREEN,
                     MenuUiSupport.hint("What players get for one."),
@@ -874,6 +927,9 @@ public final class AdminShopUi {
             container.setItem(CATEGORY, MenuUiSupport.button(Items.BOOK, "Category", ChatFormatting.YELLOW,
                     MenuUiSupport.hint("Which page of the shop it lives on."),
                     MenuUiSupport.labeledValue("Now", draft.category(), MenuUiSupport.LABEL_PRIMARY_COLOR)));
+
+            container.setItem(DYNAMIC_PRICE, dynamicPriceToggleButton(draft.dynamicPriceEnabled(),
+                    "Whether this item's buy price scales with the server economy."));
 
             container.setItem(DELETE, MenuUiSupport.button(Items.BARRIER, "Delete", ChatFormatting.DARK_RED,
                     MenuUiSupport.hint("Removes it from the shop for good.")));
@@ -929,6 +985,10 @@ public final class AdminShopUi {
                     MenuUiSupport.openMenu(viewer, "Pick a category",
                             (id, inv) -> new CategoryPickerMenu(id, inv, viewer, eco, origin, draft, returnCategory));
                 }
+                case DYNAMIC_PRICE -> {
+                    EconomySounds.click(viewer);
+                    update(draft.withDynamicPriceEnabled(!draft.dynamicPriceEnabled()));
+                }
                 case DELETE -> {
                     EconomySounds.click(viewer);
                     confirmDelete(viewer, eco, origin, draft, returnCategory);
@@ -946,7 +1006,7 @@ public final class AdminShopUi {
 
     private static void confirmDelete(ServerPlayer player, EconomyManager eco, Origin origin, Draft draft,
                                       @Nullable String returnCategory) {
-        List<Component> lore = new ArrayList<>(draftLore(draft));
+        List<Component> lore = new ArrayList<>(draftLore(draft, dynamicPriceLines(eco, draft)));
         lore.add(MenuUiSupport.line("Players will no longer see this item.", ChatFormatting.RED));
 
         ConfirmUi.open(player, "Delete this item?", draft.display(), "Delete it", lore,

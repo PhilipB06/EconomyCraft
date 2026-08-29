@@ -99,7 +99,7 @@ public class OrderManager {
                 outcome[0] = new ClaimResult(ClaimStatus.INVALID_AMOUNT, order, 0, 0, 0, false);
                 return order;
             }
-            if (OrderFulfillment.requiresCompleteFulfillment(order) && give < order.amount) {
+            if (requiresCompleteFulfillment(order) && give < order.amount) {
                 outcome[0] = new ClaimResult(ClaimStatus.FULL_AMOUNT_REQUIRED, order, 0, 0, 0, false);
                 return order;
             }
@@ -108,7 +108,7 @@ public class OrderManager {
                 return order;
             }
 
-            long payment = OrderFulfillment.partialPayment(order, give);
+            long payment = partialPayment(order, give);
             long escrowUsed = Math.min(payment, Math.max(0, order.escrow));
 
             order.amount -= give;
@@ -136,6 +136,19 @@ public class OrderManager {
             target.escrow += escrowUsed;
             return target;
         });
+    }
+
+    static long partialPayment(OrderRequest order, int give) {
+        if (order == null || order.amount <= 0 || give <= 0) return 0;
+        return Math.min(Math.round((double) order.price * give / order.amount), order.price);
+    }
+
+    public static long rewardPerItem(long reward, int amount) {
+        return amount <= 0 ? 0 : Math.round((double) reward / amount);
+    }
+
+    public static boolean requiresCompleteFulfillment(OrderRequest order) {
+        return order != null && order.amount > 1 && rewardPerItem(order.price, order.amount) == 0;
     }
 
     public int countActive(UUID player) {

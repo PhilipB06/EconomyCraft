@@ -342,7 +342,7 @@ public final class ShopUi {
         ItemMenu(int id, Inventory inv, EconomyManager eco, @Nullable String category, @Nullable String displayTitle,
                  @Nullable String searchQuery, int page, ServerPlayer viewer, SortMode sort) {
             this(id, inv, eco, category, displayTitle, searchQuery, page, viewer, sort,
-                    applySort(resolveEntries(eco, category, searchQuery), sort));
+                    applySort(eco, resolveEntries(eco, category, searchQuery), sort));
         }
 
         private ItemMenu(int id, Inventory inv, EconomyManager eco, @Nullable String category, @Nullable String displayTitle,
@@ -372,10 +372,10 @@ public final class ShopUi {
             return searchQuery != null ? eco.getPrices().search(searchQuery, category) : eco.getPrices().buyableByCategory(category);
         }
 
-        private static List<PriceRegistry.PriceEntry> applySort(List<PriceRegistry.PriceEntry> list, SortMode sort) {
+        private static List<PriceRegistry.PriceEntry> applySort(EconomyManager eco, List<PriceRegistry.PriceEntry> list, SortMode sort) {
             if (sort == SortMode.DEFAULT) return list;
             List<PriceRegistry.PriceEntry> copy = new ArrayList<>(list);
-            Comparator<PriceRegistry.PriceEntry> cmp = Comparator.comparingLong(PriceRegistry.PriceEntry::unitBuy);
+            Comparator<PriceRegistry.PriceEntry> cmp = Comparator.comparingLong(eco::getEffectiveBuyPrice);
             copy.sort(sort == SortMode.PRICE_DESC ? cmp.reversed() : cmp);
             return copy;
         }
@@ -403,11 +403,12 @@ public final class ShopUi {
                 if (display.isEmpty()) continue;
 
                 int stackSize = Math.max(1, entry.stack());
+                long unitBuy = eco.getEffectiveBuyPrice(entry);
                 boolean canSell = entry.unitSell() > 0 && EconomyConfig.get().sellEnabled;
                 boolean hasContents = MenuUiSupport.hasContainerContents(display);
 
                 List<Component> lore = new ArrayList<>();
-                Component buyLore = MenuUiSupport.labeledValue("Buy", EconomyCraft.formatMoney(entry.unitBuy()), MenuUiSupport.LABEL_PRIMARY_COLOR);
+                Component buyLore = MenuUiSupport.labeledValue("Buy", EconomyCraft.formatMoney(unitBuy), MenuUiSupport.LABEL_PRIMARY_COLOR);
                 if (canSell) {
                     Component sellLore = MenuUiSupport.labeledValue("Sell", EconomyCraft.formatMoney(entry.unitSell()), MenuUiSupport.LABEL_PRIMARY_COLOR);
                     lore.add(MenuUiSupport.joinLore(buyLore, sellLore));
@@ -416,7 +417,7 @@ public final class ShopUi {
                 }
 
                 if (stackSize > 1) {
-                    Long buyStack = ShopDisplay.safeMultiply(entry.unitBuy(), stackSize);
+                    Long buyStack = ShopDisplay.safeMultiply(unitBuy, stackSize);
                     Long sellStack = ShopDisplay.safeMultiply(entry.unitSell(), stackSize);
                     if (buyStack != null) {
                         String label = "Stack (" + stackSize + ")";
@@ -511,7 +512,7 @@ public final class ShopUi {
             if (slot == navRowStart + 1) {
                 EconomySounds.click(viewer);
                 sort = sort.next();
-                entries = applySort(resolveEntries(eco, category, searchQuery), sort);
+                entries = applySort(eco, resolveEntries(eco, category, searchQuery), sort);
                 page = 0;
                 updatePage();
                 return true;
@@ -548,7 +549,8 @@ public final class ShopUi {
                 return;
             }
 
-            Long total = ShopDisplay.safeMultiply(entry.unitBuy(), amount);
+            long unitPrice = eco.getEffectiveBuyPrice(entry);
+            Long total = ShopDisplay.safeMultiply(unitPrice, amount);
             if (total == null) {
                 EconomySounds.failure(viewer);
                 viewer.sendSystemMessage(Component.literal("Price too large.")
