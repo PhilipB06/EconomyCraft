@@ -356,7 +356,7 @@ public final class EconomyCommands {
             return 0;
         }
 
-        if (!manager.getBalances().containsKey(toId)) {
+        if (manager.getBalance(toId, false) == null) {
             EconomySounds.failure(from);
             source.sendFailure(Component.literal("Unknown player").withStyle(ChatFormatting.RED));
             return 0;

@@ -25,7 +25,8 @@ public final class DeliveryLedger {
     }
 
     public List<ItemStack> get(UUID player) {
-        return deliveries.computeIfAbsent(player, k -> new ArrayList<>());
+        List<ItemStack> list = deliveries.get(player);
+        return list == null ? List.of() : List.copyOf(list);
     }
 
     public boolean remove(UUID player, ItemStack stack) {

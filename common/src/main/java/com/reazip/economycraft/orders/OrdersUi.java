@@ -645,8 +645,19 @@ public final class OrdersUi {
             return eco.getServer().getPlayerList().getPlayer(owner);
         }
 
-        private void removeStack(ItemStack stack) {
-            eco.getDeliveries().removeDelivery(owner, stack);
+        private int claimStack(Player player, ItemStack stack) {
+            ItemStack remainder = stack.copy();
+            player.getInventory().add(remainder);
+            int taken = stack.getCount() - remainder.getCount();
+            if (taken <= 0) return 0;
+
+            if (remainder.isEmpty()) {
+                eco.getDeliveries().removeDelivery(owner, stack);
+            } else {
+                stack.shrink(taken);
+                eco.getDeliveries().save();
+            }
+            return taken;
         }
 
         private boolean isDeliverySlot(int slot) {
@@ -669,11 +680,8 @@ public final class OrdersUi {
                 if (slot < 45) {
                     if (isDeliverySlot(slot)) {
                         Slot s = this.slots.get(slot);
-                        ItemStack stack = s.getItem();
-                        ItemStack copy = stack.copy();
-                        if (player.getInventory().add(copy)) {
+                        if (claimStack(player, s.getItem()) > 0) {
                             EconomySounds.itemPickedUp((ServerPlayer) player);
-                            removeStack(stack);
                             updatePage();
                         }
                     }
@@ -696,16 +704,15 @@ public final class OrdersUi {
         public ItemStack quickMoveStack(Player player, int idx) {
             Slot slot = this.slots.get(idx);
             if (!slot.hasItem()) return ItemStack.EMPTY;
-            ItemStack stack = slot.getItem();
-            ItemStack copy = stack.copy();
             if (isDeliverySlot(idx)) {
-                if (player.getInventory().add(copy)) {
-                    EconomySounds.itemPickedUp((ServerPlayer) player);
-                    removeStack(stack);
-                    updatePage();
-                    return copy;
-                }
-                return ItemStack.EMPTY;
+                ItemStack stack = slot.getItem();
+                ItemStack claimed = stack.copy();
+                int taken = claimStack(player, stack);
+                if (taken <= 0) return ItemStack.EMPTY;
+
+                EconomySounds.itemPickedUp((ServerPlayer) player);
+                updatePage();
+                return claimed.copyWithCount(taken);
             }
             return ItemStack.EMPTY;
         }

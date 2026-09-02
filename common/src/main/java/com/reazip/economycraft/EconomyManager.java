@@ -30,7 +30,6 @@ import net.minecraft.world.scores.criteria.ObjectiveCriteria;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
-import java.io.IOException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
@@ -133,8 +132,8 @@ public class EconomyManager {
     }
 
     public void detach() {
-        active = false;
         teardownObjective(server.getScoreboard());
+        deactivate();
     }
 
     public void deactivate() {
@@ -393,7 +392,9 @@ public class EconomyManager {
                         balances.put(e.getKey(), clamp(e.getValue().longValue()));
                     }
                 }
-            } catch (IOException ignored) {}
+            } catch (Exception ex) {
+                LOGGER.error("[EconomyCraft] Failed to load {}", file, ex);
+            }
         }
     }
 
@@ -414,7 +415,9 @@ public class EconomyManager {
                 String json = Files.readString(dailySellFile);
                 Map<UUID, DailySellData> map = GSON.fromJson(json, DAILY_SELL_TYPE);
                 if (map != null) dailySells.putAll(map);
-            } catch (IOException ignored) {}
+            } catch (Exception ex) {
+                LOGGER.error("[EconomyCraft] Failed to load {}", dailySellFile, ex);
+            }
         }
     }
 
@@ -545,9 +548,7 @@ public class EconomyManager {
 
                 return a.id().compareTo(b.id());
             });
-            if (server.isSameThread()) {
-                leaderboardCache = full;
-            }
+            leaderboardCache = full;
         }
 
         return new ArrayList<>(full.subList(0, Math.min(limit, full.size())));

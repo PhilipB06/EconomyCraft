@@ -142,6 +142,14 @@ public final class ShopDisplay {
         }
     }
 
+    public static Long safeAdd(long a, long b) {
+        try {
+            return Math.addExact(a, b);
+        } catch (ArithmeticException ex) {
+            return null;
+        }
+    }
+
     public static ChatFormatting getCategoryColor(String key) {
         return switch (normalizeCategoryKey(key)) {
             case "redstone" -> ChatFormatting.RED;

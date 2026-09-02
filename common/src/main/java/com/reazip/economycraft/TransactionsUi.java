@@ -12,6 +12,7 @@ import com.reazip.economycraft.util.TransactionEntry;
 import com.reazip.economycraft.util.TransactionLogReader;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
@@ -68,9 +69,21 @@ public final class TransactionsUi {
 
     private static void openInternal(ServerPlayer viewer, UUID targetId, @Nullable String targetName, boolean adminMode,
                                       @Nullable Consumer<ServerPlayer> onBack, int page, TransactionCategory category) {
-        String title = adminMode ? targetName + "'s Transactions" : "Transactions";
-        MenuUiSupport.openMenu(viewer, title, (id, inv) ->
-                new TransactionsMenu(id, inv, viewer, targetId, targetName, adminMode, onBack, page, category));
+        MinecraftServer server = viewer.level().getServer();
+        TransactionLogReader.readForPlayerAsync(EconomyPaths.logsDir(server), targetId)
+                .whenComplete((allEntries, error) -> {
+                    if (error != null) {
+                        LOGGER.error("[EconomyCraft] Failed to read the transaction log for {}", targetId, error);
+                    }
+                    List<TransactionEntry> loaded = allEntries != null ? allEntries : List.of();
+                    try {
+                        server.execute(() -> {
+                            if (server.getPlayerList().getPlayer(viewer.getUUID()) != viewer) return;
+                            reopenWithEntries(viewer, targetId, targetName, adminMode, onBack, page, category, loaded);
+                        });
+                    } catch (RuntimeException ignored) {
+                    }
+                });
     }
 
     private static void reopenWithEntries(ServerPlayer viewer, UUID targetId, @Nullable String targetName, boolean adminMode,
@@ -141,12 +154,6 @@ public final class TransactionsUi {
         private TransactionCategory category;
         private List<TransactionEntry> entries;
         private int page;
-
-        TransactionsMenu(int id, Inventory inv, ServerPlayer viewer, UUID targetId, @Nullable String targetName, boolean adminMode,
-                          @Nullable Consumer<ServerPlayer> onBack, int page, TransactionCategory category) {
-            this(id, inv, viewer, targetId, targetName, adminMode, onBack, page, category,
-                    TransactionLogReader.readForPlayer(EconomyPaths.logsDir(viewer.level().getServer()), targetId));
-        }
 
         private TransactionsMenu(int id, Inventory inv, ServerPlayer viewer, UUID targetId, @Nullable String targetName, boolean adminMode,
                                   @Nullable Consumer<ServerPlayer> onBack, int page, TransactionCategory category,

@@ -3,9 +3,12 @@ package com.reazip.economycraft.util;
 import com.mojang.logging.LogUtils;
 import org.slf4j.Logger;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -22,11 +25,21 @@ public final class AsyncFileWriter {
     public static void writeAsync(Path file, String content) {
         EXECUTOR.execute(() -> {
             try {
-                Files.writeString(file, content, StandardCharsets.UTF_8);
+                writeAtomically(file, content);
             } catch (Exception ex) {
                 LOGGER.error("[EconomyCraft] Failed to write {}", file, ex);
             }
         });
+    }
+
+    private static void writeAtomically(Path file, String content) throws IOException {
+        Path temp = file.resolveSibling(file.getFileName() + ".tmp");
+        Files.writeString(temp, content, StandardCharsets.UTF_8);
+        try {
+            Files.move(temp, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        } catch (AtomicMoveNotSupportedException ex) {
+            Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING);
+        }
     }
 
     public static void flush() {

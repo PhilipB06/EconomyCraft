@@ -3,6 +3,7 @@ package com.reazip.economycraft.util;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.storage.LevelResource;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -19,6 +20,7 @@ public final class EconomyPaths {
     private static final String DATA_DIR_NAME = "data";
     private static final String LOGS_DIR_NAME = "logs";
     private static final String IMPORTED_DIR_NAME = "economycraft_imported";
+    private static final String BACKUP_DIR_SUFFIX = "_backup_";
     private static final List<String> SETTINGS_FILES = List.of(
             "config.json",
             "webhook.json",
@@ -85,7 +87,17 @@ public final class EconomyPaths {
         Path data = dir.resolve(DATA_DIR_NAME);
         createDirectories(data);
 
+        Path backup = null;
+        if (hasAnyOf(dir, SETTINGS_FILES) || hasAnyOf(data, DATA_FILES)) {
+            backup = backUpExisting(dir, data);
+            if (backup == null) return false;
+        }
+
         if (!copyAll(shared, dir, SETTINGS_FILES) || !copyAll(shared.resolve(DATA_DIR_NAME), data, DATA_FILES)) {
+            if (backup != null) {
+                LOGGER.error("[EconomyCraft] Import failed part-way; restoring the previous economy from {}", backup);
+                restoreBackup(backup, dir, data);
+            }
             return false;
         }
 
@@ -100,6 +112,41 @@ public final class EconomyPaths {
         LOGGER.info("[EconomyCraft] Imported the settings and economy from {} into {} and renamed the old folder to {}.",
                 shared, dir, imported);
         return true;
+    }
+
+    private static @Nullable Path backUpExisting(Path dir, Path data) {
+        Path backup = dir.resolveSibling(dir.getFileName() + BACKUP_DIR_SUFFIX + System.currentTimeMillis());
+        Path backupData = backup.resolve(DATA_DIR_NAME);
+        createDirectories(backupData);
+
+        if (!copyAll(dir, backup, SETTINGS_FILES) || !copyAll(data, backupData, DATA_FILES)) {
+            LOGGER.error("[EconomyCraft] Could not back up the existing economy at {}; import aborted so nothing is lost.", dir);
+            return null;
+        }
+
+        LOGGER.info("[EconomyCraft] Backed up the existing economy from {} to {}", dir, backup);
+        return backup;
+    }
+
+    private static void restoreBackup(Path backup, Path dir, Path data) {
+        restoreInto(backup, dir, SETTINGS_FILES);
+        restoreInto(backup.resolve(DATA_DIR_NAME), data, DATA_FILES);
+    }
+
+    private static void restoreInto(Path from, Path to, List<String> names) {
+        for (String name : names) {
+            Path source = from.resolve(name);
+            Path target = to.resolve(name);
+            try {
+                if (Files.isRegularFile(source)) {
+                    Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+                } else {
+                    Files.deleteIfExists(target);
+                }
+            } catch (IOException e) {
+                LOGGER.error("[EconomyCraft] Could not restore {} from {}; the backup is kept at {}", target, source, from, e);
+            }
+        }
     }
 
     private static boolean copyAll(Path from, Path to, List<String> names) {

@@ -230,7 +230,7 @@ public final class OrderFulfillment {
             if (seller.equals(order.requester)) continue;
 
             PriceRegistry.PriceEntry orderPrice = prices.resolve(order.item);
-            if (orderPrice == null || orderPrice != protoPrice) continue;
+            if (orderPrice == null || !orderPrice.key().equals(protoPrice.key())) continue;
 
             if (netRatePerUnit(order) > serverUnitSell) out.add(order);
         }

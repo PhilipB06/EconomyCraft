@@ -210,7 +210,11 @@ public final class NumberInputUi {
         }
 
         private static Long parse(String text) {
-            String cleaned = text.replaceAll("[^0-9-]", "");
+            String trimmed = text.trim();
+            Long shorthand = EconomyCraft.parseMoneyShort(trimmed);
+            if (shorthand != null) return shorthand;
+
+            String cleaned = trimmed.replaceAll("[^0-9-]", "");
             if (cleaned.isEmpty() || cleaned.equals("-")) return null;
             try {
                 return Long.parseLong(cleaned);

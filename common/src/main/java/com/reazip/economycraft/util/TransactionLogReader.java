@@ -14,12 +14,24 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public final class TransactionLogReader {
     private TransactionLogReader() {}
 
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final int MAX_ENTRIES = 2000;
+    private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "EconomyCraft-TxLogRead");
+        t.setDaemon(true);
+        return t;
+    });
+
+    public static CompletableFuture<List<TransactionEntry>> readForPlayerAsync(Path dir, UUID player) {
+        return CompletableFuture.supplyAsync(() -> readForPlayer(dir, player), EXECUTOR);
+    }
 
     public static List<TransactionEntry> readForPlayer(Path dir, UUID player) {
         List<TransactionEntry> entries = new ArrayList<>();

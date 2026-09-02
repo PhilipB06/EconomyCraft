@@ -186,12 +186,17 @@ public class AuctionManager {
                             LOGGER.error("[EconomyCraft] Dropping auction listing {} with an unreadable item in {}", l.id, file);
                             continue;
                         }
+                        if (l.seller == null) {
+                            LOGGER.error("[EconomyCraft] Dropping auction listing {} with no seller in {}", l.id, file);
+                            continue;
+                        }
                         if (l.createdAt <= 0) {
                             l.createdAt = now;
                             l.expiresAt = ExpirationUtil.expiresAt(now, EconomyConfig.get().auctionExpirationHours);
                             migrated = true;
                         }
                         listings.put(l.id, l);
+                        if (l.id >= nextId) nextId = l.id + 1;
                     } catch (Exception ex) {
                         LOGGER.error("[EconomyCraft] Dropping an unreadable auction listing in {}", file, ex);
                     }

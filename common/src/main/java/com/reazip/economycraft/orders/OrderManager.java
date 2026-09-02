@@ -202,12 +202,17 @@ public class OrderManager {
                             LOGGER.error("[EconomyCraft] Dropping order request {} with an unreadable item in {}", r.id, file);
                             continue;
                         }
+                        if (r.requester == null) {
+                            LOGGER.error("[EconomyCraft] Dropping order request {} with no requester in {}", r.id, file);
+                            continue;
+                        }
                         if (r.createdAt <= 0) {
                             r.createdAt = now;
                             r.expiresAt = ExpirationUtil.expiresAt(now, EconomyConfig.get().orderExpirationHours);
                             migrated = true;
                         }
                         requests.put(r.id, r);
+                        if (r.id >= nextId) nextId = r.id + 1;
                     } catch (Exception ex) {
                         LOGGER.error("[EconomyCraft] Dropping an unreadable order request in {}", file, ex);
                     }

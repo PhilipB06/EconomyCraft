@@ -43,18 +43,27 @@ public final class WebhookNotifier {
                         .POST(HttpRequest.BodyPublishers.ofString(GSON.toJson(payload), StandardCharsets.UTF_8))
                         .build();
             } catch (IllegalArgumentException e) {
-                LOGGER.error("[EconomyCraft] Invalid webhook_url \"{}\"", url, e);
+                LOGGER.error("[EconomyCraft] webhook_url is not a valid URL; check webhook.json", e);
                 return;
             }
 
             try {
                 HttpResponse<Void> response = CLIENT.send(request, HttpResponse.BodyHandlers.discarding());
                 if (response.statusCode() >= 300) {
-                    LOGGER.warn("[EconomyCraft] Webhook request to {} returned status {}", url, response.statusCode());
+                    LOGGER.warn("[EconomyCraft] Webhook request to {} returned status {}", redact(url), response.statusCode());
                 }
             } catch (Exception e) {
-                LOGGER.error("[EconomyCraft] Failed to send webhook notification to {}", url, e);
+                LOGGER.error("[EconomyCraft] Failed to send webhook notification to {}", redact(url), e);
             }
         });
+    }
+
+    private static String redact(String url) {
+        try {
+            URI uri = URI.create(url);
+            return uri.getHost() != null ? uri.getScheme() + "://" + uri.getHost() + "/..." : "<redacted>";
+        } catch (IllegalArgumentException e) {
+            return "<redacted>";
+        }
     }
 }

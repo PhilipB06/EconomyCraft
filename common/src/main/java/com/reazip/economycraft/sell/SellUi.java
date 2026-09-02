@@ -7,6 +7,7 @@ import com.reazip.economycraft.EconomySources;
 import com.reazip.economycraft.HubUi;
 import com.reazip.economycraft.PriceRegistry;
 import com.reazip.economycraft.SellService;
+import com.reazip.economycraft.shop.ShopDisplay;
 import com.reazip.economycraft.util.ClickKind;
 import com.reazip.economycraft.util.CompatMenu;
 import com.reazip.economycraft.util.EconomySounds;
@@ -83,9 +84,9 @@ public final class SellUi {
 
         private void addPreview(PreviewAccumulator acc, ItemStack stack, Long unitSell) {
             if (unitSell == null) return;
-            Long value = safeMultiply(unitSell, stack.getCount());
+            Long value = ShopDisplay.safeMultiply(unitSell, stack.getCount());
             if (value == null) return;
-            Long sum = safeAdd(acc.total, value);
+            Long sum = ShopDisplay.safeAdd(acc.total, value);
             if (sum == null) return;
             acc.total = sum;
             acc.count += stack.getCount();
@@ -255,7 +256,7 @@ public final class SellUi {
             totals.orderPayout += split.orderPayout();
             if (split.serverRemaining() <= 0) return;
 
-            Long potential = safeMultiply(unitSell, split.serverRemaining());
+            Long potential = ShopDisplay.safeMultiply(unitSell, split.serverRemaining());
             if (potential == null) return;
 
             if (EconomyConfig.get().dailySellLimit > 0
@@ -433,22 +434,6 @@ public final class SellUi {
             }
             renderNavRow();
             return copy;
-        }
-
-        private static Long safeMultiply(long value, int count) {
-            try {
-                return Math.multiplyExact(value, count);
-            } catch (ArithmeticException ex) {
-                return null;
-            }
-        }
-
-        private static Long safeAdd(long a, long b) {
-            try {
-                return Math.addExact(a, b);
-            } catch (ArithmeticException ex) {
-                return null;
-            }
         }
     }
 }
