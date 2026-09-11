@@ -3,6 +3,7 @@ package com.reazip.economycraft.util;
 import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyManager;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import it.unimi.dsi.fastutil.objects.ReferenceSortedSets;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Holder;
 import net.minecraft.core.NonNullList;
@@ -23,6 +24,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.item.component.ItemLore;
+import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
 import org.jetbrains.annotations.Nullable;
@@ -38,6 +40,7 @@ public final class MenuUiSupport {
 
     public static final ChatFormatting LABEL_PRIMARY_COLOR = ChatFormatting.GOLD;
     public static final ChatFormatting LABEL_SECONDARY_COLOR = ChatFormatting.AQUA;
+    private static final TooltipDisplay HIDDEN_TOOLTIP = new TooltipDisplay(true, ReferenceSortedSets.emptySet());
     public static final ChatFormatting VALUE_COLOR = ChatFormatting.WHITE;
     public static final ChatFormatting BALANCE_NAME_COLOR = ChatFormatting.YELLOW;
     public static final ChatFormatting BALANCE_LABEL_COLOR = ChatFormatting.GOLD;
@@ -121,9 +124,29 @@ public final class MenuUiSupport {
         return button(Items.PAPER, "Page " + (page + 1) + "/" + Math.max(1, totalPages), ChatFormatting.WHITE);
     }
 
+    public static final int PAGINATION_GAP = 24;
+
+    public static int gridSlots(int rows, int itemCount) {
+        return Math.max(0, rows - 1) * 9;
+    }
+
+    public static int playerInvY(int rows, int itemCount) {
+        int extra = totalPages(itemCount, gridSlots(rows, itemCount)) > 1 ? PAGINATION_GAP : 0;
+        return 18 + rows * 18 + 14 + extra;
+    }
+
+    public static void paintPagination(Container container, int pagerRowStart, int page, int itemCount, int itemsPerPage) {
+        int pages = totalPages(itemCount, itemsPerPage);
+        if (pages <= 1) return;
+        if (page > 0) container.setItem(pagerRowStart + 3, prevPageButton());
+        container.setItem(pagerRowStart + 4, pageIndicator(page, pages));
+        if ((page + 1) * itemsPerPage < itemCount) container.setItem(pagerRowStart + 5, nextPageButton());
+    }
+
     public static ItemStack filler() {
         ItemStack stack = new ItemStack(ItemsCompat.grayStainedGlassPane());
         stack.set(DataComponents.CUSTOM_NAME, Component.literal(" "));
+        stack.set(DataComponents.TOOLTIP_DISPLAY, HIDDEN_TOOLTIP);
         return stack;
     }
 

@@ -374,7 +374,7 @@ public final class HubUi {
                 container.setItem(13, MenuUiSupport.button(Items.BARRIER, "No balances yet", ChatFormatting.RED));
             }
 
-            container.setItem(22, MenuUiSupport.button(Items.NETHER_STAR, "Main menu", ChatFormatting.YELLOW));
+            container.setItem(22, MenuUiSupport.backButton());
             MenuUiSupport.fillBackground(container);
         }
 

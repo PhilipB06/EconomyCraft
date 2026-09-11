@@ -3,6 +3,9 @@ package com.reazip.economycraft.neoforge;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.Mod;
 import com.reazip.economycraft.EconomyCraft;
+import com.reazip.economycraft.client.MenuPaginationOverlay;
+import dev.architectury.utils.Env;
+import dev.architectury.utils.EnvExecutor;
 
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.common.NeoForge;
@@ -17,6 +20,9 @@ public final class EconomyCraftNeoForge {
     public EconomyCraftNeoForge() {
         EconomyCraft.registerEvents();
         NeoForge.EVENT_BUS.register(this);
+        EnvExecutor.runInEnv(Env.CLIENT, () -> () -> {
+            MenuPaginationOverlay.register();
+        });
 
         if (EconomyCraftNeoForgeModIds.isPlaceholderApiLoaded()) {
             EconomyCraftNeoForgePlaceholders.register();

@@ -162,14 +162,14 @@ public final class TransactionsUi {
             this.entries = filterEntries(allEntries, category);
             this.page = page;
             this.rows = MenuUiSupport.listMenuRows(entries.size());
-            this.itemsPerPage = (rows - 1) * 9;
-            this.navRowStart = itemsPerPage;
+            this.navRowStart = (rows - 1) * 9;
+            this.itemsPerPage = MenuUiSupport.gridSlots(rows, entries.size());
             this.container = new SimpleContainer(rows * 9);
 
             for (Slot slot : MenuUiSupport.readOnlyGridSlots(container, rows * 9)) {
                 this.addSlot(slot);
             }
-            for (Slot slot : MenuUiSupport.playerInventorySlots(inv, 18 + rows * 18 + 14)) {
+            for (Slot slot : MenuUiSupport.playerInventorySlots(inv, MenuUiSupport.playerInvY(rows, entries.size()))) {
                 this.addSlot(slot);
             }
             renderPage();
@@ -192,10 +192,6 @@ public final class TransactionsUi {
                         ChatFormatting.YELLOW, MenuUiSupport.hint("Nothing recorded here so far.")));
             }
 
-            if (page > 0) container.setItem(navRowStart + 3, MenuUiSupport.prevPageButton());
-            if (start + itemsPerPage < entries.size()) container.setItem(navRowStart + 5, MenuUiSupport.nextPageButton());
-            container.setItem(navRowStart + 4, MenuUiSupport.pageIndicator(page, totalPages));
-
             container.setItem(navRowStart, headerItem());
             if (adminMode) {
                 container.setItem(navRowStart + 1, filterButton());
@@ -203,6 +199,7 @@ public final class TransactionsUi {
             container.setItem(navRowStart + 7, backButton());
 
             MenuUiSupport.fillFooter(container);
+            MenuUiSupport.paintPagination(container, itemsPerPage, page, entries.size(), itemsPerPage);
         }
 
         private ItemStack buildRowItem(TransactionEntry entry) {
@@ -243,11 +240,7 @@ public final class TransactionsUi {
         }
 
         private ItemStack backButton() {
-            if (!adminMode) {
-                return MenuUiSupport.button(Items.NETHER_STAR, "Main menu", ChatFormatting.YELLOW);
-            }
-            return MenuUiSupport.button(Items.BARRIER, "Back", ChatFormatting.DARK_RED,
-                    MenuUiSupport.hint("Back to " + targetName));
+            return MenuUiSupport.backButton();
         }
 
         @Override
@@ -255,20 +248,19 @@ public final class TransactionsUi {
             if (slot < 0 || slot >= rows * 9) return false;
             if (kind != ClickKind.PICKUP && kind != ClickKind.QUICK_MOVE) return true;
 
-            if (slot < navRowStart) return true;
-
-            if (slot == navRowStart + 3 && page > 0) {
+            if (slot == itemsPerPage + 3 && page > 0) {
                 EconomySounds.page(viewer);
                 page--;
                 renderPage();
                 return true;
             }
-            if (slot == navRowStart + 5 && (page + 1) * itemsPerPage < entries.size()) {
+            if (slot == itemsPerPage + 5 && (page + 1) * itemsPerPage < entries.size()) {
                 EconomySounds.page(viewer);
                 page++;
                 renderPage();
                 return true;
             }
+            if (slot < navRowStart) return true;
             if (adminMode && slot == navRowStart + 1) {
                 EconomySounds.click(viewer);
                 TransactionCategory nextCategory = category.next();

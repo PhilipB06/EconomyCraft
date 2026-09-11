@@ -75,15 +75,15 @@ public final class PlayerPickerUi {
             this.onCancel = onCancel;
             this.targets = resolved;
             this.rows = MenuUiSupport.requiredRows(resolved.size());
-            this.gridSlots = (rows - 1) * 9;
-            this.nav = gridSlots;
+            this.gridSlots = MenuUiSupport.gridSlots(rows, resolved.size());
+            this.nav = (rows - 1) * 9;
             this.container = new SimpleContainer(rows * 9);
             this.page = Math.clamp(page, 0, Math.max(0, MenuUiSupport.totalPages(targets.size(), gridSlots) - 1));
 
             for (Slot slot : MenuUiSupport.readOnlyGridSlots(container, rows * 9)) {
                 this.addSlot(slot);
             }
-            for (Slot slot : MenuUiSupport.playerInventorySlots(inv, 18 + rows * 18 + 14)) {
+            for (Slot slot : MenuUiSupport.playerInventorySlots(inv, MenuUiSupport.playerInvY(rows, resolved.size()))) {
                 this.addSlot(slot);
             }
             render();
@@ -125,7 +125,6 @@ public final class PlayerPickerUi {
             var server = viewer.level().getServer();
             EconomyManager eco = EconomyCraft.getManager(server);
             int start = page * gridSlots;
-            int totalPages = MenuUiSupport.totalPages(targets.size(), gridSlots);
 
             for (int i = 0; i < gridSlots; i++) {
                 int index = start + i;
@@ -150,16 +149,13 @@ public final class PlayerPickerUi {
             }
 
             container.setItem(nav, MenuUiSupport.backButton());
-            if (page > 0) container.setItem(nav + 3, MenuUiSupport.prevPageButton());
-            container.setItem(nav + 4, MenuUiSupport.pageIndicator(page, totalPages));
-            if (start + gridSlots < targets.size()) container.setItem(nav + 5, MenuUiSupport.nextPageButton());
-
             container.setItem(nav + 8, searching()
                     ? MenuUiSupport.clearSearchButton(query)
                     : MenuUiSupport.button(Items.COMPASS, "Search", ChatFormatting.GREEN,
                             MenuUiSupport.hint("Find a player by name")));
 
             MenuUiSupport.fillFooter(container);
+            MenuUiSupport.paintPagination(container, gridSlots, page, targets.size(), gridSlots);
         }
 
         @Override
@@ -182,13 +178,13 @@ public final class PlayerPickerUi {
                 if (onCancel != null) onCancel.accept(viewer);
                 return true;
             }
-            if (slot == nav + 3 && page > 0) {
+            if (slot == gridSlots + 3 && page > 0) {
                 EconomySounds.page(viewer);
                 page--;
                 render();
                 return true;
             }
-            if (slot == nav + 5 && (page + 1) * gridSlots < targets.size()) {
+            if (slot == gridSlots + 5 && (page + 1) * gridSlots < targets.size()) {
                 EconomySounds.page(viewer);
                 page++;
                 render();

@@ -113,7 +113,7 @@ public final class ShopUi {
         private final ServerPlayer viewer;
         private List<String> categories = new ArrayList<>();
         private final SimpleContainer container;
-        private final int itemsPerPage = 45;
+        private final int itemsPerPage;
         private final int navRowStart = 45;
         private final int[] slotToIndex = new int[54];
         private int page;
@@ -125,6 +125,7 @@ public final class ShopUi {
             this.prices = eco.getPrices();
 
             refreshCategories();
+            this.itemsPerPage = MenuUiSupport.gridSlots(6, categories.size());
             this.container = new SimpleContainer(54);
             setupSlots(inv);
             updatePage();
@@ -141,7 +142,7 @@ public final class ShopUi {
             for (Slot slot : MenuUiSupport.readOnlyGridSlots(container, 54)) {
                 this.addSlot(slot);
             }
-            for (Slot slot : MenuUiSupport.playerInventorySlots(inv, 18 + 6 * 18 + 14)) {
+            for (Slot slot : MenuUiSupport.playerInventorySlots(inv, MenuUiSupport.playerInvY(6, categories.size()))) {
                 this.addSlot(slot);
             }
         }
@@ -150,7 +151,6 @@ public final class ShopUi {
             container.clearContent();
             java.util.Arrays.fill(slotToIndex, -1);
             int start = page * itemsPerPage;
-            int totalPages = MenuUiSupport.totalPages(categories.size(), itemsPerPage);
 
             for (int i = 0; i < itemsPerPage; i++) {
                 int idx = start + i;
@@ -164,16 +164,13 @@ public final class ShopUi {
                         .withStyle(s -> s.withItalic(false)
                                 .withColor(ShopDisplay.getCategoryColor(prices, cat, cat)).withBold(true)));
                 icon.set(DataComponents.LORE, new ItemLore(List.of(MenuUiSupport.hint("Click to view items"))));
-                int slot = ShopDisplay.STAR_SLOT_ORDER.get(i);
+                int slot = ShopDisplay.starSlotOrder(itemsPerPage / 9).get(i);
+                if (slot >= itemsPerPage) continue;
                 container.setItem(slot, icon);
                 slotToIndex[slot] = idx;
             }
 
-            if (page > 0) container.setItem(navRowStart + 3, MenuUiSupport.prevPageButton());
-            if (start + itemsPerPage < categories.size()) container.setItem(navRowStart + 5, MenuUiSupport.nextPageButton());
-
             container.setItem(navRowStart, MenuUiSupport.createBalanceItem(viewer));
-            container.setItem(navRowStart + 4, MenuUiSupport.pageIndicator(page, totalPages));
 
             if (PermissionCompat.isAdmin(viewer)) {
                 container.setItem(navRowStart + 1, MenuUiSupport.button(Items.COMMAND_BLOCK, "Edit shop",
@@ -182,19 +179,18 @@ public final class ShopUi {
                         MenuUiSupport.hint("Only you (an operator) can see this")));
             }
 
-            container.setItem(navRowStart + 7, MenuUiSupport.button(Items.NETHER_STAR, "Main menu",
-                    ChatFormatting.YELLOW, MenuUiSupport.hint("Everything EconomyCraft can do")));
-
-            container.setItem(navRowStart + 8, MenuUiSupport.searchButton());
+            container.setItem(navRowStart + 8, MenuUiSupport.backButton());
+            container.setItem(navRowStart + 7, MenuUiSupport.searchButton());
 
             MenuUiSupport.fillBackground(container);
+            MenuUiSupport.paintPagination(container, itemsPerPage, page, categories.size(), itemsPerPage);
         }
 
         @Override
         protected boolean onClick(int slot, int dragType, ClickKind kind, Player player) {
             if (kind != ClickKind.PICKUP && kind != ClickKind.QUICK_MOVE) return false;
 
-            if (slot >= 0 && slot < navRowStart) {
+            if (slot >= 0 && slot < itemsPerPage) {
                 int index = slotToIndex[slot];
                 if (index >= 0 && index < categories.size()) {
                     EconomySounds.click(viewer);
@@ -207,19 +203,19 @@ public final class ShopUi {
                     return true;
                 }
             }
-            if (slot == navRowStart + 3 && page > 0) { EconomySounds.page(viewer); page--; updatePage(); return true; }
-            if (slot == navRowStart + 5 && (page + 1) * itemsPerPage < categories.size()) { EconomySounds.page(viewer); page++; updatePage(); return true; }
+            if (slot == itemsPerPage + 3 && page > 0) { EconomySounds.page(viewer); page--; updatePage(); return true; }
+            if (slot == itemsPerPage + 5 && (page + 1) * itemsPerPage < categories.size()) { EconomySounds.page(viewer); page++; updatePage(); return true; }
             if (slot == navRowStart + 1 && PermissionCompat.isAdmin(viewer)) {
                 EconomySounds.click(viewer);
                 AdminShopUi.open(viewer, eco, AdminShopUi.Origin.SHOP);
                 return true;
             }
-            if (slot == navRowStart + 7) {
+            if (slot == navRowStart + 8) {
                 EconomySounds.click(viewer);
                 HubUi.open(viewer);
                 return true;
             }
-            if (slot == navRowStart + 8) {
+            if (slot == navRowStart + 7) {
                 EconomySounds.click(viewer);
                 TextInputUi.openSearch(viewer, "Search Shop", (p, q) -> ShopUi.openSearch(p, eco, q));
                 return true;
@@ -248,8 +244,8 @@ public final class ShopUi {
             this.prices = eco.getPrices();
             refresh();
             this.rows = MenuUiSupport.requiredRows(subcategories.size());
-            this.itemsPerPage = (rows - 1) * 9;
-            this.navRowStart = itemsPerPage;
+            this.navRowStart = (rows - 1) * 9;
+            this.itemsPerPage = MenuUiSupport.gridSlots(rows, subcategories.size());
             this.container = new SimpleContainer(rows * 9);
             setupSlots(inv);
             updatePage();
@@ -268,7 +264,7 @@ public final class ShopUi {
             for (Slot slot : MenuUiSupport.readOnlyGridSlots(container, rows * 9)) {
                 this.addSlot(slot);
             }
-            for (Slot slot : MenuUiSupport.playerInventorySlots(inv, 18 + rows * 18 + 14)) {
+            for (Slot slot : MenuUiSupport.playerInventorySlots(inv, MenuUiSupport.playerInvY(rows, subcategories.size()))) {
                 this.addSlot(slot);
             }
         }
@@ -276,7 +272,6 @@ public final class ShopUi {
         private void updatePage() {
             container.clearContent();
             int start = page * itemsPerPage;
-            int totalPages = MenuUiSupport.totalPages(subcategories.size(), itemsPerPage);
 
             for (int i = 0; i < itemsPerPage; i++) {
                 int idx = start + i;
@@ -294,21 +289,18 @@ public final class ShopUi {
                 container.setItem(i, icon);
             }
 
-            if (page > 0) container.setItem(navRowStart + 3, MenuUiSupport.prevPageButton());
-            if (start + itemsPerPage < subcategories.size()) container.setItem(navRowStart + 5, MenuUiSupport.nextPageButton());
-
             container.setItem(navRowStart + 8, MenuUiSupport.backButton());
             container.setItem(navRowStart, MenuUiSupport.createBalanceItem(viewer));
-            container.setItem(navRowStart + 4, MenuUiSupport.pageIndicator(page, totalPages));
 
             MenuUiSupport.fillBackground(container);
+            MenuUiSupport.paintPagination(container, itemsPerPage, page, subcategories.size(), itemsPerPage);
         }
 
         @Override
         protected boolean onClick(int slot, int dragType, ClickKind kind, Player player) {
             if (kind != ClickKind.PICKUP && kind != ClickKind.QUICK_MOVE) return false;
 
-            if (slot >= 0 && slot < navRowStart) {
+            if (slot >= 0 && slot < itemsPerPage) {
                 int index = page * itemsPerPage + slot;
                 if (index < subcategories.size()) {
                     EconomySounds.click(viewer);
@@ -317,8 +309,8 @@ public final class ShopUi {
                     return true;
                 }
             }
-            if (slot == navRowStart + 3 && page > 0) { EconomySounds.page(viewer); page--; updatePage(); return true; }
-            if (slot == navRowStart + 5 && (page + 1) * itemsPerPage < subcategories.size()) { EconomySounds.page(viewer); page++; updatePage(); return true; }
+            if (slot == itemsPerPage + 3 && page > 0) { EconomySounds.page(viewer); page--; updatePage(); return true; }
+            if (slot == itemsPerPage + 5 && (page + 1) * itemsPerPage < subcategories.size()) { EconomySounds.page(viewer); page++; updatePage(); return true; }
             if (slot == navRowStart + 8) { EconomySounds.click(viewer); openRoot(viewer, eco); return true; }
             return false;
         }
@@ -359,8 +351,8 @@ public final class ShopUi {
 
             this.entries = resolved;
             this.rows = MenuUiSupport.requiredRows(resolved.size());
-            this.itemsPerPage = (rows - 1) * 9;
-            this.navRowStart = itemsPerPage;
+            this.navRowStart = (rows - 1) * 9;
+            this.itemsPerPage = MenuUiSupport.gridSlots(rows, resolved.size());
             this.page = page;
             this.container = new SimpleContainer(rows * 9);
             setupSlots(inv);
@@ -384,7 +376,7 @@ public final class ShopUi {
             for (Slot slot : MenuUiSupport.readOnlyGridSlots(container, rows * 9)) {
                 this.addSlot(slot);
             }
-            for (Slot slot : MenuUiSupport.playerInventorySlots(inv, 18 + rows * 18 + 14)) {
+            for (Slot slot : MenuUiSupport.playerInventorySlots(inv, MenuUiSupport.playerInvY(rows, entries.size()))) {
                 this.addSlot(slot);
             }
         }
@@ -392,7 +384,6 @@ public final class ShopUi {
         private void updatePage() {
             container.clearContent();
             int start = page * itemsPerPage;
-            int totalPages = MenuUiSupport.totalPages(entries.size(), itemsPerPage);
 
             for (int i = 0; i < itemsPerPage; i++) {
                 int idx = start + i;
@@ -446,9 +437,6 @@ public final class ShopUi {
                 container.setItem(i, display);
             }
 
-            if (page > 0) container.setItem(navRowStart + 3, MenuUiSupport.prevPageButton());
-            if (start + itemsPerPage < entries.size()) container.setItem(navRowStart + 5, MenuUiSupport.nextPageButton());
-
             container.setItem(navRowStart + 8, MenuUiSupport.backButton());
 
             if (!searching()) {
@@ -464,14 +452,13 @@ public final class ShopUi {
                     MenuUiSupport.toggleOption("Lowest Price", sort == SortMode.PRICE_ASC),
                     MenuUiSupport.toggleOption("Highest Price", sort == SortMode.PRICE_DESC)));
 
-            container.setItem(navRowStart + 4, MenuUiSupport.pageIndicator(page, totalPages));
-
             MenuUiSupport.fillFooter(container);
+            MenuUiSupport.paintPagination(container, itemsPerPage, page, entries.size(), itemsPerPage);
         }
 
         @Override
         protected boolean onClick(int slot, int dragType, ClickKind kind, Player player) {
-            if (kind == ClickKind.THROW && slot >= 0 && slot < navRowStart) {
+            if (kind == ClickKind.THROW && slot >= 0 && slot < itemsPerPage) {
                 int index = page * itemsPerPage + slot;
                 if (index < entries.size()) {
                     ItemStack display = ShopDisplay.createDisplayStack(entries.get(index), viewer);
@@ -489,7 +476,7 @@ public final class ShopUi {
             }
             if (kind != ClickKind.PICKUP && kind != ClickKind.QUICK_MOVE) return false;
 
-            if (slot >= 0 && slot < navRowStart) {
+            if (slot >= 0 && slot < itemsPerPage) {
                 int index = page * itemsPerPage + slot;
                 if (index < entries.size()) {
                     PriceRegistry.PriceEntry entry = entries.get(index);
@@ -502,8 +489,8 @@ public final class ShopUi {
                     return true;
                 }
             }
-            if (slot == navRowStart + 3 && page > 0) { EconomySounds.page(viewer); page--; updatePage(); return true; }
-            if (slot == navRowStart + 5 && (page + 1) * itemsPerPage < entries.size()) { EconomySounds.page(viewer); page++; updatePage(); return true; }
+            if (slot == itemsPerPage + 3 && page > 0) { EconomySounds.page(viewer); page--; updatePage(); return true; }
+            if (slot == itemsPerPage + 5 && (page + 1) * itemsPerPage < entries.size()) { EconomySounds.page(viewer); page++; updatePage(); return true; }
             if (slot == navRowStart + 7 && !searching()) {
                 EconomySounds.click(viewer);
                 TextInputUi.openSearch(viewer, "Search Shop", (p, q) -> ShopUi.openSearchResults(p, eco, category, q, 0, sort));

@@ -184,7 +184,7 @@ public final class SellUi {
                     MenuUiSupport.toggleOption("Sell only contents", shulkerMode == ShulkerSellMode.CONTENTS_ONLY),
                     MenuUiSupport.toggleOption("Sell everything incl. box", shulkerMode == ShulkerSellMode.EVERYTHING)));
 
-            navContainer.setItem(NAV_MENU, MenuUiSupport.button(Items.NETHER_STAR, "Main menu", ChatFormatting.YELLOW));
+            navContainer.setItem(NAV_MENU, MenuUiSupport.backButton());
 
             SellPreview preview = previewTotals();
             navContainer.setItem(NAV_CONFIRM, MenuUiSupport.confirmButton("Confirm",

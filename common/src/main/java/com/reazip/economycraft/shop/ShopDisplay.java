@@ -38,6 +38,10 @@ public final class ShopDisplay {
 
     public static final List<Integer> STAR_SLOT_ORDER = buildStarSlotOrder(5);
 
+    public static List<Integer> starSlotOrder(int itemRows) {
+        return itemRows >= 5 ? STAR_SLOT_ORDER : buildStarSlotOrder(Math.max(1, itemRows));
+    }
+
     public static String formatCategoryTitle(String category) {
         if (category == null || category.isBlank()) return "Shop";
         String[] parts = category.replace('.', '_').split("_");

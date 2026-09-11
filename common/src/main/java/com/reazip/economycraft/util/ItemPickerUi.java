@@ -83,15 +83,15 @@ public final class ItemPickerUi {
             this.viewer = viewer;
             this.choices = resolved;
             this.rows = MenuUiSupport.requiredRows(resolved.size());
-            this.gridSlots = (rows - 1) * 9;
-            this.nav = gridSlots;
+            this.gridSlots = MenuUiSupport.gridSlots(rows, resolved.size());
+            this.nav = (rows - 1) * 9;
             this.container = new SimpleContainer(rows * 9);
             this.page = Math.clamp(page, 0, Math.max(0, MenuUiSupport.totalPages(choices.size(), gridSlots) - 1));
 
             for (Slot slot : MenuUiSupport.readOnlyGridSlots(container, rows * 9)) {
                 this.addSlot(slot);
             }
-            for (Slot slot : MenuUiSupport.playerInventorySlots(inv, 18 + rows * 18 + 14)) {
+            for (Slot slot : MenuUiSupport.playerInventorySlots(inv, MenuUiSupport.playerInvY(rows, resolved.size()))) {
                 this.addSlot(slot);
             }
             render();
@@ -145,7 +145,6 @@ public final class ItemPickerUi {
         private void render() {
             container.clearContent();
             int start = page * gridSlots;
-            int totalPages = MenuUiSupport.totalPages(choices.size(), gridSlots);
 
             for (int i = 0; i < gridSlots; i++) {
                 int index = start + i;
@@ -173,10 +172,6 @@ public final class ItemPickerUi {
 
             container.setItem(nav, MenuUiSupport.backButton());
 
-            if (page > 0) container.setItem(nav + 3, MenuUiSupport.prevPageButton());
-            container.setItem(nav + 4, MenuUiSupport.pageIndicator(page, totalPages));
-            if (start + gridSlots < choices.size()) container.setItem(nav + 5, MenuUiSupport.nextPageButton());
-
             container.setItem(nav + 1, MenuUiSupport.button(Items.BOOK, "How this works", ChatFormatting.YELLOW,
                     MenuUiSupport.hint("Click any item above to choose it."),
                     MenuUiSupport.hint(source == Source.INVENTORY_AND_ALL
@@ -191,6 +186,7 @@ public final class ItemPickerUi {
                                     : "Search your inventory")));
 
             MenuUiSupport.fillFooter(container);
+            MenuUiSupport.paintPagination(container, gridSlots, page, choices.size(), gridSlots);
         }
 
         @Override
@@ -214,13 +210,13 @@ public final class ItemPickerUi {
                 if (onCancel != null) onCancel.accept(viewer);
                 return true;
             }
-            if (slot == nav + 3 && page > 0) {
+            if (slot == gridSlots + 3 && page > 0) {
                 EconomySounds.page(viewer);
                 page--;
                 render();
                 return true;
             }
-            if (slot == nav + 5 && (page + 1) * gridSlots < choices.size()) {
+            if (slot == gridSlots + 5 && (page + 1) * gridSlots < choices.size()) {
                 EconomySounds.page(viewer);
                 page++;
                 render();

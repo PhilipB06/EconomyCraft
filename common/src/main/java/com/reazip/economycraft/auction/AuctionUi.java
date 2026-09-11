@@ -234,8 +234,8 @@ public final class AuctionUi {
             this.sort = sort;
             this.mineOnly = mineOnly;
             this.rows = MenuUiSupport.listMenuRows(resolved.size());
-            this.itemsPerPage = (rows - 1) * 9;
-            this.navRowStart = itemsPerPage;
+            this.navRowStart = (rows - 1) * 9;
+            this.itemsPerPage = MenuUiSupport.gridSlots(rows, resolved.size());
             this.container = new SimpleContainer(rows * 9);
             this.listings = resolved;
             renderPage();
@@ -243,7 +243,7 @@ public final class AuctionUi {
             for (Slot slot : MenuUiSupport.readOnlyGridSlots(container, rows * 9)) {
                 this.addSlot(slot);
             }
-            for (Slot slot : MenuUiSupport.playerInventorySlots(inv, 18 + rows * 18 + 14)) {
+            for (Slot slot : MenuUiSupport.playerInventorySlots(inv, MenuUiSupport.playerInvY(rows, resolved.size()))) {
                 this.addSlot(slot);
             }
         }
@@ -325,9 +325,6 @@ public final class AuctionUi {
                         ChatFormatting.YELLOW, MenuUiSupport.hint("Be the first: click \"Sell an item\" below")));
             }
 
-            if (page > 0) container.setItem(navRowStart + 3, MenuUiSupport.prevPageButton());
-            if (start + itemsPerPage < listings.size()) container.setItem(navRowStart + 5, MenuUiSupport.nextPageButton());
-
             container.setItem(navRowStart, MenuUiSupport.createBalanceItem(viewer));
 
             container.setItem(navRowStart + 1, MenuUiSupport.button(Items.HOPPER, "Sort",
@@ -341,12 +338,12 @@ public final class AuctionUi {
             container.setItem(navRowStart + 2, MenuUiSupport.button(Items.WRITABLE_BOOK, "Sell an item",
                     ChatFormatting.GREEN, MenuUiSupport.hint("Pick an item, set a price, done.")));
 
-            container.setItem(navRowStart + 4, MenuUiSupport.pageIndicator(page, totalPages));
+            MenuUiSupport.paintPagination(container, itemsPerPage, page, listings.size(), itemsPerPage);
 
             container.setItem(navRowStart + 6, MenuUiSupport.button(Items.ENDER_CHEST, "Deliveries",
                     ChatFormatting.LIGHT_PURPLE, MenuUiSupport.hint("Items waiting to be collected")));
 
-            container.setItem(navRowStart + 7, MenuUiSupport.button(Items.NETHER_STAR, "Main menu", ChatFormatting.YELLOW));
+            container.setItem(navRowStart + 7, MenuUiSupport.backButton());
 
             boolean searching = query != null && !query.isBlank();
             container.setItem(navRowStart + 8, searching
@@ -358,7 +355,7 @@ public final class AuctionUi {
 
         @Override
         protected boolean onClick(int slot, int dragType, ClickKind kind, Player player) {
-            if (kind == ClickKind.THROW && slot >= 0 && slot < navRowStart) {
+            if (kind == ClickKind.THROW && slot >= 0 && slot < itemsPerPage) {
                 int index = page * itemsPerPage + slot;
                 if (index < listings.size() && MenuUiSupport.hasContainerContents(listings.get(index).item)) {
                     ContainerPreviewUi.open(viewer, listings.get(index).item,
@@ -368,7 +365,7 @@ public final class AuctionUi {
             }
             if (kind != ClickKind.PICKUP) return false;
 
-            if (slot >= 0 && slot < navRowStart) {
+            if (slot >= 0 && slot < itemsPerPage) {
                 int index = page * itemsPerPage + slot;
                 if (index < listings.size()) {
                     AuctionListing listing = listings.get(index);
@@ -385,8 +382,8 @@ public final class AuctionUi {
                     return true;
                 }
             }
-            if (slot == navRowStart + 3 && page > 0) { EconomySounds.page(viewer); page--; updatePage(); return true; }
-            if (slot == navRowStart + 5 && (page + 1) * itemsPerPage < listings.size()) { EconomySounds.page(viewer); page++; updatePage(); return true; }
+            if (slot == itemsPerPage + 3 && page > 0) { EconomySounds.page(viewer); page--; updatePage(); return true; }
+            if (slot == itemsPerPage + 5 && (page + 1) * itemsPerPage < listings.size()) { EconomySounds.page(viewer); page++; updatePage(); return true; }
             if (slot == navRowStart + 1) {
                 EconomySounds.click(viewer);
                 cycleSort();

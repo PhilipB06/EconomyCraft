@@ -34,7 +34,6 @@ public final class AdminSettingsUi {
     private static final int NAV_ROW_START = 36;
     private static final int BACK = NAV_ROW_START;
     private static final int PREV = NAV_ROW_START + 3;
-    private static final int PAGE_INDICATOR = NAV_ROW_START + 4;
     private static final int NEXT = NAV_ROW_START + 5;
 
     // Same inner-grid layout the settings screen has always used (rows 1-3, columns 1-7);
@@ -126,7 +125,7 @@ public final class AdminSettingsUi {
             for (Slot slot : MenuUiSupport.readOnlyGridSlots(container, SIZE)) {
                 this.addSlot(slot);
             }
-            for (Slot slot : MenuUiSupport.playerInventorySlots(inv, 18 + 5 * 18 + 14)) {
+            for (Slot slot : MenuUiSupport.playerInventorySlots(inv, MenuUiSupport.playerInvY(5, settings.length))) {
                 this.addSlot(slot);
             }
             render();
@@ -151,13 +150,8 @@ public final class AdminSettingsUi {
             }
 
             container.setItem(BACK, MenuUiSupport.backButton());
-            if (totalPages > 1) {
-                if (page > 0) container.setItem(PREV, MenuUiSupport.prevPageButton());
-                if (start + GRID_SLOTS.length < settings.length) container.setItem(NEXT, MenuUiSupport.nextPageButton());
-                container.setItem(PAGE_INDICATOR, MenuUiSupport.pageIndicator(page, totalPages));
-            }
-
             MenuUiSupport.fillBackground(container);
+            MenuUiSupport.paintPagination(container, NAV_ROW_START, page, settings.length, GRID_SLOTS.length);
         }
 
         private ItemStack buildItem(Setting setting, EconomyConfig config) {

@@ -16,7 +16,7 @@ public final class EconomySounds {
     }
 
     public static void page(ServerPlayer player) {
-        play(player, SoundEvents.BOOK_PAGE_TURN, 0.4F, 1.0F);
+        click(player);
     }
 
     public static void success(ServerPlayer player) {
