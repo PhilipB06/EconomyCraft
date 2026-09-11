@@ -18,7 +18,6 @@ import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.Entity;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
@@ -148,12 +147,6 @@ public final class EconomyCraft {
             EconomyConfig.load(server);
             WebhookConfig.load(server);
             getManager(server);
-        }
-    }
-
-    public static void tryHandlePvpKill(ServerPlayer victim, Entity damageSource) {
-        if (damageSource instanceof ServerPlayer killer) {
-            getManager(victim.level().getServer()).handlePvpKill(victim, killer);
         }
     }
 

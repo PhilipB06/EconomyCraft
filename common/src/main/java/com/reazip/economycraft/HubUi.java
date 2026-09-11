@@ -226,7 +226,6 @@ public final class HubUi {
                             : "Nothing waiting right now.")));
 
             container.setItem(HELP, MenuUiSupport.button(Items.BOOK, "How It Works", ChatFormatting.YELLOW,
-                    MenuUiSupport.hint("Everything here works by clicking."),
                     MenuUiSupport.hint("Claim your daily reward, sell what"),
                     MenuUiSupport.hint("you mine, then buy what you need."),
                     MenuUiSupport.hint("Type /eco to reopen this menu.")));

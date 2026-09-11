@@ -10,13 +10,11 @@ import com.reazip.economycraft.api.v1.PaymentResult;
 import com.reazip.economycraft.orders.OrderManager;
 import com.reazip.economycraft.auction.AuctionManager;
 import com.reazip.economycraft.util.AsyncFileWriter;
-import com.reazip.economycraft.util.EconomySounds;
 import com.reazip.economycraft.util.EconomyPaths;
 import com.reazip.economycraft.util.IdentityCompat;
 import com.reazip.economycraft.util.ProfileCompat;
 import com.reazip.economycraft.util.TransactionLogWriter;
 import com.reazip.economycraft.util.UuidLongMapStore;
-import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.numbers.FixedFormat;
 import net.minecraft.server.MinecraftServer;
@@ -693,30 +691,6 @@ public class EconomyManager {
             dailySells.put(player, data);
         }
         return data;
-    }
-
-    public void handlePvpKill(ServerPlayer victim, ServerPlayer killer) {
-        double pct = Math.min(EconomyConfig.get().pvpBalanceLossPercentage, 1.0);
-        if (pct <= 0.0) return;
-        if (victim == null || killer == null) return;
-        if (victim.getUUID().equals(killer.getUUID())) return;
-
-        long victimBal = getBalance(victim.getUUID(), true);
-        if (victimBal <= 0L) return;
-
-        long loss = Math.min((long)Math.floor(pct * victimBal), victimBal);
-        if (loss <= 0L) return;
-        PaymentResult result = pay(victim.getUUID(), killer.getUUID(), loss, EconomySources.PVP_REWARD);
-        if (!result.successful()) return;
-
-        EconomySounds.moneyReceived(killer);
-        victim.sendSystemMessage(Component.literal(
-                "You lost " + EconomyCraft.formatMoney(loss) + " for being killed by " + killer.getName().getString())
-                .withStyle(ChatFormatting.RED));
-
-        killer.sendSystemMessage(Component.literal(
-                "You received " + EconomyCraft.formatMoney(loss) + " for killing " + victim.getName().getString())
-                .withStyle(ChatFormatting.GREEN));
     }
 
     private long clamp(long value) {

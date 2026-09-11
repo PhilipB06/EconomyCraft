@@ -24,8 +24,6 @@ public class EconomyConfig {
     public long dailyAmount;
     public long dailySellLimit;
     public double taxRate;
-    @SerializedName("pvp_balance_loss_percentage")
-    public double pvpBalanceLossPercentage;
     @SerializedName("standalone_commands")
     public boolean standaloneCommands;
     @SerializedName("standalone_admin_commands")
@@ -92,7 +90,6 @@ public class EconomyConfig {
                 throw new IllegalStateException("config.json parsed to null");
             }
             parsed.taxRate = clampPercentage("taxRate", parsed.taxRate);
-            parsed.pvpBalanceLossPercentage = clampPercentage("pvp_balance_loss_percentage", parsed.pvpBalanceLossPercentage);
             if (parsed.dailyAmount < 0) {
                 LOGGER.warn("[EconomyCraft] dailyAmount ({}) is negative; clamping to 0.", parsed.dailyAmount);
                 parsed.dailyAmount = 0;

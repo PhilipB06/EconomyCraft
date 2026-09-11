@@ -3,7 +3,6 @@
   "dailyAmount": 100,
   "dailySellLimit": 10000,
   "taxRate": 0.1,
-  "pvp_balance_loss_percentage": 0.0,
   "standalone_commands": true,
   "standalone_admin_commands": false,
   "scoreboard_enabled": true,

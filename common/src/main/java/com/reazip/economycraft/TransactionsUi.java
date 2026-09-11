@@ -55,8 +55,7 @@ public final class TransactionsUi {
             Map.entry(EconomySources.ADMIN_ADD.asString(), new SourceStyle(Items.COMMAND_BLOCK, "Admin Add", null, TransactionCategory.ADMIN)),
             Map.entry(EconomySources.ADMIN_REMOVE.asString(), new SourceStyle(Items.COMMAND_BLOCK, "Admin Remove", null, TransactionCategory.ADMIN)),
             Map.entry(EconomySources.ADMIN_SET.asString(), new SourceStyle(Items.COMMAND_BLOCK, "Admin Set", null, TransactionCategory.ADMIN)),
-            Map.entry(EconomySources.DAILY_REWARD.asString(), new SourceStyle(Items.CLOCK, "Daily Reward", null, TransactionCategory.REWARDS)),
-            Map.entry(EconomySources.PVP_REWARD.asString(), new SourceStyle(Items.IRON_SWORD, "PvP Reward", null, TransactionCategory.REWARDS))
+            Map.entry(EconomySources.DAILY_REWARD.asString(), new SourceStyle(Items.CLOCK, "Daily Reward", null, TransactionCategory.REWARDS))
     );
 
     public static void open(ServerPlayer player) {
@@ -207,7 +206,7 @@ public final class TransactionsUi {
             if (adminMode) {
                 container.setItem(navRowStart + 1, filterButton());
             }
-            container.setItem(navRowStart + 7, backButton());
+            container.setItem(navRowStart + 8, backButton());
 
             MenuUiSupport.fillFooter(container);
         }
@@ -216,7 +215,7 @@ public final class TransactionsUi {
             SourceStyle style = styleFor(entry);
             boolean positive = entry.amount() >= 0;
             String amountText = EconomyCraft.signedMoney(entry.amount());
-            String rowText = amountText + "  " + rowSummary(entry, style);
+            String rowText = amountText + " " + rowSummary(entry, style);
             ChatFormatting color = positive ? ChatFormatting.GREEN : ChatFormatting.RED;
 
             List<Component> lore = new ArrayList<>();
@@ -290,7 +289,7 @@ public final class TransactionsUi {
                 renderPage();
                 return true;
             }
-            if (slot == navRowStart + 7) {
+            if (slot == navRowStart + 8) {
                 EconomySounds.click(viewer);
                 viewer.closeContainer();
                 if (adminMode && onBack != null) {

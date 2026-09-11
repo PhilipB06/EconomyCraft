@@ -68,7 +68,6 @@ public final class AdminSettingsUi {
         DAILY_AMOUNT("Daily Reward", "Paid out once a day per player."),
         DAILY_SELL_LIMIT("Daily Sell Limit", "Most a player can earn selling per day."),
         TAX_RATE("Tax Rate", "Cut the server takes from trades and orders."),
-        PVP_LOSS("PvP Money Loss", "Share of the balance a killer takes."),
         SEPARATOR("Number Separator", "Thousands separator shown in prices.",
                 "Type \"space\" for a blank one."),
         SCOREBOARD("Balance Sidebar", "The balance leaderboard on the right."),
@@ -167,8 +166,6 @@ public final class AdminSettingsUi {
                 case DAILY_SELL_LIMIT -> valueItem(setting, Items.HOPPER, config.dailySellLimit <= 0
                         ? "No limit" : EconomyCraft.formatMoney(config.dailySellLimit));
                 case TAX_RATE -> valueItem(setting, Items.PAPER, percent(config.taxRate));
-                case PVP_LOSS -> valueItem(setting, Items.IRON_SWORD, config.pvpBalanceLossPercentage <= 0
-                        ? "Off" : percent(config.pvpBalanceLossPercentage));
                 case SEPARATOR -> valueItem(setting, Items.NAME_TAG, "\"" + config.balanceSeparator + "\" gives "
                         + EconomyCraft.formatMoney(1234567));
                 case SCOREBOARD -> toggleItem(setting, config.scoreboardEnabled);
@@ -392,8 +389,6 @@ public final class AdminSettingsUi {
                         v -> EconomyConfig.get().dailySellLimit = v);
                 case TAX_RATE -> editPercent(setting, config.taxRate, Items.PAPER,
                         v -> EconomyConfig.get().taxRate = v);
-                case PVP_LOSS -> editPercent(setting, config.pvpBalanceLossPercentage, Items.IRON_SWORD,
-                        v -> EconomyConfig.get().pvpBalanceLossPercentage = v);
                 case SEPARATOR -> TextInputUi.open(viewer, "Number separator", config.balanceSeparator,
                         Items.NAME_TAG, "Use: ", "Type one character",
                         (p, text) -> {
