@@ -37,10 +37,33 @@ import java.util.Comparator;
 import java.util.List;
 
 public final class ShopUi {
+    public static final int SEARCH_QUERY_MAX_LENGTH = 50;
+
     private static final Component STORED_MSG = Component.literal("Item stored: ")
             .withStyle(ChatFormatting.YELLOW);
 
     private ShopUi() {}
+
+    public static void applyLiveSearch(ServerPlayer player, EconomyManager eco, String query) {
+        String trimmed = query == null ? "" : query.trim();
+        if (trimmed.length() > SEARCH_QUERY_MAX_LENGTH) {
+            trimmed = trimmed.substring(0, SEARCH_QUERY_MAX_LENGTH);
+        }
+        if (player.containerMenu instanceof ShopSearchable searchable) {
+            searchable.applySearch(trimmed);
+            return;
+        }
+        if (trimmed.isEmpty()) return;
+        openSearch(player, eco, trimmed);
+    }
+
+    public static boolean clearLiveSearch(ServerPlayer player) {
+        if (player.containerMenu instanceof ShopSearchable searchable) {
+            searchable.applySearch("");
+            return true;
+        }
+        return false;
+    }
 
     public static void open(ServerPlayer player, EconomyManager eco) {
         open(player, eco, null);
@@ -107,15 +130,260 @@ public final class ShopUi {
                 new ItemMenu(id, inv, eco, category, displayTitle, null, page, player, sort));
     }
 
-    private static class CategoryMenu extends CompatMenu {
+    private static void paintEntries(SimpleContainer container, List<PriceRegistry.PriceEntry> entries, int page,
+                                     int itemsPerPage, EconomyManager eco, ServerPlayer viewer) {
+        int start = page * itemsPerPage;
+        for (int i = 0; i < itemsPerPage; i++) {
+            int idx = start + i;
+            if (idx >= entries.size()) break;
+
+            PriceRegistry.PriceEntry entry = entries.get(idx);
+            ItemStack display = ShopDisplay.createDisplayStack(entry, viewer);
+            if (display.isEmpty()) continue;
+
+            int stackSize = Math.max(1, entry.stack());
+            long unitBuy = eco.getEffectiveBuyPrice(entry);
+            boolean canSell = entry.unitSell() > 0 && EconomyConfig.get().sellEnabled;
+            boolean hasContents = MenuUiSupport.hasContainerContents(display);
+
+            List<Component> lore = new ArrayList<>();
+            Component buyLore = MenuUiSupport.labeledValue("Buy", EconomyCraft.formatMoney(unitBuy), MenuUiSupport.LABEL_PRIMARY_COLOR);
+            if (canSell) {
+                Component sellLore = MenuUiSupport.labeledValue("Sell", EconomyCraft.formatMoney(entry.unitSell()), MenuUiSupport.LABEL_PRIMARY_COLOR);
+                lore.add(MenuUiSupport.joinLore(buyLore, sellLore));
+            } else {
+                lore.add(buyLore);
+            }
+
+            if (stackSize > 1) {
+                Long buyStack = ShopDisplay.safeMultiply(unitBuy, stackSize);
+                Long sellStack = ShopDisplay.safeMultiply(entry.unitSell(), stackSize);
+                if (buyStack != null) {
+                    String label = "Stack (" + stackSize + ")";
+                    if (canSell && sellStack != null) {
+                        lore.add(MenuUiSupport.labeledValues(label, MenuUiSupport.LABEL_PRIMARY_COLOR,
+                                EconomyCraft.formatMoney(buyStack), EconomyCraft.formatMoney(sellStack)));
+                    } else {
+                        lore.add(MenuUiSupport.labeledValue(label, EconomyCraft.formatMoney(buyStack), MenuUiSupport.LABEL_PRIMARY_COLOR));
+                    }
+                }
+            }
+
+            lore.add(MenuUiSupport.labeledValue("Left click", "Buy 1x", MenuUiSupport.LABEL_SECONDARY_COLOR));
+            if (canSell) {
+                lore.add(MenuUiSupport.labeledValue("Right click", "Sell 1x", MenuUiSupport.LABEL_SECONDARY_COLOR));
+            }
+            if (stackSize > 1) {
+                lore.add(MenuUiSupport.labeledValue("Shift-click", (canSell ? "Buy/Sell " : "Buy ") + stackSize + "x", MenuUiSupport.LABEL_SECONDARY_COLOR));
+            }
+            if (hasContents) {
+                lore.add(MenuUiSupport.labeledValue("Ctrl+Q", "Preview contents", MenuUiSupport.LABEL_SECONDARY_COLOR));
+            }
+
+            display.set(DataComponents.LORE, new ItemLore(lore));
+            display.setCount(1);
+            container.setItem(i, display);
+        }
+
+        if (entries.isEmpty()) {
+            container.setItem(22, MenuUiSupport.button(Items.BARRIER, "No matches", ChatFormatting.YELLOW,
+                    MenuUiSupport.hint("Nothing matched that search")));
+        }
+    }
+
+    private static void paintItemNav(SimpleContainer container, int navRowStart, int page, int size, int itemsPerPage,
+                                     boolean searching, ServerPlayer viewer) {
+        int start = page * itemsPerPage;
+        int totalPages = MenuUiSupport.totalPages(size, itemsPerPage);
+        if (page > 0) container.setItem(navRowStart + 3, MenuUiSupport.prevPageButton());
+        if (start + itemsPerPage < size) container.setItem(navRowStart + 5, MenuUiSupport.nextPageButton());
+        container.setItem(navRowStart + 8, MenuUiSupport.backButton());
+        container.setItem(navRowStart + 7, searching
+                ? MenuUiSupport.clearSearchButton("")
+                : MenuUiSupport.searchButton());
+        container.setItem(navRowStart, MenuUiSupport.createBalanceItem(viewer));
+        container.setItem(navRowStart + 4, MenuUiSupport.pageIndicator(page, totalPages));
+    }
+
+    private static boolean handleEntryClick(int slot, int dragType, ClickKind kind, List<PriceRegistry.PriceEntry> entries,
+                                            int page, int itemsPerPage, int navRowStart, EconomyManager eco,
+                                            PriceRegistry prices, ServerPlayer viewer, Runnable refresh) {
+        if (kind == ClickKind.THROW && slot >= 0 && slot < navRowStart) {
+            int index = page * itemsPerPage + slot;
+            if (index < entries.size()) {
+                ItemStack display = ShopDisplay.createDisplayStack(entries.get(index), viewer);
+                if (MenuUiSupport.hasContainerContents(display)) {
+                    ContainerPreviewUi.open(viewer, display, refresh);
+                }
+            }
+            return true;
+        }
+        if (kind != ClickKind.PICKUP && kind != ClickKind.QUICK_MOVE) return false;
+        if (slot < 0 || slot >= navRowStart) return false;
+        int index = page * itemsPerPage + slot;
+        if (index >= entries.size()) return false;
+        PriceRegistry.PriceEntry entry = entries.get(index);
+        int amount = kind == ClickKind.QUICK_MOVE ? Math.max(1, entry.stack()) : 1;
+        if (dragType == 1) {
+            handleSell(entry, amount, eco, prices, viewer, refresh);
+        } else {
+            handlePurchase(entry, amount, eco, prices, viewer, refresh);
+        }
+        return true;
+    }
+
+    private static void handlePurchase(PriceRegistry.PriceEntry entry, int amount, EconomyManager eco,
+                                       PriceRegistry prices, ServerPlayer viewer, Runnable refresh) {
+        if (entry.unitBuy() <= 0 || !prices.isCategoryEnabled(entry.category())) {
+            EconomySounds.failure(viewer);
+            viewer.sendSystemMessage(Component.literal("This item cannot be purchased.")
+                    .withStyle(ChatFormatting.RED));
+            return;
+        }
+
+        ItemStack base = ShopDisplay.createDisplayStack(entry, viewer);
+        if (base.isEmpty()) {
+            EconomySounds.failure(viewer);
+            viewer.sendSystemMessage(Component.literal("Item unavailable.")
+                    .withStyle(ChatFormatting.RED));
+            return;
+        }
+
+        long unitPrice = eco.getEffectiveBuyPrice(entry);
+        Long total = ShopDisplay.safeMultiply(unitPrice, amount);
+        if (total == null) {
+            EconomySounds.failure(viewer);
+            viewer.sendSystemMessage(Component.literal("Price too large.")
+                    .withStyle(ChatFormatting.RED));
+            return;
+        }
+
+        long balance = eco.getBalance(viewer.getUUID(), true);
+        if (balance < total) {
+            EconomySounds.failure(viewer);
+            viewer.sendSystemMessage(Component.literal("Not enough balance.")
+                    .withStyle(ChatFormatting.RED));
+            return;
+        }
+
+        String detail = EconomyCraft.describeItem(amount, base.getHoverName().getString());
+        if (!eco.removeMoney(viewer.getUUID(), total, EconomySources.SHOP_PURCHASE, detail).successful()) {
+            EconomySounds.failure(viewer);
+            viewer.sendSystemMessage(Component.literal("Not enough balance.")
+                    .withStyle(ChatFormatting.RED));
+            return;
+        }
+
+        boolean stored = giveToPlayer(eco, viewer, base, amount);
+
+        EconomySounds.success(viewer);
+        viewer.sendSystemMessage(Component.literal(
+                        "Purchased " + amount + "x " + base.getHoverName().getString() +
+                                " for " + EconomyCraft.formatMoney(total))
+                .withStyle(ChatFormatting.GREEN));
+
+        if (stored) {
+            sendStoredMessage(viewer);
+        }
+
+        refresh.run();
+    }
+
+    private static void handleSell(PriceRegistry.PriceEntry entry, int amount, EconomyManager eco,
+                                    PriceRegistry prices, ServerPlayer viewer, Runnable refresh) {
+        if (!EconomyConfig.get().sellEnabled || entry.unitSell() <= 0) {
+            EconomySounds.failure(viewer);
+            viewer.sendSystemMessage(Component.literal("This item cannot be sold.").withStyle(ChatFormatting.RED));
+            return;
+        }
+
+        boolean excludeEnchanted = entry.customItem() == null;
+        int have = SellService.countMatching(viewer, prices, entry, excludeEnchanted);
+        if (have <= 0) {
+            EconomySounds.failure(viewer);
+            viewer.sendSystemMessage(Component.literal("You have none to sell.").withStyle(ChatFormatting.RED));
+            return;
+        }
+
+        int toSell = Math.min(amount, have);
+        Long total = ShopDisplay.safeMultiply(entry.unitSell(), toSell);
+        if (total == null) {
+            EconomySounds.failure(viewer);
+            viewer.sendSystemMessage(Component.literal("Price too large.").withStyle(ChatFormatting.RED));
+            return;
+        }
+
+        long remaining = eco.getDailySellRemaining(viewer.getUUID());
+        if (EconomyConfig.get().dailySellLimit > 0 && total > remaining) {
+            EconomySounds.failure(viewer);
+            viewer.sendSystemMessage(Component.literal(remaining <= 0
+                    ? "Daily sell limit reached. Try again tomorrow."
+                    : "That exceeds your daily sell limit.").withStyle(ChatFormatting.RED));
+            return;
+        }
+
+        ItemStack disp = ShopDisplay.createDisplayStack(entry, viewer);
+        String name = disp.isEmpty() ? entry.id().path() : disp.getHoverName().getString();
+
+        var result = eco.addMoney(viewer.getUUID(), total, EconomySources.SHOP_SALE, EconomyCraft.describeItem(toSell, name));
+        if (!result.successful()) {
+            EconomySounds.failure(viewer);
+            viewer.sendSystemMessage(Component.literal("Your balance is too high to receive this sale.")
+                    .withStyle(ChatFormatting.RED));
+            return;
+        }
+        if (EconomyConfig.get().dailySellLimit > 0) {
+            eco.tryRecordDailySell(viewer.getUUID(), total);
+        }
+
+        SellService.removeMatching(viewer, prices, entry, toSell, excludeEnchanted);
+
+        EconomySounds.success(viewer);
+        viewer.sendSystemMessage(Component.literal("Sold " + toSell + "x " + name + " for " + EconomyCraft.formatMoney(total))
+                .withStyle(ChatFormatting.GREEN));
+        refresh.run();
+    }
+
+    private static boolean giveToPlayer(EconomyManager eco, ServerPlayer viewer, ItemStack base, int amount) {
+        int remaining = amount;
+        boolean stored = false;
+        while (remaining > 0) {
+            int give = Math.min(base.getMaxStackSize(), remaining);
+            ItemStack stack = base.copyWithCount(give);
+            if (!viewer.getInventory().add(stack)) {
+                eco.getDeliveries().addDelivery(viewer.getUUID(), stack);
+                stored = true;
+            }
+            remaining -= give;
+        }
+        return stored;
+    }
+
+    private static void sendStoredMessage(ServerPlayer player) {
+        ClickEvent ev = ChatCompat.runCommandEvent("/eco orders claim");
+        if (ev != null) {
+            player.sendSystemMessage(STORED_MSG.copy()
+                    .append(Component.literal("[Claim]")
+                            .withStyle(s -> s.withUnderlined(true)
+                                    .withColor(ChatFormatting.GREEN)
+                                    .withClickEvent(ev))));
+        } else {
+            ChatCompat.sendRunCommandTellraw(player, "Item stored: ", "[Claim]", "/eco orders claim");
+        }
+    }
+
+    private static class CategoryMenu extends CompatMenu implements ShopSearchable {
         private final EconomyManager eco;
         private final PriceRegistry prices;
         private final ServerPlayer viewer;
         private List<String> categories = new ArrayList<>();
+        private List<PriceRegistry.PriceEntry> searchEntries = List.of();
         private final SimpleContainer container;
         private final int itemsPerPage = 45;
         private final int navRowStart = 45;
         private final int[] slotToIndex = new int[54];
+        @Nullable private String searchQuery;
+        private SortMode sort = SortMode.DEFAULT;
         private int page;
 
         CategoryMenu(int id, Inventory inv, EconomyManager eco, ServerPlayer viewer) {
@@ -128,6 +396,27 @@ public final class ShopUi {
             this.container = new SimpleContainer(54);
             setupSlots(inv);
             updatePage();
+        }
+
+        @Override
+        public void applySearch(String query) {
+            String trimmed = query == null ? "" : query.trim();
+            String next = trimmed.isEmpty() ? null : trimmed;
+            if (java.util.Objects.equals(this.searchQuery, next)) return;
+            this.searchQuery = next;
+            this.page = 0;
+            if (searching()) {
+                searchEntries = ItemMenu.applySort(eco, prices.search(searchQuery, null), sort);
+            } else {
+                searchEntries = List.of();
+                refreshCategories();
+            }
+            updatePage();
+            broadcastChanges();
+        }
+
+        private boolean searching() {
+            return searchQuery != null && !searchQuery.isBlank();
         }
 
         private void refreshCategories() {
@@ -149,6 +438,14 @@ public final class ShopUi {
         private void updatePage() {
             container.clearContent();
             java.util.Arrays.fill(slotToIndex, -1);
+
+            if (searching()) {
+                paintEntries(container, searchEntries, page, itemsPerPage, eco, viewer);
+                paintItemNav(container, navRowStart, page, searchEntries.size(), itemsPerPage, true, viewer);
+                MenuUiSupport.fillFooter(container);
+                return;
+            }
+
             int start = page * itemsPerPage;
             int totalPages = MenuUiSupport.totalPages(categories.size(), itemsPerPage);
 
@@ -192,6 +489,21 @@ public final class ShopUi {
 
         @Override
         protected boolean onClick(int slot, int dragType, ClickKind kind, Player player) {
+            if (searching()) {
+                if (handleEntryClick(slot, dragType, kind, searchEntries, page, itemsPerPage, navRowStart,
+                        eco, prices, viewer, this::updatePage)) {
+                    return true;
+                }
+                if (slot == navRowStart + 3 && page > 0) { EconomySounds.page(viewer); page--; updatePage(); return true; }
+                if (slot == navRowStart + 5 && (page + 1) * itemsPerPage < searchEntries.size()) { EconomySounds.page(viewer); page++; updatePage(); return true; }
+                if (slot == navRowStart + 8) {
+                    EconomySounds.click(viewer);
+                    HubUi.open(viewer);
+                    return true;
+                }
+                return false;
+            }
+
             if (kind != ClickKind.PICKUP && kind != ClickKind.QUICK_MOVE) return false;
 
             if (slot >= 0 && slot < navRowStart) {
@@ -324,19 +636,18 @@ public final class ShopUi {
         }
     }
 
-    private static class ItemMenu extends CompatMenu {
+    private static class ItemMenu extends CompatMenu implements ShopSearchable {
         private final EconomyManager eco;
         private final PriceRegistry prices;
         private final ServerPlayer viewer;
         @Nullable private final String category;
         @Nullable private final String displayTitle;
-        @Nullable private final String searchQuery;
+        @Nullable private String searchQuery;
         private SortMode sort;
         private List<PriceRegistry.PriceEntry> entries;
         private final SimpleContainer container;
-        private final int rows;
-        private final int itemsPerPage;
-        private final int navRowStart;
+        private final int itemsPerPage = 45;
+        private final int navRowStart = 45;
         private int page;
 
         ItemMenu(int id, Inventory inv, EconomyManager eco, @Nullable String category, @Nullable String displayTitle,
@@ -348,7 +659,7 @@ public final class ShopUi {
         private ItemMenu(int id, Inventory inv, EconomyManager eco, @Nullable String category, @Nullable String displayTitle,
                          @Nullable String searchQuery, int page, ServerPlayer viewer, SortMode sort,
                          List<PriceRegistry.PriceEntry> resolved) {
-            super(MenuUiSupport.getMenuType(MenuUiSupport.requiredRows(resolved.size())), id);
+            super(MenuType.GENERIC_9x6, id);
             this.eco = eco;
             this.viewer = viewer;
             this.category = category;
@@ -356,20 +667,28 @@ public final class ShopUi {
             this.searchQuery = searchQuery;
             this.sort = sort;
             this.prices = eco.getPrices();
-
             this.entries = resolved;
-            this.rows = MenuUiSupport.requiredRows(resolved.size());
-            this.itemsPerPage = (rows - 1) * 9;
-            this.navRowStart = itemsPerPage;
             this.page = page;
-            this.container = new SimpleContainer(rows * 9);
+            this.container = new SimpleContainer(54);
             setupSlots(inv);
             updatePage();
         }
 
+        @Override
+        public void applySearch(String query) {
+            String trimmed = query == null ? "" : query.trim();
+            String next = trimmed.isEmpty() ? null : trimmed;
+            if (java.util.Objects.equals(this.searchQuery, next)) return;
+            this.searchQuery = next;
+            this.page = 0;
+            this.entries = applySort(eco, resolveEntries(eco, category, searchQuery), sort);
+            updatePage();
+            broadcastChanges();
+        }
+
         private static List<PriceRegistry.PriceEntry> resolveEntries(EconomyManager eco, @Nullable String category,
                                                                     @Nullable String searchQuery) {
-            return searchQuery != null ? eco.getPrices().search(searchQuery, category) : eco.getPrices().buyableByCategory(category);
+            return searchQuery != null ? eco.getPrices().search(searchQuery, null) : eco.getPrices().buyableByCategory(category);
         }
 
         private static List<PriceRegistry.PriceEntry> applySort(EconomyManager eco, List<PriceRegistry.PriceEntry> list, SortMode sort) {
@@ -381,126 +700,32 @@ public final class ShopUi {
         }
 
         private void setupSlots(Inventory inv) {
-            for (Slot slot : MenuUiSupport.readOnlyGridSlots(container, rows * 9)) {
+            for (Slot slot : MenuUiSupport.readOnlyGridSlots(container, 54)) {
                 this.addSlot(slot);
             }
-            for (Slot slot : MenuUiSupport.playerInventorySlots(inv, 18 + rows * 18 + 14)) {
+            for (Slot slot : MenuUiSupport.playerInventorySlots(inv, 18 + 6 * 18 + 14)) {
                 this.addSlot(slot);
             }
         }
 
         private void updatePage() {
             container.clearContent();
-            int start = page * itemsPerPage;
-            int totalPages = MenuUiSupport.totalPages(entries.size(), itemsPerPage);
-
-            for (int i = 0; i < itemsPerPage; i++) {
-                int idx = start + i;
-                if (idx >= entries.size()) break;
-
-                PriceRegistry.PriceEntry entry = entries.get(idx);
-                ItemStack display = ShopDisplay.createDisplayStack(entry, viewer);
-                if (display.isEmpty()) continue;
-
-                int stackSize = Math.max(1, entry.stack());
-                long unitBuy = eco.getEffectiveBuyPrice(entry);
-                boolean canSell = entry.unitSell() > 0 && EconomyConfig.get().sellEnabled;
-                boolean hasContents = MenuUiSupport.hasContainerContents(display);
-
-                List<Component> lore = new ArrayList<>();
-                Component buyLore = MenuUiSupport.labeledValue("Buy", EconomyCraft.formatMoney(unitBuy), MenuUiSupport.LABEL_PRIMARY_COLOR);
-                if (canSell) {
-                    Component sellLore = MenuUiSupport.labeledValue("Sell", EconomyCraft.formatMoney(entry.unitSell()), MenuUiSupport.LABEL_PRIMARY_COLOR);
-                    lore.add(MenuUiSupport.joinLore(buyLore, sellLore));
-                } else {
-                    lore.add(buyLore);
-                }
-
-                if (stackSize > 1) {
-                    Long buyStack = ShopDisplay.safeMultiply(unitBuy, stackSize);
-                    Long sellStack = ShopDisplay.safeMultiply(entry.unitSell(), stackSize);
-                    if (buyStack != null) {
-                        String label = "Stack (" + stackSize + ")";
-                        if (canSell && sellStack != null) {
-                            lore.add(MenuUiSupport.labeledValues(label, MenuUiSupport.LABEL_PRIMARY_COLOR,
-                                    EconomyCraft.formatMoney(buyStack), EconomyCraft.formatMoney(sellStack)));
-                        } else {
-                            lore.add(MenuUiSupport.labeledValue(label, EconomyCraft.formatMoney(buyStack), MenuUiSupport.LABEL_PRIMARY_COLOR));
-                        }
-                    }
-                }
-
-                lore.add(MenuUiSupport.labeledValue("Left click", "Buy 1x", MenuUiSupport.LABEL_SECONDARY_COLOR));
-                if (canSell) {
-                    lore.add(MenuUiSupport.labeledValue("Right click", "Sell 1x", MenuUiSupport.LABEL_SECONDARY_COLOR));
-                }
-                if (stackSize > 1) {
-                    lore.add(MenuUiSupport.labeledValue("Shift-click", (canSell ? "Buy/Sell " : "Buy ") + stackSize + "x", MenuUiSupport.LABEL_SECONDARY_COLOR));
-                }
-                if (hasContents) {
-                    lore.add(MenuUiSupport.labeledValue("Ctrl+Q", "Preview contents", MenuUiSupport.LABEL_SECONDARY_COLOR));
-                }
-
-                display.set(DataComponents.LORE, new ItemLore(lore));
-                display.setCount(1);
-                container.setItem(i, display);
-            }
-
-            if (page > 0) container.setItem(navRowStart + 3, MenuUiSupport.prevPageButton());
-            if (start + itemsPerPage < entries.size()) container.setItem(navRowStart + 5, MenuUiSupport.nextPageButton());
-
-            container.setItem(navRowStart + 8, MenuUiSupport.backButton());
-
-            if (!searching()) {
-                container.setItem(navRowStart + 7, MenuUiSupport.searchButton());
-            }
-
-            container.setItem(navRowStart, MenuUiSupport.createBalanceItem(viewer));
-
+            paintEntries(container, entries, page, itemsPerPage, eco, viewer);
+            paintItemNav(container, navRowStart, page, entries.size(), itemsPerPage, searching(), viewer);
             container.setItem(navRowStart + 1, MenuUiSupport.button(Items.HOPPER, "Sort",
                     MenuUiSupport.LABEL_PRIMARY_COLOR,
                     MenuUiSupport.italicHint("Click to cycle"),
                     MenuUiSupport.toggleOption("Default", sort == SortMode.DEFAULT),
                     MenuUiSupport.toggleOption("Lowest Price", sort == SortMode.PRICE_ASC),
                     MenuUiSupport.toggleOption("Highest Price", sort == SortMode.PRICE_DESC)));
-
-            container.setItem(navRowStart + 4, MenuUiSupport.pageIndicator(page, totalPages));
-
             MenuUiSupport.fillFooter(container);
         }
 
         @Override
         protected boolean onClick(int slot, int dragType, ClickKind kind, Player player) {
-            if (kind == ClickKind.THROW && slot >= 0 && slot < navRowStart) {
-                int index = page * itemsPerPage + slot;
-                if (index < entries.size()) {
-                    ItemStack display = ShopDisplay.createDisplayStack(entries.get(index), viewer);
-                    if (MenuUiSupport.hasContainerContents(display)) {
-                        ContainerPreviewUi.open(viewer, display, () -> {
-                            if (searchQuery != null) {
-                                openSearchResults(viewer, eco, category, searchQuery, page, sort);
-                            } else {
-                                openItems(viewer, eco, category, displayTitle, page, sort);
-                            }
-                        });
-                    }
-                }
+            if (handleEntryClick(slot, dragType, kind, entries, page, itemsPerPage, navRowStart,
+                    eco, prices, viewer, this::updatePage)) {
                 return true;
-            }
-            if (kind != ClickKind.PICKUP && kind != ClickKind.QUICK_MOVE) return false;
-
-            if (slot >= 0 && slot < navRowStart) {
-                int index = page * itemsPerPage + slot;
-                if (index < entries.size()) {
-                    PriceRegistry.PriceEntry entry = entries.get(index);
-                    int amount = kind == ClickKind.QUICK_MOVE ? Math.max(1, entry.stack()) : 1;
-                    if (dragType == 1) {
-                        handleSell(entry, amount);
-                    } else {
-                        handlePurchase(entry, amount);
-                    }
-                    return true;
-                }
             }
             if (slot == navRowStart + 3 && page > 0) { EconomySounds.page(viewer); page--; updatePage(); return true; }
             if (slot == navRowStart + 5 && (page + 1) * itemsPerPage < entries.size()) { EconomySounds.page(viewer); page++; updatePage(); return true; }
@@ -531,144 +756,6 @@ public final class ShopUi {
 
         private boolean searching() {
             return searchQuery != null && !searchQuery.isBlank();
-        }
-
-        private void handlePurchase(PriceRegistry.PriceEntry entry, int amount) {
-            if (entry.unitBuy() <= 0 || !prices.isCategoryEnabled(entry.category())) {
-                EconomySounds.failure(viewer);
-                viewer.sendSystemMessage(Component.literal("This item cannot be purchased.")
-                        .withStyle(ChatFormatting.RED));
-                return;
-            }
-
-            ItemStack base = ShopDisplay.createDisplayStack(entry, viewer);
-            if (base.isEmpty()) {
-                EconomySounds.failure(viewer);
-                viewer.sendSystemMessage(Component.literal("Item unavailable.")
-                        .withStyle(ChatFormatting.RED));
-                return;
-            }
-
-            long unitPrice = eco.getEffectiveBuyPrice(entry);
-            Long total = ShopDisplay.safeMultiply(unitPrice, amount);
-            if (total == null) {
-                EconomySounds.failure(viewer);
-                viewer.sendSystemMessage(Component.literal("Price too large.")
-                        .withStyle(ChatFormatting.RED));
-                return;
-            }
-
-            long balance = eco.getBalance(viewer.getUUID(), true);
-            if (balance < total) {
-                EconomySounds.failure(viewer);
-                viewer.sendSystemMessage(Component.literal("Not enough balance.")
-                        .withStyle(ChatFormatting.RED));
-                return;
-            }
-
-            String detail = EconomyCraft.describeItem(amount, base.getHoverName().getString());
-            if (!eco.removeMoney(viewer.getUUID(), total, EconomySources.SHOP_PURCHASE, detail).successful()) {
-                EconomySounds.failure(viewer);
-                viewer.sendSystemMessage(Component.literal("Not enough balance.")
-                        .withStyle(ChatFormatting.RED));
-                return;
-            }
-
-            boolean stored = giveToPlayer(base, amount);
-
-            EconomySounds.success(viewer);
-            viewer.sendSystemMessage(Component.literal(
-                            "Purchased " + amount + "x " + base.getHoverName().getString() +
-                                    " for " + EconomyCraft.formatMoney(total))
-                    .withStyle(ChatFormatting.GREEN));
-
-            if (stored) {
-                sendStoredMessage(viewer);
-            }
-
-            updatePage();
-        }
-
-        private void handleSell(PriceRegistry.PriceEntry entry, int amount) {
-            if (!EconomyConfig.get().sellEnabled || entry.unitSell() <= 0) {
-                EconomySounds.failure(viewer);
-                viewer.sendSystemMessage(Component.literal("This item cannot be sold.").withStyle(ChatFormatting.RED));
-                return;
-            }
-
-            boolean excludeEnchanted = entry.customItem() == null;
-            int have = SellService.countMatching(viewer, prices, entry, excludeEnchanted);
-            if (have <= 0) {
-                EconomySounds.failure(viewer);
-                viewer.sendSystemMessage(Component.literal("You have none to sell.").withStyle(ChatFormatting.RED));
-                return;
-            }
-
-            int toSell = Math.min(amount, have);
-            Long total = ShopDisplay.safeMultiply(entry.unitSell(), toSell);
-            if (total == null) {
-                EconomySounds.failure(viewer);
-                viewer.sendSystemMessage(Component.literal("Price too large.").withStyle(ChatFormatting.RED));
-                return;
-            }
-
-            long remaining = eco.getDailySellRemaining(viewer.getUUID());
-            if (EconomyConfig.get().dailySellLimit > 0 && total > remaining) {
-                EconomySounds.failure(viewer);
-                viewer.sendSystemMessage(Component.literal(remaining <= 0
-                        ? "Daily sell limit reached. Try again tomorrow."
-                        : "That exceeds your daily sell limit.").withStyle(ChatFormatting.RED));
-                return;
-            }
-
-            ItemStack disp = ShopDisplay.createDisplayStack(entry, viewer);
-            String name = disp.isEmpty() ? entry.id().path() : disp.getHoverName().getString();
-
-            var result = eco.addMoney(viewer.getUUID(), total, EconomySources.SHOP_SALE, EconomyCraft.describeItem(toSell, name));
-            if (!result.successful()) {
-                EconomySounds.failure(viewer);
-                viewer.sendSystemMessage(Component.literal("Your balance is too high to receive this sale.")
-                        .withStyle(ChatFormatting.RED));
-                return;
-            }
-            if (EconomyConfig.get().dailySellLimit > 0) {
-                eco.tryRecordDailySell(viewer.getUUID(), total);
-            }
-
-            SellService.removeMatching(viewer, prices, entry, toSell, excludeEnchanted);
-
-            EconomySounds.success(viewer);
-            viewer.sendSystemMessage(Component.literal("Sold " + toSell + "x " + name + " for " + EconomyCraft.formatMoney(total))
-                    .withStyle(ChatFormatting.GREEN));
-            updatePage();
-        }
-
-        private boolean giveToPlayer(ItemStack base, int amount) {
-            int remaining = amount;
-            boolean stored = false;
-            while (remaining > 0) {
-                int give = Math.min(base.getMaxStackSize(), remaining);
-                ItemStack stack = base.copyWithCount(give);
-                if (!viewer.getInventory().add(stack)) {
-                    eco.getDeliveries().addDelivery(viewer.getUUID(), stack);
-                    stored = true;
-                }
-                remaining -= give;
-            }
-            return stored;
-        }
-
-        private void sendStoredMessage(ServerPlayer player) {
-            ClickEvent ev = ChatCompat.runCommandEvent("/eco orders claim");
-            if (ev != null) {
-                player.sendSystemMessage(STORED_MSG.copy()
-                        .append(Component.literal("[Claim]")
-                                .withStyle(s -> s.withUnderlined(true)
-                                        .withColor(ChatFormatting.GREEN)
-                                        .withClickEvent(ev))));
-            } else {
-                ChatCompat.sendRunCommandTellraw(player, "Item stored: ", "[Claim]", "/eco orders claim");
-            }
         }
     }
 }

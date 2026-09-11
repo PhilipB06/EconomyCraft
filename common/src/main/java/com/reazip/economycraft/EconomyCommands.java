@@ -767,7 +767,11 @@ public final class EconomyCommands {
                                 StringArgumentType.getString(ctx, "category")
                         )))
                 .then(literal("search")
-                        .executes(ctx -> usage(ctx.getSource(), "/shop search <query>"))
+                        .executes(ctx -> {
+                            ServerPlayer player = ctx.getSource().getPlayerOrException();
+                            if (ShopUi.clearLiveSearch(player)) return 1;
+                            return usage(ctx.getSource(), "/shop search <query>");
+                        })
                         .then(argument("query", StringArgumentType.greedyString())
                                 .executes(ctx -> searchShop(ctx.getSource().getPlayerOrException(),
                                         StringArgumentType.getString(ctx, "query"),
@@ -797,7 +801,7 @@ public final class EconomyCommands {
             return 0;
         }
         try {
-            ShopUi.openSearch(player, EconomyCraft.getManager(source.getServer()), query);
+            ShopUi.applyLiveSearch(player, EconomyCraft.getManager(source.getServer()), query);
             return 1;
         } catch (Exception e) {
             LOGGER.error("[EconomyCraft] Failed to search /shop for {}", player.getDisplayName().getString(), e);

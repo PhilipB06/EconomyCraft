@@ -19,7 +19,7 @@ Default configuration works without manual changes.
 
 | Button            | Description                                                                                                                                                                                  |
 |-------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Shop**          | Buy and sell at fixed prices with unlimited stock. Left click buys, right click sells, shift-click uses the bulk amount.                                                                     |
+| **Shop**          | Buy and sell at fixed prices with unlimited stock. Type in the search field on the right of the title bar (like the recipe book) to filter items as you type. Left click buys, right click sells, shift-click uses the bulk amount. The compass still opens the older type-and-confirm search. |
 | **Auction House** | Buy items other players have listed. **Sell an item** walks through picking an item and setting a price.                                                                                     |
 | **Sell Items**    | Put items in the slots, check the total, confirm. Items without a sell price will not fit, and closing without confirming returns everything.                                                |
 | **Orders**        | **New request** picks any item in the game, an amount and a price. Other players fill the request and get paid.                                                                              |
