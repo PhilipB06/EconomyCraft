@@ -23,6 +23,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
@@ -52,8 +53,9 @@ public final class MenuPaginationOverlay {
     private static final WidgetSprites MENU_BACK_SPRITES = new WidgetSprites(
             ResourceLocation.withDefaultNamespace("transferable_list/unselect"),
             ResourceLocation.withDefaultNamespace("transferable_list/unselect_highlighted"));
-    private static final @Nullable Field TITLE_LABEL_X = intField("titleLabelX");
-    private static final @Nullable Field INVENTORY_LABEL_Y = intField("inventoryLabelY");
+    private static final @Nullable Field TITLE_LABEL_X = intField(AbstractContainerScreen.class, "titleLabelX");
+    private static final @Nullable Field INVENTORY_LABEL_Y = intField(AbstractContainerScreen.class, "inventoryLabelY");
+    private static final @Nullable Field SLOT_Y = intField(Slot.class, "y");
     private static final @Nullable Field MOUSE_XPOS = doubleField(MouseHandler.class, "xpos");
     private static final @Nullable Field MOUSE_YPOS = doubleField(MouseHandler.class, "ypos");
     private static final long MOUSE_RESTORE_NS = 1_000_000_000L;
@@ -205,6 +207,7 @@ public final class MenuPaginationOverlay {
             pageLabel.visible = false;
             gapPanel.visible = false;
             setInt(INVENTORY_LABEL_Y, container, imageHeight - 94);
+            shiftPlayerSlots(container, 0);
             return;
         }
 
@@ -231,6 +234,21 @@ public final class MenuPaginationOverlay {
         backButton.active = backButton.visible;
         forwardButton.active = forwardButton.visible;
         setInt(INVENTORY_LABEL_Y, container, imageHeight - 94 + PAGINATION_GAP);
+        shiftPlayerSlots(container, PAGINATION_GAP);
+    }
+
+    private static void shiftPlayerSlots(AbstractContainerScreen<?> container, int extra) {
+        var slots = container.getMenu().slots;
+        if (slots.size() <= 36) return;
+        int rows = (slots.size() - 36) / 9;
+        int baseY = 18 + rows * 18 + 14 + extra;
+        int first = slots.size() - 36;
+        for (int i = 0; i < 27; i++) {
+            setInt(SLOT_Y, slots.get(first + i), baseY + (i / 9) * 18);
+        }
+        for (int i = 0; i < 9; i++) {
+            setInt(SLOT_Y, slots.get(first + 27 + i), baseY + 58);
+        }
     }
 
     private static void click(AbstractContainerScreen<?> screen, boolean previous) {
@@ -337,10 +355,10 @@ public final class MenuPaginationOverlay {
         screen.getMenu().getSlot(slot).set(MenuUiSupport.filler());
     }
 
-    private static void setInt(@Nullable Field field, AbstractContainerScreen<?> screen, int value) {
+    private static void setInt(@Nullable Field field, Object target, int value) {
         if (field == null) return;
         try {
-            field.setInt(screen, value);
+            field.setInt(target, value);
         } catch (IllegalAccessException ignored) {
         }
     }
@@ -353,9 +371,9 @@ public final class MenuPaginationOverlay {
         }
     }
 
-    private static @Nullable Field intField(String name) {
+    private static @Nullable Field intField(Class<?> type, String name) {
         try {
-            Field field = AbstractContainerScreen.class.getDeclaredField(name);
+            Field field = type.getDeclaredField(name);
             field.setAccessible(true);
             return field;
         } catch (NoSuchFieldException | RuntimeException ignored) {
