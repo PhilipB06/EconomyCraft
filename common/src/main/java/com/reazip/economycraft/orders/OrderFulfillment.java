@@ -306,7 +306,7 @@ public final class OrderFulfillment {
         String itemName = item.getHoverName().getString();
         String prefix = amount + "x " + itemName + " of your request has been fulfilled: ";
 
-        ClickEvent ev = ChatCompat.runCommandEvent("/eco orders claim");
+        ClickEvent ev = ChatCompat.runCommandEvent("/eco deliveries");
         if (ev != null) {
             requesterPlayer.sendSystemMessage(Component.literal(prefix)
                     .withStyle(ChatFormatting.YELLOW)
@@ -315,7 +315,7 @@ public final class OrderFulfillment {
                                     .withColor(ChatFormatting.GREEN)
                                     .withClickEvent(ev))));
         } else {
-            ChatCompat.sendRunCommandTellraw(requesterPlayer, prefix, "[Claim]", "/eco orders claim");
+            ChatCompat.sendRunCommandTellraw(requesterPlayer, prefix, "[Claim]", "/eco deliveries");
         }
     }
 }

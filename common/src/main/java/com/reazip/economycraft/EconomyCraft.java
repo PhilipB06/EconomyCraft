@@ -95,7 +95,7 @@ public final class EconomyCraft {
             eco.getNotifications().sendPending(player);
 
             if (eco.getDeliveries().hasDeliveries(player.getUUID())) {
-                sendPrompt(player, "You have unclaimed items: ", "[Claim]", "/eco orders claim");
+                sendPrompt(player, "You have unclaimed items: ", "[Claim]", "/eco deliveries");
             }
 
             if (EconomyPaths.hasSharedFolder(server)) {

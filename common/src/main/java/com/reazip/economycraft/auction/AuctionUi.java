@@ -194,14 +194,14 @@ public final class AuctionUi {
     }
 
     private static void sendStoredMessage(ServerPlayer player) {
-        ClickEvent ev = ChatCompat.runCommandEvent("/eco orders claim");
+        ClickEvent ev = ChatCompat.runCommandEvent("/eco deliveries");
         if (ev != null) {
             player.sendSystemMessage(Component.literal("Item stored: ")
                     .withStyle(ChatFormatting.YELLOW)
                     .append(Component.literal("[Claim]")
                             .withStyle(s -> s.withUnderlined(true).withColor(ChatFormatting.GREEN).withClickEvent(ev))));
         } else {
-            ChatCompat.sendRunCommandTellraw(player, "Item stored: ", "[Claim]", "/eco orders claim");
+            ChatCompat.sendRunCommandTellraw(player, "Item stored: ", "[Claim]", "/eco deliveries");
         }
     }
 

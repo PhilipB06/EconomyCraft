@@ -20,7 +20,7 @@ Requires Architectury API.
 | **Deliveries**    | Items or payouts that couldn't be delivered directly (full inventory/completed while offline).                           |
 | **Transactions**  | Your recent balance history.                                                                                             |
 
-Each screen also has a command: `/bal`, `/bal top`, `/pay`, `/daily`, `/shop`, `/ah`, `/auction`, `/sell`, `/worth`, `/orders`, `/orders claim`, `/transactions`.
+Each screen also has a command: `/bal`, `/bal top`, `/pay`, `/daily`, `/shop`, `/ah`, `/auction`, `/sell`, `/worth`, `/orders`, `/deliveries`, `/transactions`.
 
 ---
 

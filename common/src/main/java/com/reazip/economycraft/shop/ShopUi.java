@@ -659,7 +659,7 @@ public final class ShopUi {
         }
 
         private void sendStoredMessage(ServerPlayer player) {
-            ClickEvent ev = ChatCompat.runCommandEvent("/eco orders claim");
+            ClickEvent ev = ChatCompat.runCommandEvent("/eco deliveries");
             if (ev != null) {
                 player.sendSystemMessage(STORED_MSG.copy()
                         .append(Component.literal("[Claim]")
@@ -667,7 +667,7 @@ public final class ShopUi {
                                         .withColor(ChatFormatting.GREEN)
                                         .withClickEvent(ev))));
             } else {
-                ChatCompat.sendRunCommandTellraw(player, "Item stored: ", "[Claim]", "/eco orders claim");
+                ChatCompat.sendRunCommandTellraw(player, "Item stored: ", "[Claim]", "/eco deliveries");
             }
         }
     }

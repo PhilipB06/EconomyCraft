@@ -68,6 +68,7 @@ public final class EconomyCommands {
         registerStandalone(dispatcher, buildAuction("auction"));
         registerStandalone(dispatcher, buildShop());
         dispatcher.register(buildOrders(buildContext).requires(s -> EconomyConfig.get().standaloneCommands));
+        dispatcher.register(buildDeliveries().requires(s -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(buildDaily().requires(s -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(buildTransactions().requires(s -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(WorthCommand.register(buildContext).requires(s ->
@@ -131,6 +132,7 @@ public final class EconomyCommands {
         root.then(buildAuction("auction"));
         root.then(buildShop());
         root.then(buildOrders(buildContext));
+        root.then(buildDeliveries());
         root.then(buildDaily());
         root.then(buildTransactions());
         root.then(WorthCommand.register(buildContext).requires(s -> EconomyConfig.get().worthEnabled));
@@ -823,7 +825,6 @@ public final class EconomyCommands {
                                                         (int) Math.min(LongArgumentType.getLong(ctx, "amount"), EconomyManager.MAX),
                                                         LongArgumentType.getLong(ctx, "price"),
                                                         ctx.getSource()))))))
-                .then(literal("claim").executes(ctx -> claimOrders(ctx.getSource().getPlayerOrException(), ctx.getSource())))
                 .then(literal("search")
                         .requires(src -> EconomyConfig.get().ordersEnabled)
                         .executes(ctx -> usage(ctx.getSource(), "/orders search <query>"))
@@ -889,7 +890,12 @@ public final class EconomyCommands {
         return 1;
     }
 
-    private static int claimOrders(ServerPlayer player, CommandSourceStack source) {
+    private static LiteralArgumentBuilder<CommandSourceStack> buildDeliveries() {
+        return literal("deliveries")
+                .executes(ctx -> openDeliveries(ctx.getSource().getPlayerOrException(), ctx.getSource()));
+    }
+
+    private static int openDeliveries(ServerPlayer player, CommandSourceStack source) {
         OrdersUi.openClaims(player, EconomyCraft.getManager(source.getServer()));
         return 1;
     }
