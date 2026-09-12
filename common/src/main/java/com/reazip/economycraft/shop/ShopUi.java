@@ -200,6 +200,15 @@ public final class ShopUi {
         container.setItem(navRowStart + 4, MenuUiSupport.pageIndicator(page, totalPages));
     }
 
+    private static void paintSortHopper(SimpleContainer container, int navRowStart, SortMode sort) {
+        container.setItem(navRowStart + 1, MenuUiSupport.button(Items.HOPPER, "Sort",
+                MenuUiSupport.LABEL_PRIMARY_COLOR,
+                MenuUiSupport.italicHint("Click to cycle"),
+                MenuUiSupport.toggleOption("Default", sort == SortMode.DEFAULT),
+                MenuUiSupport.toggleOption("Lowest Price", sort == SortMode.PRICE_ASC),
+                MenuUiSupport.toggleOption("Highest Price", sort == SortMode.PRICE_DESC)));
+    }
+
     private static boolean handleEntryClick(int slot, int dragType, ClickKind kind, List<PriceRegistry.PriceEntry> entries,
                                             int page, int itemsPerPage, int navRowStart, EconomyManager eco,
                                             PriceRegistry prices, ServerPlayer viewer, Runnable refresh) {
@@ -437,6 +446,7 @@ public final class ShopUi {
             if (searching()) {
                 paintEntries(container, searchEntries, page, itemsPerPage, eco, viewer);
                 paintItemNav(container, navRowStart, page, searchEntries.size(), itemsPerPage, true, viewer);
+                paintSortHopper(container, navRowStart, sort);
                 MenuUiSupport.fillFooter(container);
                 return;
             }
@@ -491,6 +501,14 @@ public final class ShopUi {
                 }
                 if (slot == navRowStart + 3 && page > 0) { EconomySounds.page(viewer); page--; updatePage(); return true; }
                 if (slot == navRowStart + 5 && (page + 1) * itemsPerPage < searchEntries.size()) { EconomySounds.page(viewer); page++; updatePage(); return true; }
+                if (slot == navRowStart + 1) {
+                    EconomySounds.click(viewer);
+                    sort = sort.next();
+                    searchEntries = ItemMenu.applySort(eco, prices.search(searchQuery, null), sort);
+                    page = 0;
+                    updatePage();
+                    return true;
+                }
                 if (slot == navRowStart + 8) {
                     EconomySounds.click(viewer);
                     HubUi.open(viewer);
@@ -707,12 +725,7 @@ public final class ShopUi {
             container.clearContent();
             paintEntries(container, entries, page, itemsPerPage, eco, viewer);
             paintItemNav(container, navRowStart, page, entries.size(), itemsPerPage, searching(), viewer);
-            container.setItem(navRowStart + 1, MenuUiSupport.button(Items.HOPPER, "Sort",
-                    MenuUiSupport.LABEL_PRIMARY_COLOR,
-                    MenuUiSupport.italicHint("Click to cycle"),
-                    MenuUiSupport.toggleOption("Default", sort == SortMode.DEFAULT),
-                    MenuUiSupport.toggleOption("Lowest Price", sort == SortMode.PRICE_ASC),
-                    MenuUiSupport.toggleOption("Highest Price", sort == SortMode.PRICE_DESC)));
+            paintSortHopper(container, navRowStart, sort);
             MenuUiSupport.fillFooter(container);
         }
 

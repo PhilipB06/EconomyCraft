@@ -133,7 +133,10 @@ public final class ShopSearchOverlay {
     }
 
     private static boolean isSearchSlot(String name) {
-        return "Clear search".equals(name) || name.startsWith("Search");
+        return "Clear search".equals(name)
+                || "Search".equals(name)
+                || "Search items".equals(name)
+                || "Search players".equals(name);
     }
 
     private static String showingQuery(ItemStack stack) {
