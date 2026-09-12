@@ -13,6 +13,7 @@ import com.reazip.economycraft.util.ClickKind;
 import com.reazip.economycraft.util.CompatMenu;
 import com.reazip.economycraft.util.ContainerPreviewUi;
 import com.reazip.economycraft.util.EconomySounds;
+import com.reazip.economycraft.util.LiveSearchable;
 import com.reazip.economycraft.util.MenuUiSupport;
 import com.reazip.economycraft.util.PermissionCompat;
 import com.reazip.economycraft.util.SortMode;
@@ -37,7 +38,7 @@ import java.util.Comparator;
 import java.util.List;
 
 public final class ShopUi {
-    public static final int SEARCH_QUERY_MAX_LENGTH = 50;
+    public static final int SEARCH_QUERY_MAX_LENGTH = MenuUiSupport.SEARCH_QUERY_MAX_LENGTH;
 
     private static final Component STORED_MSG = Component.literal("Item stored: ")
             .withStyle(ChatFormatting.YELLOW);
@@ -49,19 +50,13 @@ public final class ShopUi {
         if (trimmed.length() > SEARCH_QUERY_MAX_LENGTH) {
             trimmed = trimmed.substring(0, SEARCH_QUERY_MAX_LENGTH);
         }
-        if (player.containerMenu instanceof ShopSearchable searchable) {
-            searchable.applySearch(trimmed);
-            return;
-        }
+        if (LiveSearchable.apply(player, trimmed)) return;
         if (trimmed.isEmpty()) return;
         openSearch(player, eco, trimmed);
     }
 
     public static boolean clearLiveSearch(ServerPlayer player) {
-        if (player.containerMenu instanceof ShopSearchable searchable) {
-            searchable.applySearch("");
-            return true;
-        }
+        if (LiveSearchable.apply(player, "")) return true;
         return false;
     }
 
@@ -372,7 +367,7 @@ public final class ShopUi {
         }
     }
 
-    private static class CategoryMenu extends CompatMenu implements ShopSearchable {
+    private static class CategoryMenu extends CompatMenu implements LiveSearchable {
         private final EconomyManager eco;
         private final PriceRegistry prices;
         private final ServerPlayer viewer;
@@ -636,7 +631,7 @@ public final class ShopUi {
         }
     }
 
-    private static class ItemMenu extends CompatMenu implements ShopSearchable {
+    private static class ItemMenu extends CompatMenu implements LiveSearchable {
         private final EconomyManager eco;
         private final PriceRegistry prices;
         private final ServerPlayer viewer;

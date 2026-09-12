@@ -43,6 +43,8 @@ public final class MenuUiSupport {
     public static final ChatFormatting BALANCE_LABEL_COLOR = ChatFormatting.GOLD;
     public static final ChatFormatting BALANCE_VALUE_COLOR = ChatFormatting.GREEN;
 
+    public static final int SEARCH_QUERY_MAX_LENGTH = 50;
+
     public static final int ROW_CANCEL = 2;
     public static final int ROW_SUBJECT = 4;
     public static final int ROW_CONFIRM = 6;
@@ -151,7 +153,19 @@ public final class MenuUiSupport {
     }
 
     public static ItemStack searchButton() {
-        return button(Items.COMPASS, "Search", ChatFormatting.GREEN);
+        return searchButton("Search items");
+    }
+
+    public static ItemStack searchButton(String name, Component... lore) {
+        return button(Items.COMPASS, name, ChatFormatting.GREEN, lore);
+    }
+
+    public static String normalizeSearch(String query) {
+        String trimmed = query == null ? "" : query.trim();
+        if (trimmed.length() > SEARCH_QUERY_MAX_LENGTH) {
+            trimmed = trimmed.substring(0, SEARCH_QUERY_MAX_LENGTH);
+        }
+        return trimmed;
     }
 
     public static int totalPages(int size, int perPage) {

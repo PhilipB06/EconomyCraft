@@ -16,6 +16,7 @@ import com.reazip.economycraft.util.EconomySounds;
 import com.reazip.economycraft.util.ExpirationUtil;
 import com.reazip.economycraft.util.IdentityCompat;
 import com.reazip.economycraft.util.ItemArgumentCompat;
+import com.reazip.economycraft.util.LiveSearchable;
 import com.reazip.economycraft.util.PermissionCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandBuildContext;
@@ -134,6 +135,10 @@ public final class EconomyCommands {
         root.then(buildDaily());
         root.then(buildTransactions());
         root.then(WorthCommand.register(buildContext).requires(s -> EconomyConfig.get().worthEnabled));
+        root.then(literal("search")
+                .executes(ctx -> applyLiveSearch(ctx.getSource(), ""))
+                .then(argument("query", StringArgumentType.greedyString())
+                        .executes(ctx -> applyLiveSearch(ctx.getSource(), StringArgumentType.getString(ctx, "query")))));
 
         root.then(addMoney);
         root.then(setMoney);
@@ -178,6 +183,12 @@ public final class EconomyCommands {
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             server.getCommands().sendCommands(player);
         }
+    }
+
+    private static int applyLiveSearch(CommandSourceStack source, String query) {
+        ServerPlayer player = tryGetPlayer(source);
+        if (player == null) return 0;
+        return LiveSearchable.apply(player, query) ? 1 : 0;
     }
 
     private static int openHub(CommandSourceStack source) {

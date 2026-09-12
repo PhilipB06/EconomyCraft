@@ -47,16 +47,16 @@ public final class ItemPickerUi {
                 new PickerMenu(id, inv, player, title, source, filter, query, page, onPick, onCancel));
     }
 
-    private static class PickerMenu extends CompatMenu {
+    private static class PickerMenu extends CompatMenu implements LiveSearchable {
         private final String title;
         private final Source source;
         @Nullable private final Predicate<ItemStack> filter;
-        @Nullable private final String query;
+        @Nullable private String query;
         private final BiConsumer<ServerPlayer, Choice> onPick;
         private final Consumer<ServerPlayer> onCancel;
         private final ServerPlayer viewer;
         private final SimpleContainer container;
-        private final List<Choice> choices;
+        private List<Choice> choices;
         private final int rows;
         private final int gridSlots;
         private final int nav;
@@ -95,6 +95,18 @@ public final class ItemPickerUi {
                 this.addSlot(slot);
             }
             render();
+        }
+
+        @Override
+        public void applySearch(String query) {
+            String next = query == null || query.isBlank() ? null : query;
+            if (java.util.Objects.equals(this.query, next)) return;
+            this.query = next;
+            this.page = 0;
+            this.choices = collect(viewer, source, filter, this.query);
+            this.page = Math.clamp(this.page, 0, Math.max(0, MenuUiSupport.totalPages(choices.size(), gridSlots) - 1));
+            render();
+            broadcastChanges();
         }
 
         private static List<Choice> collect(ServerPlayer player, Source source, @Nullable Predicate<ItemStack> filter,
@@ -185,7 +197,7 @@ public final class ItemPickerUi {
 
             container.setItem(nav + 8, searching()
                     ? MenuUiSupport.clearSearchButton(query)
-                    : MenuUiSupport.button(Items.COMPASS, "Search", ChatFormatting.GREEN,
+                    : MenuUiSupport.searchButton("Search items",
                             MenuUiSupport.hint(source == Source.INVENTORY_AND_ALL
                                     ? "Search every item in the game"
                                     : "Search your inventory")));

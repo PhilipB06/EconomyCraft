@@ -41,15 +41,15 @@ public final class PlayerPickerUi {
                 new PickerMenu(id, inv, player, title, includeSelf, query, page, onPick, onCancel));
     }
 
-    private static class PickerMenu extends CompatMenu {
+    private static class PickerMenu extends CompatMenu implements LiveSearchable {
         private final ServerPlayer viewer;
         private final String title;
         private final boolean includeSelf;
-        @Nullable private final String query;
+        @Nullable private String query;
         private final BiConsumer<ServerPlayer, Target> onPick;
         private final Consumer<ServerPlayer> onCancel;
         private final SimpleContainer container;
-        private final List<Target> targets;
+        private List<Target> targets;
         private final int rows;
         private final int gridSlots;
         private final int nav;
@@ -87,6 +87,18 @@ public final class PlayerPickerUi {
                 this.addSlot(slot);
             }
             render();
+        }
+
+        @Override
+        public void applySearch(String query) {
+            String next = query == null || query.isBlank() ? null : query;
+            if (java.util.Objects.equals(this.query, next)) return;
+            this.query = next;
+            this.page = 0;
+            this.targets = collect(viewer, includeSelf, this.query);
+            this.page = Math.clamp(this.page, 0, Math.max(0, MenuUiSupport.totalPages(targets.size(), gridSlots) - 1));
+            render();
+            broadcastChanges();
         }
 
         private static List<Target> collect(ServerPlayer viewer, boolean includeSelf, @Nullable String query) {
@@ -156,7 +168,7 @@ public final class PlayerPickerUi {
 
             container.setItem(nav + 8, searching()
                     ? MenuUiSupport.clearSearchButton(query)
-                    : MenuUiSupport.button(Items.COMPASS, "Search", ChatFormatting.GREEN,
+                    : MenuUiSupport.searchButton("Search players",
                             MenuUiSupport.hint("Find a player by name")));
 
             MenuUiSupport.fillFooter(container);

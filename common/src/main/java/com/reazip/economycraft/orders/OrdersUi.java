@@ -12,6 +12,7 @@ import com.reazip.economycraft.util.EconomySounds;
 import com.reazip.economycraft.util.ExpirationUtil;
 import com.reazip.economycraft.util.IdentityCompat;
 import com.reazip.economycraft.util.ItemPickerUi;
+import com.reazip.economycraft.util.LiveSearchable;
 import com.reazip.economycraft.util.MenuUiSupport;
 import com.reazip.economycraft.util.NumberInputUi;
 import com.reazip.economycraft.util.SortMode;
@@ -156,11 +157,11 @@ public final class OrdersUi {
         open(player, eco);
     }
 
-    private static class RequestMenu extends CompatMenu {
+    private static class RequestMenu extends CompatMenu implements LiveSearchable {
         private final OrderManager orders;
         private final EconomyManager eco;
         private final ServerPlayer viewer;
-        @Nullable private final String query;
+        @Nullable private String query;
         private SortMode sort;
         private boolean mineOnly;
         private List<OrderRequest> requests;
@@ -200,6 +201,17 @@ public final class OrdersUi {
             for (Slot slot : MenuUiSupport.playerInventorySlots(inv, 18 + rows * 18 + 14)) {
                 this.addSlot(slot);
             }
+        }
+
+        @Override
+        public void applySearch(String query) {
+            String next = query == null || query.isBlank() ? null : query;
+            if (java.util.Objects.equals(this.query, next)) return;
+            this.query = next;
+            this.page = 0;
+            this.requests = resolveRequests(orders, this.query, sort, mineOnly, viewer);
+            renderPage();
+            broadcastChanges();
         }
 
         private static List<OrderRequest> resolveRequests(OrderManager orders, @Nullable String query, SortMode sort,

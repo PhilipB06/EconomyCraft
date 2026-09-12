@@ -12,6 +12,7 @@ import com.reazip.economycraft.shop.ShopUi;
 import com.reazip.economycraft.util.IdentifierCompat;
 import com.reazip.economycraft.util.ItemPickerUi;
 import com.reazip.economycraft.util.ItemsCompat;
+import com.reazip.economycraft.util.LiveSearchable;
 import com.reazip.economycraft.util.MenuUiSupport;
 import com.reazip.economycraft.util.NumberInputUi;
 import com.reazip.economycraft.util.TextInputUi;
@@ -316,13 +317,15 @@ public final class AdminShopUi {
                 IdentifierCompat.withDefaultNamespace(path)).orElse(Items.PAPER);
     }
 
-    private static class CategoryMenu extends CompatMenu {
+    private static class CategoryMenu extends CompatMenu implements LiveSearchable {
         private final ServerPlayer viewer;
         private final EconomyManager eco;
         private final Origin origin;
         private final SimpleContainer container = new SimpleContainer(54);
         private final List<String> categories;
         private final int[] slotToIndex = new int[54];
+        @Nullable private String searchQuery;
+        private List<PriceRegistry.PriceEntry> searchEntries = List.of();
         private int page;
 
         CategoryMenu(int id, Inventory inv, ServerPlayer viewer, EconomyManager eco, Origin origin, int page) {
@@ -340,6 +343,21 @@ public final class AdminShopUi {
                 this.addSlot(slot);
             }
             render();
+        }
+
+        @Override
+        public void applySearch(String query) {
+            String next = query == null || query.isBlank() ? null : query;
+            if (java.util.Objects.equals(this.searchQuery, next)) return;
+            this.searchQuery = next;
+            this.page = 0;
+            this.searchEntries = searching() ? ListMenu.resolve(eco.getPrices(), null, searchQuery) : List.of();
+            render();
+            broadcastChanges();
+        }
+
+        private boolean searching() {
+            return searchQuery != null && !searchQuery.isBlank();
         }
 
         private static List<String> collect(PriceRegistry prices) {
@@ -361,6 +379,10 @@ public final class AdminShopUi {
         private void render() {
             container.clearContent();
             java.util.Arrays.fill(slotToIndex, -1);
+            if (searching()) {
+                renderSearch();
+                return;
+            }
             int start = page * GRID_SLOTS;
             int totalPages = MenuUiSupport.totalPages(categories.size(), GRID_SLOTS);
             PriceRegistry prices = eco.getPrices();
@@ -411,10 +433,75 @@ public final class AdminShopUi {
             MenuUiSupport.fillBackground(container);
         }
 
+        private void renderSearch() {
+            int start = page * GRID_SLOTS;
+            int totalPages = MenuUiSupport.totalPages(searchEntries.size(), GRID_SLOTS);
+
+            for (int i = 0; i < GRID_SLOTS; i++) {
+                int index = start + i;
+                if (index >= searchEntries.size()) break;
+
+                PriceRegistry.PriceEntry entry = searchEntries.get(index);
+                ItemStack display = ShopDisplay.createDisplayStack(entry, viewer);
+                if (display.isEmpty()) display = new ItemStack(Items.BARRIER);
+                display.setCount(1);
+
+                Draft itemDraft = toDraft(entry, viewer);
+                List<Component> lore = new ArrayList<>(draftLore(itemDraft, dynamicPriceLines(eco, itemDraft)));
+                lore.add(MenuUiSupport.labeledValue("Click", "Edit", MenuUiSupport.LABEL_SECONDARY_COLOR));
+                display.set(DataComponents.LORE, new ItemLore(lore));
+                container.setItem(i, display);
+            }
+
+            if (searchEntries.isEmpty()) {
+                container.setItem(22, MenuUiSupport.button(Items.BOOK, "No matches", ChatFormatting.YELLOW,
+                        MenuUiSupport.hint("Nothing matched \"" + searchQuery + "\"")));
+            }
+
+            container.setItem(NAV, MenuUiSupport.backButton());
+            container.setItem(NAV + 1, MenuUiSupport.button(Items.WRITABLE_BOOK, "Add item", ChatFormatting.GREEN,
+                    MenuUiSupport.hint("Pick any item, then set its price.")));
+            if (page > 0) container.setItem(NAV + 3, MenuUiSupport.prevPageButton());
+            container.setItem(NAV + 4, MenuUiSupport.pageIndicator(page, totalPages));
+            if (start + GRID_SLOTS < searchEntries.size()) container.setItem(NAV + 5, MenuUiSupport.nextPageButton());
+            container.setItem(NAV + 8, MenuUiSupport.clearSearchButton(searchQuery));
+            MenuUiSupport.fillFooter(container);
+        }
+
         @Override
         protected boolean onClick(int slot, int dragType, ClickKind kind, Player player) {
             if (slot < 0 || slot >= 54) return false;
             if (kind != ClickKind.PICKUP && kind != ClickKind.QUICK_MOVE) return true;
+
+            if (searching()) {
+                if (slot < GRID_SLOTS) {
+                    int index = page * GRID_SLOTS + slot;
+                    if (index < searchEntries.size()) {
+                        EconomySounds.click(viewer);
+                        openEditor(viewer, eco, origin, toDraft(searchEntries.get(index), viewer), null);
+                    }
+                    return true;
+                }
+                if (slot == NAV) {
+                    EconomySounds.click(viewer);
+                    exit(viewer, eco, origin);
+                    return true;
+                }
+                if (slot == NAV + 1) {
+                    EconomySounds.click(viewer);
+                    viewer.closeContainer();
+                    startAdd(viewer, eco, origin, null);
+                    return true;
+                }
+                if (slot == NAV + 3 && page > 0) { EconomySounds.page(viewer); page--; render(); return true; }
+                if (slot == NAV + 5 && (page + 1) * GRID_SLOTS < searchEntries.size()) { EconomySounds.page(viewer); page++; render(); return true; }
+                if (slot == NAV + 8) {
+                    EconomySounds.click(viewer);
+                    applySearch("");
+                    return true;
+                }
+                return true;
+            }
 
             if (slot < GRID_SLOTS) {
                 int index = slotToIndex[slot];
@@ -456,14 +543,14 @@ public final class AdminShopUi {
         }
     }
 
-    private static class ListMenu extends CompatMenu {
+    private static class ListMenu extends CompatMenu implements LiveSearchable {
         private final ServerPlayer viewer;
         private final EconomyManager eco;
         private final Origin origin;
         @Nullable private final String category;
-        @Nullable private final String query;
+        @Nullable private String query;
         private final SimpleContainer container = new SimpleContainer(54);
-        private final List<PriceRegistry.PriceEntry> entries;
+        private List<PriceRegistry.PriceEntry> entries;
         private int page;
 
         ListMenu(int id, Inventory inv, ServerPlayer viewer, EconomyManager eco, Origin origin,
@@ -484,6 +571,18 @@ public final class AdminShopUi {
                 this.addSlot(slot);
             }
             render();
+        }
+
+        @Override
+        public void applySearch(String query) {
+            String next = query == null || query.isBlank() ? null : query;
+            if (java.util.Objects.equals(this.query, next)) return;
+            this.query = next;
+            this.page = 0;
+            this.entries = resolve(eco.getPrices(), category, this.query);
+            this.page = Math.clamp(this.page, 0, Math.max(0, MenuUiSupport.totalPages(entries.size(), GRID_SLOTS) - 1));
+            render();
+            broadcastChanges();
         }
 
         private static List<PriceRegistry.PriceEntry> resolve(PriceRegistry prices, @Nullable String category,
