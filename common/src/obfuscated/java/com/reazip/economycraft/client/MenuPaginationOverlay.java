@@ -69,6 +69,7 @@ public final class MenuPaginationOverlay {
     private static @Nullable StringWidget pageLabel;
     private static @Nullable PageState cached;
     private static @Nullable Integer cachedBackSlot;
+    private static boolean shiftedSlots;
     private static double savedMouseX;
     private static double savedMouseY;
     private static long savedMouseAt;
@@ -102,6 +103,7 @@ public final class MenuPaginationOverlay {
         boundScreen = screen;
         cached = null;
         cachedBackSlot = null;
+        shiftedSlots = false;
 
         gapPanel = new GapPanel(left, gapY);
         gapPanel.visible = false;
@@ -206,8 +208,11 @@ public final class MenuPaginationOverlay {
             forwardButton.visible = false;
             pageLabel.visible = false;
             gapPanel.visible = false;
-            setInt(INVENTORY_LABEL_Y, container, imageHeight - 94);
-            shiftPlayerSlots(container, 0);
+            if (shiftedSlots) {
+                setInt(INVENTORY_LABEL_Y, container, imageHeight - 94);
+                shiftPlayerSlots(container, 0);
+                shiftedSlots = false;
+            }
             return;
         }
 
@@ -235,6 +240,7 @@ public final class MenuPaginationOverlay {
         forwardButton.active = forwardButton.visible;
         setInt(INVENTORY_LABEL_Y, container, imageHeight - 94 + PAGINATION_GAP);
         shiftPlayerSlots(container, PAGINATION_GAP);
+        shiftedSlots = true;
     }
 
     private static void shiftPlayerSlots(AbstractContainerScreen<?> container, int extra) {
