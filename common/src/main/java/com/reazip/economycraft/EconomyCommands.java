@@ -242,8 +242,6 @@ public final class EconomyCommands {
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildBalance() {
         return literal("bal")
-                .then(literal("top")
-                        .executes(ctx -> balTop(ctx.getSource())))
                 .executes(ctx -> showBalance(IdentityCompat.of(ctx.getSource().getPlayerOrException()), ctx.getSource()))
                 .then(argument("target", StringArgumentType.word())
                         .suggests((ctx, builder) -> suggestPlayers(ctx.getSource(), builder))
@@ -326,35 +324,6 @@ public final class EconomyCommands {
         String resolvedName = manager.getBestName(targetId);
         return showBalance(new IdentityCompat.PlayerRef(targetId,
                 resolvedName == null || resolvedName.isBlank() ? targetName : resolvedName), source);
-    }
-
-    private static int balTop(CommandSourceStack source) {
-        EconomyManager manager = EconomyCraft.getManager(source.getServer());
-        List<EconomyManager.LeaderboardEntry> sorted = manager.getLeaderboardEntries(10);
-        if (sorted.isEmpty()) {
-            source.sendFailure(Component.literal("No balances found").withStyle(ChatFormatting.RED));
-            return 0;
-        }
-
-        StringBuilder sb = new StringBuilder("Top balances:\n");
-        for (int i = 0; i < sorted.size(); i++) {
-            var e = sorted.get(i);
-
-            sb.append(i + 1)
-                    .append(". ")
-                    .append(e.name())
-                    .append(": ")
-                    .append(EconomyCraft.formatMoney(e.balance()));
-
-            if (i + 1 < sorted.size()) sb.append("\n");
-        }
-
-        Component msg = Component.literal(sb.toString()).withStyle(ChatFormatting.GOLD);
-
-        ServerPlayer executor = tryGetPlayer(source);
-        reply(source, executor, msg, false);
-
-        return sorted.size();
     }
 
     private static int pay(ServerPlayer from, String target, long amount, CommandSourceStack source) {

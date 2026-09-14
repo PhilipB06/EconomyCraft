@@ -3,6 +3,7 @@ package com.reazip.economycraft;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.mojang.logging.LogUtils;
+import com.reazip.economycraft.api.v1.BalanceChangeEvent;
 import com.reazip.economycraft.api.v1.BalanceEvents;
 import com.reazip.economycraft.api.v1.BalanceMutationResult;
 import com.reazip.economycraft.api.v1.MutationSource;
@@ -39,6 +40,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.ToLongFunction;
 import java.time.LocalDate;
 
 public class EconomyManager {
@@ -47,6 +49,14 @@ public class EconomyManager {
     private static final Gson GSON = new Gson();
     private static final Type TYPE = new TypeToken<Map<UUID, Long>>(){}.getType();
     private static final Type DAILY_SELL_TYPE = new TypeToken<Map<UUID, DailySellData>>(){}.getType();
+    private static final Type STATS_TYPE = new TypeToken<Map<UUID, PlayerStats>>(){}.getType();
+    private static final Set<String> TRADE_SOURCES = Set.of(
+            EconomySources.SHOP_PURCHASE.asString(),
+            EconomySources.SHOP_SALE.asString(),
+            EconomySources.AUCTION_PURCHASE.asString(),
+            EconomySources.ORDER_FULFILLMENT.asString(),
+            EconomySources.ORDER_ESCROW_HOLD.asString()
+    );
     private static final String ECO_BALANCE_OBJECTIVE = "eco_balance";
     private static final int LEADERBOARD_SIZE = 5;
     private static final long SCOREBOARD_SCORE_SCALE = 1000L;
@@ -61,10 +71,12 @@ public class EconomyManager {
     private final Path file;
     private final Path dailyFile;
     private final Path dailySellFile;
+    private final Path statsFile;
 
     private final Map<UUID, Long> balances = new ConcurrentHashMap<>();
     private final Map<UUID, Long> lastDaily = new ConcurrentHashMap<>();
     private final Map<UUID, DailySellData> dailySells = new ConcurrentHashMap<>();
+    private final Map<UUID, PlayerStats> stats = new ConcurrentHashMap<>();
     private final PriceRegistry prices;
     private final BalanceEventDispatcher balanceEvents;
     private final BalanceMutationEngine balanceMutations;
@@ -91,10 +103,12 @@ public class EconomyManager {
         this.file = dataDir.resolve("balances.json");
         this.dailyFile = dataDir.resolve("daily.json");
         this.dailySellFile = dataDir.resolve("daily_sells.json");
+        this.statsFile = dataDir.resolve("stats.json");
 
         load();
         loadDaily();
         loadDailySells();
+        loadStats();
 
         Path logsDir = EconomyPaths.logsDir(server);
         TransactionLogWriter.cleanup(logsDir, EconomyConfig.get().transactionLogRetentionDays);
@@ -121,6 +135,7 @@ public class EconomyManager {
         dynamicPrices.refresh(server, balances);
 
         balanceEvents.register(transactionLogger::onBalanceChanged);
+        balanceEvents.register(this::recordStats);
 
         scheduleProfileLookups(balances.keySet());
         applyScoreboardSettingOnStartup();
@@ -401,11 +416,39 @@ public class EconomyManager {
         AsyncFileWriter.writeAsync(file, GSON.toJson(new HashMap<>(balances), TYPE));
         UuidLongMapStore.persist(dailyFile, lastDaily);
         AsyncFileWriter.writeAsync(dailySellFile, GSON.toJson(new HashMap<>(dailySells), DAILY_SELL_TYPE));
+        AsyncFileWriter.writeAsync(statsFile, GSON.toJson(new HashMap<>(stats), STATS_TYPE));
         dynamicPrices.flush();
     }
 
     private void loadDaily() {
         UuidLongMapStore.load(dailyFile, lastDaily);
+    }
+
+    private void loadStats() {
+        if (Files.exists(statsFile)) {
+            try {
+                String json = Files.readString(statsFile);
+                Map<UUID, PlayerStats> map = GSON.fromJson(json, STATS_TYPE);
+                if (map != null) stats.putAll(map);
+            } catch (IOException ex) {
+                LOGGER.error("[EconomyCraft] Failed to load {}", statsFile, ex);
+            }
+        }
+    }
+
+    private void recordStats(BalanceChangeEvent event) {
+        long diff = event.difference();
+        if (diff == 0) return;
+
+        boolean trade = event.source().map(MutationSource::asString).map(TRADE_SOURCES::contains).orElse(false);
+        stats.compute(event.playerId(), (id, current) -> {
+            PlayerStats base = current != null ? current : new PlayerStats(0, 0, 0, 0);
+            if (diff > 0) {
+                return new PlayerStats(base.earned() + diff, base.spent(), base.sold() + (trade ? diff : 0), base.bought());
+            }
+            long amount = -diff;
+            return new PlayerStats(base.earned(), base.spent() + amount, base.sold(), base.bought() + (trade ? amount : 0));
+        });
     }
 
     private void loadDailySells() {
@@ -520,8 +563,8 @@ public class EconomyManager {
                     ScoreHolder.forNameOnly(e.name()),
                     objective
             );
-            score.set((int) Math.min(e.balance() / SCOREBOARD_SCORE_SCALE, Integer.MAX_VALUE));
-            score.numberFormatOverride(new FixedFormat(Component.literal(EconomyCraft.formatMoneyShort(e.balance()))));
+            score.set((int) Math.min(e.value() / SCOREBOARD_SCORE_SCALE, Integer.MAX_VALUE));
+            score.numberFormatOverride(new FixedFormat(Component.literal(EconomyCraft.formatMoneyShort(e.value()))));
         }
 
         displayed.clear();
@@ -538,15 +581,7 @@ public class EconomyManager {
                     full.add(new LeaderboardEntry(entry.getKey(), name, entry.getValue()));
                 }
             }
-            full.sort((a, b) -> {
-                int c = Long.compare(b.balance(), a.balance());
-                if (c != 0) return c;
-
-                c = String.CASE_INSENSITIVE_ORDER.compare(a.name(), b.name());
-                if (c != 0) return c;
-
-                return a.id().compareTo(b.id());
-            });
+            sortLeaderboard(full);
             if (server.isSameThread()) {
                 leaderboardCache = full;
             }
@@ -555,17 +590,60 @@ public class EconomyManager {
         return new ArrayList<>(full.subList(0, Math.min(limit, full.size())));
     }
 
+    private List<LeaderboardEntry> computeLeaderboardFrom(ToLongFunction<PlayerStats> metric, int limit) {
+        List<LeaderboardEntry> full = new ArrayList<>();
+        for (var entry : stats.entrySet()) {
+            long value = metric.applyAsLong(entry.getValue());
+            if (value <= 0) continue;
+
+            String name = resolveName(server, entry.getKey());
+            if (name != null && !name.isBlank()) {
+                full.add(new LeaderboardEntry(entry.getKey(), name, value));
+            }
+        }
+        sortLeaderboard(full);
+        return new ArrayList<>(full.subList(0, Math.min(limit, full.size())));
+    }
+
+    private static void sortLeaderboard(List<LeaderboardEntry> entries) {
+        entries.sort((a, b) -> {
+            int c = Long.compare(b.value(), a.value());
+            if (c != 0) return c;
+
+            c = String.CASE_INSENSITIVE_ORDER.compare(a.name(), b.name());
+            if (c != 0) return c;
+
+            return a.id().compareTo(b.id());
+        });
+    }
+
     public List<LeaderboardEntry> getLeaderboardEntries(int limit) {
-        return computeLeaderboard(Math.max(0, limit));
+        return getLeaderboardEntries(LeaderboardCategory.BALANCE, limit);
     }
 
     public @Nullable LeaderboardEntry getLeaderboardEntry(int rank) {
+        return getLeaderboardEntry(LeaderboardCategory.BALANCE, rank);
+    }
+
+    public List<LeaderboardEntry> getLeaderboardEntries(LeaderboardCategory category, int limit) {
+        int safeLimit = Math.max(0, limit);
+        return switch (category) {
+            case BALANCE -> computeLeaderboard(safeLimit);
+            case EARNED -> computeLeaderboardFrom(PlayerStats::earned, safeLimit);
+            case SPENT -> computeLeaderboardFrom(PlayerStats::spent, safeLimit);
+            case SOLD -> computeLeaderboardFrom(PlayerStats::sold, safeLimit);
+            case BOUGHT -> computeLeaderboardFrom(PlayerStats::bought, safeLimit);
+            case TRADED -> computeLeaderboardFrom(s -> s.sold() + s.bought(), safeLimit);
+        };
+    }
+
+    public @Nullable LeaderboardEntry getLeaderboardEntry(LeaderboardCategory category, int rank) {
         if (rank < 1) return null;
-        List<LeaderboardEntry> top = computeLeaderboard(rank);
+        List<LeaderboardEntry> top = getLeaderboardEntries(category, rank);
         return top.size() < rank ? null : top.get(rank - 1);
     }
 
-    public record LeaderboardEntry(UUID id, String name, long balance) {}
+    public record LeaderboardEntry(UUID id, String name, long value) {}
 
     public boolean toggleScoreboard() {
         EconomyConfig.get().scoreboardEnabled = !EconomyConfig.get().scoreboardEnabled;
@@ -707,4 +785,6 @@ public class EconomyManager {
     }
 
     private record DailySellData(long day, long amount) {}
+
+    private record PlayerStats(long earned, long spent, long sold, long bought) {}
 }

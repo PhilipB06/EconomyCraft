@@ -33,17 +33,17 @@ public final class PlaceholderValues {
 
     public static @Nullable String topBalance(EconomyManager economy, @Nullable String arg) {
         EconomyManager.LeaderboardEntry entry = topEntry(economy, arg);
-        return entry != null ? String.valueOf(entry.balance()) : null;
+        return entry != null ? String.valueOf(entry.value()) : null;
     }
 
     public static @Nullable String topBalanceFormatted(EconomyManager economy, @Nullable String arg) {
         EconomyManager.LeaderboardEntry entry = topEntry(economy, arg);
-        return entry != null ? EconomyCraft.formatMoney(entry.balance()) : null;
+        return entry != null ? EconomyCraft.formatMoney(entry.value()) : null;
     }
 
     public static @Nullable String topBalanceShort(EconomyManager economy, @Nullable String arg) {
         EconomyManager.LeaderboardEntry entry = topEntry(economy, arg);
-        return entry != null ? EconomyCraft.formatMoneyShort(entry.balance()) : null;
+        return entry != null ? EconomyCraft.formatMoneyShort(entry.value()) : null;
     }
 
     private static @Nullable EconomyManager.LeaderboardEntry topEntry(EconomyManager economy, @Nullable String arg) {

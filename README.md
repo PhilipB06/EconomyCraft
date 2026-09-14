@@ -15,12 +15,12 @@ Requires Architectury API.
 | **Orders**        | Request an item, amount and price. Other players fill it and get paid.                                                   |
 | **Daily Reward**  | Claims the daily payout, once per day.                                                                                   |
 | **Pay a Player**  | Send money to another player.                                                                                            |
-| **Top Balances**  | The richest players on the server.                                                                                       |
+| **Leaderboards**  | Top Balances, Earners, Spenders, Sellers, Buyers and Traders.                                                            |
 | **Item Value**    | The buy and sell price of any item.                                                                                      |
 | **Deliveries**    | Items or payouts that couldn't be delivered directly (full inventory/completed while offline).                           |
 | **Transactions**  | Your recent balance history.                                                                                             |
 
-Each screen also has a command: `/bal`, `/bal top`, `/pay`, `/daily`, `/shop`, `/ah`, `/auction`, `/sell`, `/worth`, `/orders`, `/deliveries`, `/transactions`.
+Each screen also has a command: `/bal`, `/pay`, `/daily`, `/shop`, `/ah`, `/auction`, `/sell`, `/worth`, `/orders`, `/deliveries`, `/transactions`.
 
 ---
 
@@ -81,7 +81,7 @@ Admin and command access is gated by permission nodes. Any admin node not set by
 | Node                                | Grants              |
 |-------------------------------------|---------------------|
 | `economycraft.command.menu`         | `/eco`, `/eco menu` |
-| `economycraft.command.balance`      | `/bal`, `/bal top`  |
+| `economycraft.command.balance`      | `/bal`              |
 | `economycraft.command.pay`          | `/pay`              |
 | `economycraft.command.shop`         | `/shop`             |
 | `economycraft.command.auction`      | `/ah`, `/auction`   |

@@ -23,12 +23,14 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.ItemLore;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public final class HubUi {
     private HubUi() {}
@@ -41,7 +43,7 @@ public final class HubUi {
     private static final int ORDERS = 16;
     private static final int DAILY = 19;
     private static final int PAY = 21;
-    private static final int TOP = 23;
+    private static final int LEADERBOARDS = 23;
     private static final int WORTH = 25;
     private static final int TRANSACTIONS = 28;
     private static final int DELIVERIES = 30;
@@ -57,8 +59,12 @@ public final class HubUi {
         MenuUiSupport.openMenu(player, "EconomyCraft", (id, inv) -> new HubMenu(id, inv, player));
     }
 
-    public static void openTop(ServerPlayer player) {
-        MenuUiSupport.openMenu(player, "Top Balances", (id, inv) -> new TopMenu(id, inv, player));
+    public static void openLeaderboards(ServerPlayer player) {
+        MenuUiSupport.openMenu(player, "Leaderboards", (id, inv) -> new LeaderboardsMenu(id, inv, player));
+    }
+
+    public static void openTop(ServerPlayer player, LeaderboardCategory category) {
+        MenuUiSupport.openMenu(player, category.title(), (id, inv) -> new TopMenu(id, inv, player, category));
     }
 
     private static void startPay(ServerPlayer player) {
@@ -217,8 +223,8 @@ public final class HubUi {
             }
 
             if (EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_BALANCE)) {
-                container.setItem(TOP, MenuUiSupport.button(Items.GOLDEN_APPLE, "Top Balances", ChatFormatting.GOLD,
-                        MenuUiSupport.hint("See who is richest on the server.")));
+                container.setItem(LEADERBOARDS, MenuUiSupport.button(Items.GOLDEN_APPLE, "Leaderboards", ChatFormatting.GOLD,
+                        MenuUiSupport.hint("See who's on top on the server.")));
             }
 
             if (config.worthEnabled && EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_WORTH)) {
@@ -301,10 +307,10 @@ public final class HubUi {
                         OrdersUi.openClaims(viewer, eco);
                     }
                 }
-                case TOP -> {
+                case LEADERBOARDS -> {
                     if (EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_BALANCE)) {
                         EconomySounds.click(viewer);
-                        openTop(viewer);
+                        openLeaderboards(viewer);
                     }
                 }
                 case PAY -> {
@@ -357,13 +363,78 @@ public final class HubUi {
         }
     }
 
-    private static class TopMenu extends CompatMenu {
+    private static class LeaderboardsMenu extends CompatMenu {
+        private static final int[] CATEGORY_SLOTS = {2, 4, 6, 11, 13, 15};
+
         private final ServerPlayer viewer;
         private final SimpleContainer container = new SimpleContainer(27);
 
-        TopMenu(int id, Inventory inv, ServerPlayer viewer) {
+        LeaderboardsMenu(int id, Inventory inv, ServerPlayer viewer) {
             super(MenuType.GENERIC_9x3, id);
             this.viewer = viewer;
+
+            for (Slot slot : MenuUiSupport.readOnlyGridSlots(container, 27)) {
+                this.addSlot(slot);
+            }
+            for (Slot slot : MenuUiSupport.playerInventorySlots(inv, 18 + 3 * 18 + 14)) {
+                this.addSlot(slot);
+            }
+            render();
+        }
+
+        private void render() {
+            container.clearContent();
+            LeaderboardCategory[] categories = LeaderboardCategory.values();
+            for (int i = 0; i < categories.length; i++) {
+                container.setItem(CATEGORY_SLOTS[i], MenuUiSupport.button(icon(categories[i]), categories[i].title(),
+                        ChatFormatting.GOLD, MenuUiSupport.hint(categories[i].hint())));
+            }
+
+            container.setItem(22, MenuUiSupport.button(Items.NETHER_STAR, "Main menu", ChatFormatting.YELLOW));
+            MenuUiSupport.fillBackground(container);
+        }
+
+        private static Item icon(LeaderboardCategory category) {
+            return switch (category) {
+                case BALANCE -> Items.GOLDEN_APPLE;
+                case EARNED -> Items.GOLD_INGOT;
+                case SPENT -> Items.PAPER;
+                case SOLD -> Items.EMERALD;
+                case BOUGHT -> Items.CHEST;
+                case TRADED -> Items.COMPASS;
+            };
+        }
+
+        @Override
+        protected boolean onClick(int slot, int dragType, ClickKind kind, Player player) {
+            if (slot < 0 || slot >= 27) return false;
+            if (kind != ClickKind.PICKUP && kind != ClickKind.QUICK_MOVE) return true;
+
+            LeaderboardCategory[] categories = LeaderboardCategory.values();
+            for (int i = 0; i < CATEGORY_SLOTS.length; i++) {
+                if (slot == CATEGORY_SLOTS[i]) {
+                    EconomySounds.click(viewer);
+                    openTop(viewer, categories[i]);
+                    return true;
+                }
+            }
+            if (slot == 22) {
+                EconomySounds.click(viewer);
+                HubUi.open(viewer);
+            }
+            return true;
+        }
+    }
+
+    private static class TopMenu extends CompatMenu {
+        private final ServerPlayer viewer;
+        private final LeaderboardCategory category;
+        private final SimpleContainer container = new SimpleContainer(27);
+
+        TopMenu(int id, Inventory inv, ServerPlayer viewer, LeaderboardCategory category) {
+            super(MenuType.GENERIC_9x3, id);
+            this.viewer = viewer;
+            this.category = category;
 
             for (Slot slot : MenuUiSupport.readOnlyGridSlots(container, 27)) {
                 this.addSlot(slot);
@@ -380,7 +451,7 @@ public final class HubUi {
 
             boolean any = false;
             for (int rank = 1; rank <= 10; rank++) {
-                EconomyManager.LeaderboardEntry entry = eco.getLeaderboardEntry(rank);
+                EconomyManager.LeaderboardEntry entry = eco.getLeaderboardEntry(category, rank);
                 if (entry == null) break;
                 any = true;
 
@@ -389,16 +460,18 @@ public final class HubUi {
                 ChatFormatting nameColor = rank == 1 ? ChatFormatting.GOLD : MenuUiSupport.BALANCE_NAME_COLOR;
                 head.set(DataComponents.CUSTOM_NAME, Component.literal("#" + rank + " " + entry.name())
                         .withStyle(s -> s.withItalic(false).withBold(true).withColor(nameColor)));
-                head.set(DataComponents.LORE, new ItemLore(List.of(MenuUiSupport.balanceLore(entry.balance()))));
+                head.set(DataComponents.LORE, new ItemLore(List.of(MenuUiSupport.balanceLore(category.metricLabel(), entry.value()))));
                 head.setCount(Math.min(64, rank));
                 container.setItem(rank <= 5 ? rank + 1 : rank + 5, head);
             }
 
             if (!any) {
-                container.setItem(13, MenuUiSupport.button(Items.BARRIER, "No balances yet", ChatFormatting.RED));
+                String noun = category.title().substring("Top ".length()).toLowerCase(Locale.ROOT);
+                container.setItem(13, MenuUiSupport.button(Items.BOOK, "No " + noun + " yet", ChatFormatting.YELLOW));
             }
 
-            container.setItem(22, MenuUiSupport.button(Items.NETHER_STAR, "Main menu", ChatFormatting.YELLOW));
+            container.setItem(22, MenuUiSupport.button(Items.BARRIER, "Back", ChatFormatting.DARK_RED,
+                    MenuUiSupport.hint("Back to Leaderboards")));
             MenuUiSupport.fillBackground(container);
         }
 
@@ -407,7 +480,7 @@ public final class HubUi {
             if (slot < 0 || slot >= 27) return false;
             if (kind == ClickKind.PICKUP && slot == 22) {
                 EconomySounds.click(viewer);
-                HubUi.open(viewer);
+                HubUi.openLeaderboards(viewer);
             }
             return true;
         }

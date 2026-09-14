@@ -213,9 +213,13 @@ public final class MenuUiSupport {
     }
 
     public static Component balanceLore(long balance) {
-        return Component.literal("Balance: ")
+        return balanceLore("Balance", balance);
+    }
+
+    public static Component balanceLore(String label, long amount) {
+        return Component.literal(label + ": ")
                 .withStyle(s -> s.withItalic(false).withColor(BALANCE_LABEL_COLOR))
-                .append(Component.literal(EconomyCraft.formatMoney(balance))
+                .append(Component.literal(EconomyCraft.formatMoney(amount))
                         .withStyle(s -> s.withItalic(false).withColor(BALANCE_VALUE_COLOR)));
     }
 

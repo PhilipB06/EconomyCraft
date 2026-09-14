@@ -201,7 +201,7 @@ public final class TransactionsUi {
             }
 
             if (entries.isEmpty()) {
-                container.setItem(Math.min(4, itemsPerPage - 1), MenuUiSupport.button(Items.BARRIER, "No transactions yet",
+                container.setItem(Math.min(4, itemsPerPage - 1), MenuUiSupport.button(Items.BOOK, "No transactions yet",
                         ChatFormatting.YELLOW, MenuUiSupport.hint("Nothing recorded here so far.")));
             }
 
