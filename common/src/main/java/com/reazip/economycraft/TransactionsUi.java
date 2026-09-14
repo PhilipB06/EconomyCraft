@@ -210,9 +210,7 @@ public final class TransactionsUi {
             container.setItem(navRowStart + 4, MenuUiSupport.pageIndicator(page, totalPages));
 
             container.setItem(navRowStart, headerItem());
-            if (adminMode) {
-                container.setItem(navRowStart + 1, filterButton());
-            }
+            container.setItem(navRowStart + 1, filterButton());
             container.setItem(navRowStart + 8, backButton());
 
             MenuUiSupport.fillFooter(container);
@@ -282,12 +280,12 @@ public final class TransactionsUi {
                 renderPage();
                 return true;
             }
-            if (adminMode && slot == navRowStart + 1) {
+            if (slot == navRowStart + 1) {
                 EconomySounds.click(viewer);
                 TransactionCategory nextCategory = category.next();
                 List<TransactionEntry> updated = filterEntries(allEntries, nextCategory);
                 if (MenuUiSupport.listMenuRows(updated.size()) != rows) {
-                    reopenWithEntries(viewer, targetId, targetName, true, onBack, 0, nextCategory, allEntries);
+                    reopenWithEntries(viewer, targetId, targetName, adminMode, onBack, 0, nextCategory, allEntries);
                     return true;
                 }
                 category = nextCategory;
