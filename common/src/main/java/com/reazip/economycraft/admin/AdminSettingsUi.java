@@ -6,6 +6,8 @@ import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyManager;
 import com.reazip.economycraft.util.ClickKind;
 import com.reazip.economycraft.util.CompatMenu;
+import com.reazip.economycraft.util.EconomyPermissions;
+import com.reazip.economycraft.util.EconomyPermissions.Nodes;
 import com.reazip.economycraft.util.EconomySounds;
 import com.reazip.economycraft.util.ItemsCompat;
 import com.reazip.economycraft.util.MenuUiSupport;
@@ -46,6 +48,7 @@ public final class AdminSettingsUi {
     };
 
     public static void open(ServerPlayer player, EconomyManager eco) {
+        if (!MenuUiSupport.checkOrDeny(player, EconomyPermissions.checkAdmin(player, Nodes.ADMIN_SETTINGS))) return;
         open(player, eco, 0);
     }
 

@@ -5,6 +5,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.reazip.economycraft.PriceRegistry.PriceEntry;
+import com.reazip.economycraft.shop.ShopDisplay;
 import com.reazip.economycraft.util.ItemArgumentCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandBuildContext;
@@ -102,18 +103,9 @@ public final class WorthCommand {
     @Nullable
     private static String formatAmount(long unit, int amount) {
         if (amount == 1) return EconomyCraft.formatMoney(unit);
-        Long total = safeMultiply(unit, amount);
+        Long total = ShopDisplay.safeMultiply(unit, amount);
         if (total == null) return null;
         return EconomyCraft.formatMoney(total) + " (" + EconomyCraft.formatMoney(unit) + " each)";
-    }
-
-    @Nullable
-    private static Long safeMultiply(long value, int amount) {
-        try {
-            return Math.multiplyExact(value, amount);
-        } catch (ArithmeticException ex) {
-            return null;
-        }
     }
 
     @Nullable

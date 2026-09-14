@@ -96,7 +96,10 @@ public final class EconomyPaths {
         if (!copyAll(shared, dir, SETTINGS_FILES) || !copyAll(shared.resolve(DATA_DIR_NAME), data, DATA_FILES)) {
             if (backup != null) {
                 LOGGER.error("[EconomyCraft] Import failed part-way; restoring the previous economy from {}", backup);
-                restoreBackup(backup, dir, data);
+                if (!restoreBackup(backup, dir, data)) {
+                    LOGGER.error("[EconomyCraft] Restore from {} was incomplete; {} may now hold a mix of old and " +
+                            "partially-imported files. Manually copy the files from {} into {} to fix this.", backup, dir, backup, dir);
+                }
             }
             return false;
         }
@@ -128,24 +131,32 @@ public final class EconomyPaths {
         return backup;
     }
 
-    private static void restoreBackup(Path backup, Path dir, Path data) {
-        restoreInto(backup, dir, SETTINGS_FILES);
-        restoreInto(backup.resolve(DATA_DIR_NAME), data, DATA_FILES);
+    private static boolean restoreBackup(Path backup, Path dir, Path data) {
+        boolean settingsOk = restoreInto(backup, dir, SETTINGS_FILES);
+        boolean dataOk = restoreInto(backup.resolve(DATA_DIR_NAME), data, DATA_FILES);
+        return settingsOk && dataOk;
     }
 
-    private static void restoreInto(Path from, Path to, List<String> names) {
+    private static boolean restoreInto(Path from, Path to, List<String> names) {
+        boolean allOk = true;
         for (String name : names) {
             Path source = from.resolve(name);
             Path target = to.resolve(name);
             try {
-                if (Files.isRegularFile(source)) {
-                    Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
-                } else {
-                    Files.deleteIfExists(target);
-                }
+                copyOrDelete(source, target);
             } catch (IOException e) {
                 LOGGER.error("[EconomyCraft] Could not restore {} from {}; the backup is kept at {}", target, source, from, e);
+                allOk = false;
             }
+        }
+        return allOk;
+    }
+
+    private static void copyOrDelete(Path source, Path target) throws IOException {
+        if (Files.isRegularFile(source)) {
+            Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+        } else {
+            Files.deleteIfExists(target);
         }
     }
 

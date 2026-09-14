@@ -9,6 +9,8 @@ import com.reazip.economycraft.util.ChatCompat;
 import com.reazip.economycraft.util.ClickKind;
 import com.reazip.economycraft.util.CompatMenu;
 import com.reazip.economycraft.util.ContainerPreviewUi;
+import com.reazip.economycraft.util.EconomyPermissions;
+import com.reazip.economycraft.util.EconomyPermissions.Nodes;
 import com.reazip.economycraft.util.EconomySounds;
 import com.reazip.economycraft.util.ExpirationUtil;
 import com.reazip.economycraft.util.ItemPickerUi;
@@ -47,6 +49,7 @@ public final class AuctionUi {
     }
 
     static void open(ServerPlayer player, AuctionManager auctions, int page, @Nullable String query, SortMode sort, boolean mineOnly) {
+        if (!MenuUiSupport.checkOrDeny(player, EconomyPermissions.checkCommand(player, Nodes.COMMAND_AUCTION))) return;
         MenuUiSupport.openMenu(player, "Auction House", (id, inv) -> new AuctionMenu(id, inv, auctions, player, page, query, sort, mineOnly));
     }
 
@@ -343,8 +346,10 @@ public final class AuctionUi {
 
             container.setItem(navRowStart + 4, MenuUiSupport.pageIndicator(page, totalPages));
 
-            container.setItem(navRowStart + 6, MenuUiSupport.button(Items.ENDER_CHEST, "Deliveries",
-                    ChatFormatting.LIGHT_PURPLE, MenuUiSupport.hint("Items waiting to be collected")));
+            if (EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_DELIVERIES)) {
+                container.setItem(navRowStart + 6, MenuUiSupport.button(Items.ENDER_CHEST, "Deliveries",
+                        ChatFormatting.LIGHT_PURPLE, MenuUiSupport.hint("Items waiting to be collected")));
+            }
 
             container.setItem(navRowStart + 7, MenuUiSupport.button(Items.NETHER_STAR, "Main menu", ChatFormatting.YELLOW));
 
@@ -401,9 +406,11 @@ public final class AuctionUi {
                 return true;
             }
             if (slot == navRowStart + 6) {
-                EconomySounds.click(viewer);
-                viewer.closeContainer();
-                OrdersUi.openClaims(viewer, EconomyCraft.getManager(viewer.level().getServer()));
+                if (EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_DELIVERIES)) {
+                    EconomySounds.click(viewer);
+                    viewer.closeContainer();
+                    OrdersUi.openClaims(viewer, EconomyCraft.getManager(viewer.level().getServer()));
+                }
                 return true;
             }
             if (slot == navRowStart + 7) {

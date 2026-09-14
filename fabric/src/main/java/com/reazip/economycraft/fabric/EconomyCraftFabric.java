@@ -8,6 +8,7 @@ public final class EconomyCraftFabric implements ModInitializer {
     @Override
     public void onInitialize() {
         EconomyCraft.registerEvents();
+        EconomyCraftFabricPermissions.install();
 
         if (FabricLoader.getInstance().isModLoaded("placeholder-api")) {
             EconomyCraftFabricPlaceholders.register();

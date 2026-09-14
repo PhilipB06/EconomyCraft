@@ -1,4 +1,5 @@
 ### Features
+- Added permission node support. OP remains as the fallback when no permission plugin is installed.
 
 
 ### Improvements

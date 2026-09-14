@@ -8,6 +8,7 @@ import net.neoforged.fml.common.Mod;
 public final class EconomyCraftNeoForge {
     public EconomyCraftNeoForge() {
         EconomyCraft.registerEvents();
+        EconomyCraftNeoForgePermissions.bootstrap();
 
         if (EconomyCraftNeoForgeModIds.isPlaceholderApiLoaded()) {
             EconomyCraftNeoForgePlaceholders.register();

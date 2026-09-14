@@ -15,7 +15,6 @@ import java.time.format.DateTimeParseException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public final class TransactionLogWriter {
     private TransactionLogWriter() {}
@@ -23,11 +22,7 @@ public final class TransactionLogWriter {
     private static final Logger LOGGER = LogUtils.getLogger();
     static final String FILE_PREFIX = "transactions-";
     static final String FILE_SUFFIX = ".log";
-    private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor(r -> {
-        Thread t = new Thread(r, "EconomyCraft-TxLog");
-        t.setDaemon(true);
-        return t;
-    });
+    private static final ExecutorService EXECUTOR = EconomyExecutors.newSingleThreadExecutor("EconomyCraft-TxLog");
     private static final Map<Path, LocalDate> LAST_CLEANUP_DAY = new ConcurrentHashMap<>();
 
     public static void append(Path dir, int retentionDays, String jsonLine) {

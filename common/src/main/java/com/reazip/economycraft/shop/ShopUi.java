@@ -12,9 +12,10 @@ import com.reazip.economycraft.util.ChatCompat;
 import com.reazip.economycraft.util.ClickKind;
 import com.reazip.economycraft.util.CompatMenu;
 import com.reazip.economycraft.util.ContainerPreviewUi;
+import com.reazip.economycraft.util.EconomyPermissions;
+import com.reazip.economycraft.util.EconomyPermissions.Nodes;
 import com.reazip.economycraft.util.EconomySounds;
 import com.reazip.economycraft.util.MenuUiSupport;
-import com.reazip.economycraft.util.PermissionCompat;
 import com.reazip.economycraft.util.SortMode;
 import com.reazip.economycraft.util.TextInputUi;
 import net.minecraft.ChatFormatting;
@@ -47,6 +48,7 @@ public final class ShopUi {
     }
 
     public static void open(ServerPlayer player, EconomyManager eco, @Nullable String category) {
+        if (!MenuUiSupport.checkOrDeny(player, EconomyPermissions.checkCommand(player, Nodes.COMMAND_SHOP))) return;
         if (category == null || category.isBlank()) {
             openRoot(player, eco);
             return;
@@ -73,6 +75,7 @@ public final class ShopUi {
     }
 
     public static void openSearch(ServerPlayer player, EconomyManager eco, String query) {
+        if (!MenuUiSupport.checkOrDeny(player, EconomyPermissions.checkCommand(player, Nodes.COMMAND_SHOP))) return;
         openSearchResults(player, eco, null, query, 0, SortMode.DEFAULT);
     }
 
@@ -175,11 +178,11 @@ public final class ShopUi {
             container.setItem(navRowStart, MenuUiSupport.createBalanceItem(viewer));
             container.setItem(navRowStart + 4, MenuUiSupport.pageIndicator(page, totalPages));
 
-            if (PermissionCompat.isAdmin(viewer)) {
+            if (EconomyPermissions.checkAdmin(viewer, Nodes.ADMIN_SHOP)) {
                 container.setItem(navRowStart + 1, MenuUiSupport.button(Items.COMMAND_BLOCK, "Edit shop",
                         ChatFormatting.LIGHT_PURPLE,
                         MenuUiSupport.hint("Add, edit or remove items"),
-                        MenuUiSupport.hint("Only you (an operator) can see this")));
+                        MenuUiSupport.hint("Only admins can see this")));
             }
 
             container.setItem(navRowStart + 7, MenuUiSupport.button(Items.NETHER_STAR, "Main menu",
@@ -209,7 +212,7 @@ public final class ShopUi {
             }
             if (slot == navRowStart + 3 && page > 0) { EconomySounds.page(viewer); page--; updatePage(); return true; }
             if (slot == navRowStart + 5 && (page + 1) * itemsPerPage < categories.size()) { EconomySounds.page(viewer); page++; updatePage(); return true; }
-            if (slot == navRowStart + 1 && PermissionCompat.isAdmin(viewer)) {
+            if (slot == navRowStart + 1 && EconomyPermissions.checkAdmin(viewer, Nodes.ADMIN_SHOP)) {
                 EconomySounds.click(viewer);
                 AdminShopUi.open(viewer, eco, AdminShopUi.Origin.SHOP);
                 return true;

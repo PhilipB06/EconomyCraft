@@ -10,6 +10,7 @@ import com.reazip.economycraft.util.AsyncFileWriter;
 import com.reazip.economycraft.util.EconomyPaths;
 import com.reazip.economycraft.util.ExpirationUtil;
 import com.reazip.economycraft.util.PlayerLimitOverrides;
+import com.reazip.economycraft.util.SequentialIdAllocator;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.ItemStack;
 import org.slf4j.Logger;
@@ -48,7 +49,8 @@ public class OrderManager {
     }
 
     public void addRequest(OrderRequest r) {
-        r.id = nextId++;
+        r.id = SequentialIdAllocator.nextId(nextId, requests, LOGGER, "Order request");
+        nextId = SequentialIdAllocator.advance(r.id);
         putAndPersist(r);
     }
 
@@ -212,7 +214,7 @@ public class OrderManager {
                             migrated = true;
                         }
                         requests.put(r.id, r);
-                        if (r.id >= nextId) nextId = r.id + 1;
+                        if (r.id >= nextId) nextId = SequentialIdAllocator.advance(r.id);
                     } catch (Exception ex) {
                         LOGGER.error("[EconomyCraft] Dropping an unreadable order request in {}", file, ex);
                     }

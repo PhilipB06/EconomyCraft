@@ -5,6 +5,8 @@ import com.reazip.economycraft.api.v1.BalanceMutationType;
 import com.reazip.economycraft.util.ClickKind;
 import com.reazip.economycraft.util.CompatMenu;
 import com.reazip.economycraft.util.EconomyPaths;
+import com.reazip.economycraft.util.EconomyPermissions;
+import com.reazip.economycraft.util.EconomyPermissions.Nodes;
 import com.reazip.economycraft.util.EconomySounds;
 import com.reazip.economycraft.util.MenuUiSupport;
 import com.reazip.economycraft.util.PlayerPickerUi;
@@ -17,6 +19,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -59,6 +62,7 @@ public final class TransactionsUi {
     );
 
     public static void open(ServerPlayer player) {
+        if (!MenuUiSupport.checkOrDeny(player, EconomyPermissions.checkCommand(player, Nodes.COMMAND_TRANSACTIONS))) return;
         openInternal(player, player.getUUID(), null, false, null, 0, TransactionCategory.ALL);
     }
 
@@ -69,6 +73,7 @@ public final class TransactionsUi {
     private static void openInternal(ServerPlayer viewer, UUID targetId, @Nullable String targetName, boolean adminMode,
                                       @Nullable Consumer<ServerPlayer> onBack, int page, TransactionCategory category) {
         MinecraftServer server = viewer.level().getServer();
+        AbstractContainerMenu expectedMenu = viewer.containerMenu;
         TransactionLogReader.readForPlayerAsync(EconomyPaths.logsDir(server), targetId)
                 .whenComplete((allEntries, error) -> {
                     if (error != null) {
@@ -78,9 +83,11 @@ public final class TransactionsUi {
                     try {
                         server.execute(() -> {
                             if (server.getPlayerList().getPlayer(viewer.getUUID()) != viewer) return;
+                            if (viewer.containerMenu != expectedMenu) return;
                             reopenWithEntries(viewer, targetId, targetName, adminMode, onBack, page, category, loaded);
                         });
-                    } catch (RuntimeException ignored) {
+                    } catch (RuntimeException ex) {
+                        LOGGER.error("[EconomyCraft] Failed to reopen Transactions for {}", targetId, ex);
                     }
                 });
     }

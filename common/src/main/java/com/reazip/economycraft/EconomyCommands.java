@@ -14,9 +14,10 @@ import com.reazip.economycraft.util.AsyncFileWriter;
 import com.reazip.economycraft.util.EconomyPaths;
 import com.reazip.economycraft.util.EconomySounds;
 import com.reazip.economycraft.util.ExpirationUtil;
+import com.reazip.economycraft.util.EconomyPermissions;
+import com.reazip.economycraft.util.EconomyPermissions.Nodes;
 import com.reazip.economycraft.util.IdentityCompat;
 import com.reazip.economycraft.util.ItemArgumentCompat;
-import com.reazip.economycraft.util.PermissionCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.Commands;
@@ -61,43 +62,53 @@ public final class EconomyCommands {
                 buildRemovePlayer()
         ));
 
-        dispatcher.register(buildBalance().requires(s -> EconomyConfig.get().standaloneCommands));
-        dispatcher.register(buildPay().requires(s -> EconomyConfig.get().standaloneCommands));
-        dispatcher.register(SellCommand.register().requires(s -> EconomyConfig.get().standaloneCommands && EconomyConfig.get().sellEnabled));
-        registerStandalone(dispatcher, buildAuction("ah"));
-        registerStandalone(dispatcher, buildAuction("auction"));
-        registerStandalone(dispatcher, buildShop());
-        dispatcher.register(buildOrders(buildContext).requires(s -> EconomyConfig.get().standaloneCommands));
-        dispatcher.register(buildDeliveries().requires(s -> EconomyConfig.get().standaloneCommands));
-        dispatcher.register(buildDaily().requires(s -> EconomyConfig.get().standaloneCommands));
-        dispatcher.register(buildTransactions().requires(s -> EconomyConfig.get().standaloneCommands));
-        dispatcher.register(WorthCommand.register(buildContext).requires(s ->
-                EconomyConfig.get().standaloneCommands && EconomyConfig.get().worthEnabled));
+        dispatcher.register(withCommandPermission(
+                buildBalance().requires(s -> EconomyConfig.get().standaloneCommands), Nodes.COMMAND_BALANCE));
+        dispatcher.register(withCommandPermission(
+                buildPay().requires(s -> EconomyConfig.get().standaloneCommands), Nodes.COMMAND_PAY));
+        dispatcher.register(withCommandPermission(
+                SellCommand.register().requires(s -> EconomyConfig.get().standaloneCommands && EconomyConfig.get().sellEnabled),
+                Nodes.COMMAND_SELL));
+        registerStandalone(dispatcher, buildAuction("ah"), Nodes.COMMAND_AUCTION);
+        registerStandalone(dispatcher, buildAuction("auction"), Nodes.COMMAND_AUCTION);
+        registerStandalone(dispatcher, buildShop(), Nodes.COMMAND_SHOP);
+        dispatcher.register(withCommandPermission(
+                buildOrders(buildContext).requires(s -> EconomyConfig.get().standaloneCommands), Nodes.COMMAND_ORDERS));
+        dispatcher.register(withCommandPermission(
+                buildDeliveries().requires(s -> EconomyConfig.get().standaloneCommands), Nodes.COMMAND_DELIVERIES));
+        dispatcher.register(withCommandPermission(
+                buildDaily().requires(s -> EconomyConfig.get().standaloneCommands), Nodes.COMMAND_DAILY));
+        dispatcher.register(withCommandPermission(
+                buildTransactions().requires(s -> EconomyConfig.get().standaloneCommands), Nodes.COMMAND_TRANSACTIONS));
+        dispatcher.register(withCommandPermission(
+                WorthCommand.register(buildContext).requires(s ->
+                        EconomyConfig.get().standaloneCommands && EconomyConfig.get().worthEnabled),
+                Nodes.COMMAND_WORTH));
 
         dispatcher.register(
                 buildAddMoney().requires(src ->
-                        PermissionCompat.gamemaster().test(src)
+                        EconomyPermissions.checkAdmin(src, Nodes.ADMIN_PLAYERS)
                                 && EconomyConfig.get().standaloneAdminCommands
                 )
         );
 
         dispatcher.register(
                 buildSetMoney().requires(src ->
-                        PermissionCompat.gamemaster().test(src)
+                        EconomyPermissions.checkAdmin(src, Nodes.ADMIN_PLAYERS)
                                 && EconomyConfig.get().standaloneAdminCommands
                 )
         );
 
         dispatcher.register(
                 buildRemoveMoney().requires(src ->
-                        PermissionCompat.gamemaster().test(src)
+                        EconomyPermissions.checkAdmin(src, Nodes.ADMIN_PLAYERS)
                                 && EconomyConfig.get().standaloneAdminCommands
                 )
         );
 
         dispatcher.register(
                 buildRemovePlayer().requires(src ->
-                        PermissionCompat.gamemaster().test(src)
+                        EconomyPermissions.checkAdmin(src, Nodes.ADMIN_PLAYERS)
                                 && EconomyConfig.get().standaloneAdminCommands
                 )
         );
@@ -105,9 +116,16 @@ public final class EconomyCommands {
     }
 
     private static void registerStandalone(CommandDispatcher<CommandSourceStack> dispatcher,
-                                           LiteralArgumentBuilder<CommandSourceStack> command) {
+                                           LiteralArgumentBuilder<CommandSourceStack> command, String node) {
+        withCommandPermission(command, node);
         command.requires(command.getRequirement().and(src -> EconomyConfig.get().standaloneCommands));
         dispatcher.register(command);
+    }
+
+    private static LiteralArgumentBuilder<CommandSourceStack> withCommandPermission(
+            LiteralArgumentBuilder<CommandSourceStack> command, String node) {
+        command.requires(command.getRequirement().and(src -> EconomyPermissions.checkCommand(src, node)));
+        return command;
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildRoot(
@@ -121,21 +139,25 @@ public final class EconomyCommands {
         LiteralArgumentBuilder<CommandSourceStack> root = literal("eco");
 
         root.executes(ctx -> openHub(ctx.getSource()));
-        root.then(literal("menu").executes(ctx -> openHub(ctx.getSource())));
-        root.then(literal("admin").requires(PermissionCompat.gamemaster())
+        root.then(literal("menu")
+                .requires(src -> EconomyPermissions.checkCommand(src, Nodes.COMMAND_MENU))
+                .executes(ctx -> openHub(ctx.getSource())));
+        root.then(literal("admin").requires(EconomyPermissions::hasAnyAdmin)
                 .executes(ctx -> openAdmin(ctx.getSource())));
 
-        root.then(buildBalance());
-        root.then(buildPay());
-        root.then(SellCommand.register().requires(s -> EconomyConfig.get().sellEnabled));
-        root.then(buildAuction("ah"));
-        root.then(buildAuction("auction"));
-        root.then(buildShop());
-        root.then(buildOrders(buildContext));
-        root.then(buildDeliveries());
-        root.then(buildDaily());
-        root.then(buildTransactions());
-        root.then(WorthCommand.register(buildContext).requires(s -> EconomyConfig.get().worthEnabled));
+        root.then(withCommandPermission(buildBalance(), Nodes.COMMAND_BALANCE));
+        root.then(withCommandPermission(buildPay(), Nodes.COMMAND_PAY));
+        root.then(withCommandPermission(
+                SellCommand.register().requires(s -> EconomyConfig.get().sellEnabled), Nodes.COMMAND_SELL));
+        root.then(withCommandPermission(buildAuction("ah"), Nodes.COMMAND_AUCTION));
+        root.then(withCommandPermission(buildAuction("auction"), Nodes.COMMAND_AUCTION));
+        root.then(withCommandPermission(buildShop(), Nodes.COMMAND_SHOP));
+        root.then(withCommandPermission(buildOrders(buildContext), Nodes.COMMAND_ORDERS));
+        root.then(withCommandPermission(buildDeliveries(), Nodes.COMMAND_DELIVERIES));
+        root.then(withCommandPermission(buildDaily(), Nodes.COMMAND_DAILY));
+        root.then(withCommandPermission(buildTransactions(), Nodes.COMMAND_TRANSACTIONS));
+        root.then(withCommandPermission(
+                WorthCommand.register(buildContext).requires(s -> EconomyConfig.get().worthEnabled), Nodes.COMMAND_WORTH));
 
         root.then(addMoney);
         root.then(setMoney);
@@ -186,6 +208,10 @@ public final class EconomyCommands {
         ServerPlayer player = tryGetPlayer(source);
         if (player == null) {
             source.sendFailure(Component.literal("Only players can open the menu.").withStyle(ChatFormatting.RED));
+            return 0;
+        }
+        if (!EconomyPermissions.checkCommand(source, Nodes.COMMAND_MENU)) {
+            source.sendFailure(Component.literal("You don't have permission for that.").withStyle(ChatFormatting.RED));
             return 0;
         }
         try {
@@ -400,7 +426,7 @@ public final class EconomyCommands {
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildAddMoney() {
-        return literal("addmoney").requires(PermissionCompat.gamemaster())
+        return literal("addmoney").requires(src -> EconomyPermissions.checkAdmin(src, Nodes.ADMIN_PLAYERS))
                 .then(argument("targets", GameProfileArgument.gameProfile())
                         .then(argument("amount", StringArgumentType.word())
                                 .executes(ctx -> {
@@ -414,7 +440,7 @@ public final class EconomyCommands {
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildSetMoney() {
-        return literal("setmoney").requires(PermissionCompat.gamemaster())
+        return literal("setmoney").requires(src -> EconomyPermissions.checkAdmin(src, Nodes.ADMIN_PLAYERS))
                 .then(argument("targets", GameProfileArgument.gameProfile())
                         .then(argument("amount", StringArgumentType.word())
                                 .executes(ctx -> {
@@ -428,7 +454,7 @@ public final class EconomyCommands {
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildRemoveMoney() {
-        return literal("removemoney").requires(PermissionCompat.gamemaster())
+        return literal("removemoney").requires(src -> EconomyPermissions.checkAdmin(src, Nodes.ADMIN_PLAYERS))
                 .then(argument("targets", GameProfileArgument.gameProfile())
                         .executes(ctx -> removeMoney(
                                 IdentityCompat.getArgAsPlayerRefs(ctx, "targets"),
@@ -446,7 +472,7 @@ public final class EconomyCommands {
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildRemovePlayer() {
-        return literal("removeplayer").requires(PermissionCompat.gamemaster())
+        return literal("removeplayer").requires(src -> EconomyPermissions.checkAdmin(src, Nodes.ADMIN_PLAYERS))
                 .then(argument("targets", GameProfileArgument.gameProfile())
                         .executes(ctx -> removePlayers(
                                 IdentityCompat.getArgAsPlayerRefs(ctx, "targets"),

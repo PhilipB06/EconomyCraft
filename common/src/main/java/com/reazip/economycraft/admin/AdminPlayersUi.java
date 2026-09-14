@@ -8,6 +8,8 @@ import com.reazip.economycraft.TransactionsUi;
 import com.reazip.economycraft.util.ClickKind;
 import com.reazip.economycraft.util.CompatMenu;
 import com.reazip.economycraft.util.ConfirmUi;
+import com.reazip.economycraft.util.EconomyPermissions;
+import com.reazip.economycraft.util.EconomyPermissions.Nodes;
 import com.reazip.economycraft.util.EconomySounds;
 import com.reazip.economycraft.util.ItemsCompat;
 import com.reazip.economycraft.util.MenuUiSupport;
@@ -42,6 +44,7 @@ public final class AdminPlayersUi {
     private static final int BACK = 18;
 
     public static void open(ServerPlayer player, EconomyManager eco) {
+        if (!MenuUiSupport.checkOrDeny(player, EconomyPermissions.checkAdmin(player, Nodes.ADMIN_PLAYERS))) return;
         PlayerPickerUi.open(player, "Pick a player", true,
                 (picker, target) -> openTarget(picker, eco, target),
                 p -> AdminUi.open(p, eco));

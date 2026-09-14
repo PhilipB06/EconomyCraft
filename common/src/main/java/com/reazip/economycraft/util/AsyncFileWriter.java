@@ -10,17 +10,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public final class AsyncFileWriter {
     private AsyncFileWriter() {}
 
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor(r -> {
-        Thread t = new Thread(r, "EconomyCraft-IO");
-        t.setDaemon(true);
-        return t;
-    });
+    private static final ExecutorService EXECUTOR = EconomyExecutors.newSingleThreadExecutor("EconomyCraft-IO");
 
     public static void writeAsync(Path file, String content) {
         EXECUTOR.execute(() -> {
@@ -34,11 +29,20 @@ public final class AsyncFileWriter {
 
     private static void writeAtomically(Path file, String content) throws IOException {
         Path temp = file.resolveSibling(file.getFileName() + ".tmp");
-        Files.writeString(temp, content, StandardCharsets.UTF_8);
         try {
-            Files.move(temp, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-        } catch (AtomicMoveNotSupportedException ex) {
-            Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING);
+            Files.writeString(temp, content, StandardCharsets.UTF_8);
+            try {
+                Files.move(temp, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            } catch (AtomicMoveNotSupportedException ex) {
+                Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } catch (IOException ex) {
+            try {
+                Files.deleteIfExists(temp);
+            } catch (IOException cleanupEx) {
+                ex.addSuppressed(cleanupEx);
+            }
+            throw ex;
         }
     }
 

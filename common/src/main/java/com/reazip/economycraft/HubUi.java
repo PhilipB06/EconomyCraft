@@ -7,11 +7,12 @@ import com.reazip.economycraft.sell.SellUi;
 import com.reazip.economycraft.shop.ShopUi;
 import com.reazip.economycraft.util.ClickKind;
 import com.reazip.economycraft.util.CompatMenu;
+import com.reazip.economycraft.util.EconomyPermissions;
+import com.reazip.economycraft.util.EconomyPermissions.Nodes;
 import com.reazip.economycraft.util.EconomySounds;
 import com.reazip.economycraft.util.ItemPickerUi;
 import com.reazip.economycraft.util.MenuUiSupport;
 import com.reazip.economycraft.util.NumberInputUi;
-import com.reazip.economycraft.util.PermissionCompat;
 import com.reazip.economycraft.util.PlayerPickerUi;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
@@ -49,6 +50,10 @@ public final class HubUi {
     private static final int ADMIN = 44;
 
     public static void open(ServerPlayer player) {
+        if (!EconomyPermissions.checkCommand(player, Nodes.COMMAND_MENU)) {
+            MenuUiSupport.denyPermission(player);
+            return;
+        }
         MenuUiSupport.openMenu(player, "EconomyCraft", (id, inv) -> new HubMenu(id, inv, player));
     }
 
@@ -170,60 +175,70 @@ public final class HubUi {
             balance.set(DataComponents.LORE, new ItemLore(balanceLore));
             container.setItem(BALANCE, balance);
 
-            if (config.shopEnabled) {
+            if (config.shopEnabled && EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_SHOP)) {
                 container.setItem(SHOP, MenuUiSupport.button(Items.EMERALD, "Shop", ChatFormatting.GREEN,
                         MenuUiSupport.hint("Buy and sell at fixed prices."),
                         MenuUiSupport.hint("Stock never runs out.")));
             }
 
-            if (config.auctionEnabled) {
+            if (config.auctionEnabled && EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_AUCTION)) {
                 container.setItem(AUCTION, MenuUiSupport.button(Items.CHEST, "Auction House", ChatFormatting.GOLD,
                         MenuUiSupport.hint("Buy from other players,"),
                         MenuUiSupport.hint("or put your own items up for sale.")));
             }
 
-            if (config.sellEnabled) {
+            if (config.sellEnabled && EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_SELL)) {
                 container.setItem(SELL, MenuUiSupport.button(Items.GOLD_INGOT, "Sell Items", ChatFormatting.YELLOW,
                         MenuUiSupport.hint("Drop items in and get paid."),
                         MenuUiSupport.hint("Open orders are matched first.")));
             }
 
-            if (config.ordersEnabled) {
+            if (config.ordersEnabled && EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_ORDERS)) {
                 container.setItem(ORDERS, MenuUiSupport.button(Items.WRITABLE_BOOK, "Orders", ChatFormatting.AQUA,
                         MenuUiSupport.hint("Ask for an item and name your price,"),
                         MenuUiSupport.hint("or earn money filling other requests.")));
             }
 
-            boolean claimed = eco.hasClaimedDailyToday(viewer.getUUID());
-            container.setItem(DAILY, MenuUiSupport.button(Items.CLOCK, "Daily Reward",
-                    claimed ? ChatFormatting.GRAY : ChatFormatting.GOLD,
-                    MenuUiSupport.labeledValue("Amount", EconomyCraft.formatMoney(config.dailyAmount),
-                            MenuUiSupport.LABEL_PRIMARY_COLOR),
-                    claimed
-                            ? MenuUiSupport.line("Already claimed today", ChatFormatting.RED)
-                            : MenuUiSupport.line("Ready to claim", ChatFormatting.GREEN),
-                    MenuUiSupport.hint(claimed ? "Come back tomorrow." : "Once per day. Click to claim.")));
+            if (EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_DAILY)) {
+                boolean claimed = eco.hasClaimedDailyToday(viewer.getUUID());
+                container.setItem(DAILY, MenuUiSupport.button(Items.CLOCK, "Daily Reward",
+                        claimed ? ChatFormatting.GRAY : ChatFormatting.GOLD,
+                        MenuUiSupport.labeledValue("Amount", EconomyCraft.formatMoney(config.dailyAmount),
+                                MenuUiSupport.LABEL_PRIMARY_COLOR),
+                        claimed
+                                ? MenuUiSupport.line("Already claimed today", ChatFormatting.RED)
+                                : MenuUiSupport.line("Ready to claim", ChatFormatting.GREEN),
+                        MenuUiSupport.hint(claimed ? "Come back tomorrow." : "Once per day. Click to claim.")));
+            }
 
-            container.setItem(PAY, MenuUiSupport.button(Items.PAPER, "Pay a Player", ChatFormatting.GREEN,
-                    MenuUiSupport.hint("Send money to someone else.")));
+            if (EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_PAY)) {
+                container.setItem(PAY, MenuUiSupport.button(Items.PAPER, "Pay a Player", ChatFormatting.GREEN,
+                        MenuUiSupport.hint("Send money to someone else.")));
+            }
 
-            container.setItem(TOP, MenuUiSupport.button(Items.GOLDEN_APPLE, "Top Balances", ChatFormatting.GOLD,
-                    MenuUiSupport.hint("See who is richest on the server.")));
+            if (EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_BALANCE)) {
+                container.setItem(TOP, MenuUiSupport.button(Items.GOLDEN_APPLE, "Top Balances", ChatFormatting.GOLD,
+                        MenuUiSupport.hint("See who is richest on the server.")));
+            }
 
-            if (config.worthEnabled) {
+            if (config.worthEnabled && EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_WORTH)) {
                 container.setItem(WORTH, MenuUiSupport.button(Items.SPYGLASS, "Item Value", ChatFormatting.AQUA,
                         MenuUiSupport.hint("Look up what an item buys"),
                         MenuUiSupport.hint("and sells for.")));
             }
 
-            container.setItem(TRANSACTIONS, MenuUiSupport.button(Items.MAP, "Transactions", ChatFormatting.AQUA,
-                    MenuUiSupport.hint("Your recent balance history.")));
+            if (EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_TRANSACTIONS)) {
+                container.setItem(TRANSACTIONS, MenuUiSupport.button(Items.MAP, "Transactions", ChatFormatting.AQUA,
+                        MenuUiSupport.hint("Your recent balance history.")));
+            }
 
-            container.setItem(DELIVERIES, MenuUiSupport.button(Items.ENDER_CHEST, "Deliveries",
-                    ChatFormatting.LIGHT_PURPLE,
-                    MenuUiSupport.hint(eco.getDeliveries().hasDeliveries(viewer.getUUID())
-                            ? "You have items waiting!"
-                            : "Nothing waiting right now.")));
+            if (EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_DELIVERIES)) {
+                container.setItem(DELIVERIES, MenuUiSupport.button(Items.ENDER_CHEST, "Deliveries",
+                        ChatFormatting.LIGHT_PURPLE,
+                        MenuUiSupport.hint(eco.getDeliveries().hasDeliveries(viewer.getUUID())
+                                ? "You have items waiting!"
+                                : "Nothing waiting right now.")));
+            }
 
             container.setItem(HELP, MenuUiSupport.button(Items.BOOK, "How It Works", ChatFormatting.YELLOW,
                     MenuUiSupport.hint("Claim your daily reward, sell what"),
@@ -232,10 +247,10 @@ public final class HubUi {
 
             container.setItem(CLOSE, MenuUiSupport.closeButton());
 
-            if (PermissionCompat.isAdmin(viewer)) {
+            if (EconomyPermissions.hasAnyAdmin(viewer)) {
                 container.setItem(ADMIN, MenuUiSupport.button(Items.COMMAND_BLOCK, "Admin", ChatFormatting.LIGHT_PURPLE,
                         MenuUiSupport.hint("Edit the shop, settings and balances."),
-                        MenuUiSupport.hint("Only operators can see this.")));
+                        MenuUiSupport.hint("Only admins can see this.")));
             }
 
             MenuUiSupport.fillBackground(container);
@@ -249,74 +264,84 @@ public final class HubUi {
             EconomyConfig config = EconomyConfig.get();
             switch (slot) {
                 case SHOP -> {
-                    if (config.shopEnabled) {
+                    if (config.shopEnabled && EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_SHOP)) {
                         EconomySounds.click(viewer);
                         ShopUi.open(viewer, eco);
                     }
                 }
                 case AUCTION -> {
-                    if (config.auctionEnabled) {
+                    if (config.auctionEnabled && EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_AUCTION)) {
                         EconomySounds.click(viewer);
                         AuctionUi.open(viewer, eco.getAuctions());
                     }
                 }
                 case SELL -> {
-                    if (config.sellEnabled) {
+                    if (config.sellEnabled && EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_SELL)) {
                         EconomySounds.click(viewer);
                         SellUi.open(viewer, eco);
                     }
                 }
                 case ORDERS -> {
-                    if (config.ordersEnabled) {
+                    if (config.ordersEnabled && EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_ORDERS)) {
                         EconomySounds.click(viewer);
                         OrdersUi.open(viewer, eco);
                     }
                 }
                 case TRANSACTIONS -> {
-                    EconomySounds.click(viewer);
-                    viewer.closeContainer();
-                    TransactionsUi.open(viewer);
+                    if (EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_TRANSACTIONS)) {
+                        EconomySounds.click(viewer);
+                        viewer.closeContainer();
+                        TransactionsUi.open(viewer);
+                    }
                 }
                 case DELIVERIES -> {
-                    EconomySounds.click(viewer);
-                    viewer.closeContainer();
-                    OrdersUi.openClaims(viewer, eco);
+                    if (EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_DELIVERIES)) {
+                        EconomySounds.click(viewer);
+                        viewer.closeContainer();
+                        OrdersUi.openClaims(viewer, eco);
+                    }
                 }
                 case TOP -> {
-                    EconomySounds.click(viewer);
-                    openTop(viewer);
+                    if (EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_BALANCE)) {
+                        EconomySounds.click(viewer);
+                        openTop(viewer);
+                    }
                 }
                 case PAY -> {
-                    EconomySounds.click(viewer);
-                    viewer.closeContainer();
-                    startPay(viewer);
+                    if (EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_PAY)) {
+                        EconomySounds.click(viewer);
+                        viewer.closeContainer();
+                        startPay(viewer);
+                    }
                 }
                 case WORTH -> {
-                    if (config.worthEnabled) {
+                    if (config.worthEnabled && EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_WORTH)) {
                         EconomySounds.click(viewer);
                         viewer.closeContainer();
                         startWorth(viewer);
                     }
                 }
                 case DAILY -> {
-                    boolean alreadyClaimed = eco.hasClaimedDailyToday(viewer.getUUID());
-                    if (eco.claimDaily(viewer.getUUID())) {
-                        EconomySounds.dailyReward(viewer);
-                        viewer.sendSystemMessage(Component.literal("Claimed "
-                                + EconomyCraft.formatMoney(config.dailyAmount)).withStyle(ChatFormatting.GREEN));
-                    } else if (alreadyClaimed) {
-                        EconomySounds.failure(viewer);
-                        viewer.sendSystemMessage(MenuUiSupport.line("Already claimed today. Come back tomorrow.",
-                                ChatFormatting.RED));
-                    } else {
-                        EconomySounds.failure(viewer);
-                        viewer.sendSystemMessage(MenuUiSupport.line(
-                                "Daily reward could not be added to your balance.", ChatFormatting.RED));
+                    if (EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_DAILY)) {
+                        boolean alreadyClaimed = eco.hasClaimedDailyToday(viewer.getUUID());
+                        if (eco.claimDaily(viewer.getUUID())) {
+                            EconomySounds.dailyReward(viewer);
+                            viewer.sendSystemMessage(Component.literal("Claimed "
+                                    + EconomyCraft.formatMoney(config.dailyAmount)).withStyle(ChatFormatting.GREEN));
+                        } else if (alreadyClaimed) {
+                            EconomySounds.failure(viewer);
+                            viewer.sendSystemMessage(MenuUiSupport.line("Already claimed today. Come back tomorrow.",
+                                    ChatFormatting.RED));
+                        } else {
+                            EconomySounds.failure(viewer);
+                            viewer.sendSystemMessage(MenuUiSupport.line(
+                                    "Daily reward could not be added to your balance.", ChatFormatting.RED));
+                        }
+                        render();
                     }
-                    render();
                 }
                 case ADMIN -> {
-                    if (PermissionCompat.isAdmin(viewer)) {
+                    if (EconomyPermissions.hasAnyAdmin(viewer)) {
                         EconomySounds.click(viewer);
                         AdminUi.open(viewer, eco);
                     }

@@ -13,6 +13,7 @@ import com.reazip.economycraft.util.ExpirationUtil;
 import com.reazip.economycraft.util.IdentityCompat;
 import com.reazip.economycraft.util.EconomySounds;
 import com.reazip.economycraft.util.PlayerLimitOverrides;
+import com.reazip.economycraft.util.SequentialIdAllocator;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -76,7 +77,8 @@ public class AuctionManager {
     }
 
     public void addListing(AuctionListing listing) {
-        listing.id = nextId++;
+        listing.id = SequentialIdAllocator.nextId(nextId, listings, LOGGER, "Auction listing");
+        nextId = SequentialIdAllocator.advance(listing.id);
         putAndPersist(listing);
     }
 
@@ -196,7 +198,7 @@ public class AuctionManager {
                             migrated = true;
                         }
                         listings.put(l.id, l);
-                        if (l.id >= nextId) nextId = l.id + 1;
+                        if (l.id >= nextId) nextId = SequentialIdAllocator.advance(l.id);
                     } catch (Exception ex) {
                         LOGGER.error("[EconomyCraft] Dropping an unreadable auction listing in {}", file, ex);
                     }

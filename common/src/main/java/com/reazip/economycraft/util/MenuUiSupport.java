@@ -88,6 +88,16 @@ public final class MenuUiSupport {
         return Component.literal(text).withStyle(s -> s.withItalic(false).withColor(color));
     }
 
+    public static void denyPermission(ServerPlayer player) {
+        EconomySounds.failure(player);
+        player.sendSystemMessage(line("You don't have permission for that.", ChatFormatting.RED));
+    }
+
+    public static boolean checkOrDeny(ServerPlayer player, boolean allowed) {
+        if (!allowed) denyPermission(player);
+        return allowed;
+    }
+
     public static Component toggleOption(String label, boolean active) {
         return Component.literal("• " + label).withStyle(s -> s.withItalic(false).withBold(active)
                 .withColor(active ? ChatFormatting.WHITE : ChatFormatting.GRAY));

@@ -7,6 +7,8 @@ import com.reazip.economycraft.shop.ShopDisplay;
 import com.reazip.economycraft.util.ClickKind;
 import com.reazip.economycraft.util.CompatMenu;
 import com.reazip.economycraft.util.ConfirmUi;
+import com.reazip.economycraft.util.EconomyPermissions;
+import com.reazip.economycraft.util.EconomyPermissions.Nodes;
 import com.reazip.economycraft.util.EconomySounds;
 import com.reazip.economycraft.shop.ShopUi;
 import com.reazip.economycraft.util.IdentifierCompat;
@@ -97,6 +99,7 @@ public final class AdminShopUi {
     }
 
     public static void open(ServerPlayer player, EconomyManager eco, Origin origin) {
+        if (!MenuUiSupport.checkOrDeny(player, EconomyPermissions.checkAdmin(player, Nodes.ADMIN_SHOP))) return;
         openRoot(player, eco, origin, 0);
     }
 

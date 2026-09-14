@@ -8,6 +8,8 @@ import com.reazip.economycraft.SellService;
 import com.reazip.economycraft.util.ClickKind;
 import com.reazip.economycraft.util.CompatMenu;
 import com.reazip.economycraft.util.ContainerPreviewUi;
+import com.reazip.economycraft.util.EconomyPermissions;
+import com.reazip.economycraft.util.EconomyPermissions.Nodes;
 import com.reazip.economycraft.util.EconomySounds;
 import com.reazip.economycraft.util.ExpirationUtil;
 import com.reazip.economycraft.util.IdentityCompat;
@@ -48,6 +50,7 @@ public final class OrdersUi {
 
     private static void open(ServerPlayer player, EconomyManager eco, int page, @Nullable String query,
                              SortMode sort, boolean mineOnly) {
+        if (!MenuUiSupport.checkOrDeny(player, EconomyPermissions.checkCommand(player, Nodes.COMMAND_ORDERS))) return;
         MenuUiSupport.openMenu(player, "Orders", (id, inv) ->
                 new RequestMenu(id, inv, eco.getOrders(), eco, player, page, query, sort, mineOnly));
     }
@@ -57,6 +60,7 @@ public final class OrdersUi {
     }
 
     private static void openClaims(ServerPlayer player, EconomyManager eco, int page) {
+        if (!MenuUiSupport.checkOrDeny(player, EconomyPermissions.checkCommand(player, Nodes.COMMAND_DELIVERIES))) return;
         MenuUiSupport.openMenu(player, "Deliveries", (id, inv) -> new ClaimMenu(id, inv, eco, player.getUUID(), page));
     }
 
@@ -303,8 +307,10 @@ public final class OrdersUi {
 
             container.setItem(navRowStart + 4, MenuUiSupport.pageIndicator(page, totalPages));
 
-            container.setItem(navRowStart + 6, MenuUiSupport.button(Items.ENDER_CHEST, "Deliveries",
-                    ChatFormatting.LIGHT_PURPLE, MenuUiSupport.hint("Items waiting to be collected")));
+            if (EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_DELIVERIES)) {
+                container.setItem(navRowStart + 6, MenuUiSupport.button(Items.ENDER_CHEST, "Deliveries",
+                        ChatFormatting.LIGHT_PURPLE, MenuUiSupport.hint("Items waiting to be collected")));
+            }
 
             container.setItem(navRowStart + 7, MenuUiSupport.button(Items.NETHER_STAR, "Main menu", ChatFormatting.YELLOW));
 
@@ -367,9 +373,11 @@ public final class OrdersUi {
                 return true;
             }
             if (slot == navRowStart + 6) {
-                EconomySounds.click(viewer);
-                viewer.closeContainer();
-                openClaims(viewer, eco);
+                if (EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_DELIVERIES)) {
+                    EconomySounds.click(viewer);
+                    viewer.closeContainer();
+                    openClaims(viewer, eco);
+                }
                 return true;
             }
             if (slot == navRowStart + 7) {

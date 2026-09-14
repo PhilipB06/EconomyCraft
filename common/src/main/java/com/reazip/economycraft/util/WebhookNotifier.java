@@ -12,18 +12,13 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public final class WebhookNotifier {
     private WebhookNotifier() {}
 
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Gson GSON = new Gson();
-    private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor(r -> {
-        Thread t = new Thread(r, "EconomyCraft-Webhook");
-        t.setDaemon(true);
-        return t;
-    });
+    private static final ExecutorService EXECUTOR = EconomyExecutors.newSingleThreadExecutor("EconomyCraft-Webhook");
     private static final HttpClient CLIENT = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))
             .build();

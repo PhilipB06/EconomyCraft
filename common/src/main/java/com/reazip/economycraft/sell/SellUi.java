@@ -10,6 +10,8 @@ import com.reazip.economycraft.SellService;
 import com.reazip.economycraft.shop.ShopDisplay;
 import com.reazip.economycraft.util.ClickKind;
 import com.reazip.economycraft.util.CompatMenu;
+import com.reazip.economycraft.util.EconomyPermissions;
+import com.reazip.economycraft.util.EconomyPermissions.Nodes;
 import com.reazip.economycraft.util.EconomySounds;
 import com.reazip.economycraft.util.MenuUiSupport;
 import net.minecraft.ChatFormatting;
@@ -45,6 +47,7 @@ public final class SellUi {
     private static final int SHULKER_SLOTS = 27;
 
     public static void open(ServerPlayer player, EconomyManager manager) {
+        if (!MenuUiSupport.checkOrDeny(player, EconomyPermissions.checkCommand(player, Nodes.COMMAND_SELL))) return;
         MenuUiSupport.openMenu(player, "Sell", (id, inv) -> new SellMenu(id, inv, player, manager));
     }
 

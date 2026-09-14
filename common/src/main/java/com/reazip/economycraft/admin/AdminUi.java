@@ -6,9 +6,10 @@ import com.reazip.economycraft.HubUi;
 import com.reazip.economycraft.WebhookConfig;
 import com.reazip.economycraft.util.ClickKind;
 import com.reazip.economycraft.util.CompatMenu;
+import com.reazip.economycraft.util.EconomyPermissions;
+import com.reazip.economycraft.util.EconomyPermissions.Nodes;
 import com.reazip.economycraft.util.EconomySounds;
 import com.reazip.economycraft.util.MenuUiSupport;
-import com.reazip.economycraft.util.PermissionCompat;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -30,11 +31,7 @@ public final class AdminUi {
     private static final int BACK = 18;
 
     public static void open(ServerPlayer player, EconomyManager eco) {
-        if (!PermissionCompat.isAdmin(player)) {
-            EconomySounds.failure(player);
-            player.sendSystemMessage(MenuUiSupport.line("You need to be an operator for that.", ChatFormatting.RED));
-            return;
-        }
+        if (!MenuUiSupport.checkOrDeny(player, EconomyPermissions.hasAnyAdmin(player))) return;
         MenuUiSupport.openMenu(player, "Admin", (id, inv) -> new AdminMenu(id, inv, player, eco));
     }
 
@@ -60,21 +57,29 @@ public final class AdminUi {
         private void render() {
             container.clearContent();
 
-            container.setItem(SHOP, MenuUiSupport.button(Items.EMERALD, "Shop", ChatFormatting.GREEN,
-                    MenuUiSupport.hint("Add, price and remove items."),
-                    MenuUiSupport.labeledValue("Items", String.valueOf(eco.getPrices().allEntries().size()),
-                            MenuUiSupport.LABEL_PRIMARY_COLOR)));
+            if (EconomyPermissions.checkAdmin(viewer, Nodes.ADMIN_SHOP)) {
+                container.setItem(SHOP, MenuUiSupport.button(Items.EMERALD, "Shop", ChatFormatting.GREEN,
+                        MenuUiSupport.hint("Add, price and remove items."),
+                        MenuUiSupport.labeledValue("Items", String.valueOf(eco.getPrices().allEntries().size()),
+                                MenuUiSupport.LABEL_PRIMARY_COLOR)));
+            }
 
-            container.setItem(SETTINGS, MenuUiSupport.button(Items.COMPARATOR, "Settings", ChatFormatting.AQUA,
-                    MenuUiSupport.hint("Starting money, daily reward, tax,"),
-                    MenuUiSupport.hint("and which features are switched on.")));
+            if (EconomyPermissions.checkAdmin(viewer, Nodes.ADMIN_SETTINGS)) {
+                container.setItem(SETTINGS, MenuUiSupport.button(Items.COMPARATOR, "Settings", ChatFormatting.AQUA,
+                        MenuUiSupport.hint("Starting money, daily reward, tax,"),
+                        MenuUiSupport.hint("and which features are switched on.")));
+            }
 
-            container.setItem(PLAYERS, MenuUiSupport.button(Items.PLAYER_HEAD, "Players", ChatFormatting.GOLD,
-                    MenuUiSupport.hint("Give, take or set anyone's balance.")));
+            if (EconomyPermissions.checkAdmin(viewer, Nodes.ADMIN_PLAYERS)) {
+                container.setItem(PLAYERS, MenuUiSupport.button(Items.PLAYER_HEAD, "Players", ChatFormatting.GOLD,
+                        MenuUiSupport.hint("Give, take or set anyone's balance.")));
+            }
 
-            container.setItem(RELOAD, MenuUiSupport.button(Items.CLOCK, "Reload from disk", ChatFormatting.YELLOW,
-                    MenuUiSupport.hint("Re-reads config.json and prices.json."),
-                    MenuUiSupport.italicHint("Only needed after editing those files directly.")));
+            if (EconomyPermissions.checkAdmin(viewer, Nodes.ADMIN_RELOAD)) {
+                container.setItem(RELOAD, MenuUiSupport.button(Items.CLOCK, "Reload from disk", ChatFormatting.YELLOW,
+                        MenuUiSupport.hint("Re-reads config.json and prices.json."),
+                        MenuUiSupport.italicHint("Only needed after editing those files directly.")));
+            }
 
             container.setItem(BACK, MenuUiSupport.button(Items.NETHER_STAR, "Main menu", ChatFormatting.YELLOW));
 
@@ -88,26 +93,34 @@ public final class AdminUi {
 
             switch (slot) {
                 case SHOP -> {
-                    EconomySounds.click(viewer);
-                    AdminShopUi.open(viewer, eco, AdminShopUi.Origin.ADMIN);
+                    if (EconomyPermissions.checkAdmin(viewer, Nodes.ADMIN_SHOP)) {
+                        EconomySounds.click(viewer);
+                        AdminShopUi.open(viewer, eco, AdminShopUi.Origin.ADMIN);
+                    }
                 }
                 case SETTINGS -> {
-                    EconomySounds.click(viewer);
-                    AdminSettingsUi.open(viewer, eco);
+                    if (EconomyPermissions.checkAdmin(viewer, Nodes.ADMIN_SETTINGS)) {
+                        EconomySounds.click(viewer);
+                        AdminSettingsUi.open(viewer, eco);
+                    }
                 }
                 case PLAYERS -> {
-                    EconomySounds.click(viewer);
-                    AdminPlayersUi.open(viewer, eco);
+                    if (EconomyPermissions.checkAdmin(viewer, Nodes.ADMIN_PLAYERS)) {
+                        EconomySounds.click(viewer);
+                        AdminPlayersUi.open(viewer, eco);
+                    }
                 }
                 case RELOAD -> {
-                    EconomySounds.click(viewer);
-                    EconomyConfig.load(viewer.level().getServer());
-                    WebhookConfig.load(viewer.level().getServer());
-                    eco.getPrices().reload();
-                    AdminSettingsUi.applyRuntimeSettings(viewer.level().getServer());
-                    viewer.sendSystemMessage(Component.literal("Reloaded config.json, webhook.json and prices.json.")
-                            .withStyle(ChatFormatting.GREEN));
-                    render();
+                    if (EconomyPermissions.checkAdmin(viewer, Nodes.ADMIN_RELOAD)) {
+                        EconomySounds.click(viewer);
+                        EconomyConfig.load(viewer.level().getServer());
+                        WebhookConfig.load(viewer.level().getServer());
+                        eco.getPrices().reload();
+                        AdminSettingsUi.applyRuntimeSettings(viewer.level().getServer());
+                        viewer.sendSystemMessage(Component.literal("Reloaded config.json, webhook.json and prices.json.")
+                                .withStyle(ChatFormatting.GREEN));
+                        render();
+                    }
                 }
                 case BACK -> {
                     EconomySounds.click(viewer);

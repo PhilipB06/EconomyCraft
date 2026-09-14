@@ -62,6 +62,38 @@ Select any player, online or not, to give, take or set their balance, remove the
 
 ---
 
+## Permissions
+
+Admin and command access is gated by permission nodes. Any admin node not set by a permission plugin falls back to OP; any command node not set falls back to allowed for everyone.
+
+### Admin nodes
+
+| Node                          | Grants                                                                                        |
+|-------------------------------|-----------------------------------------------------------------------------------------------|
+| `economycraft.admin`          | Everything below                                                                              |
+| `economycraft.admin.players`  | `/eco addmoney`, `/eco setmoney`, `/eco removemoney`, `/eco removeplayer`, the Players screen |
+| `economycraft.admin.settings` | The Settings screen                                                                           |
+| `economycraft.admin.shop`     | The Shop editor (from the Admin menu or the in-shop edit button)                              |
+| `economycraft.admin.reload`   | The "Reload from disk" button                                                                 |
+
+### Command nodes
+
+| Node                                | Grants              |
+|-------------------------------------|---------------------|
+| `economycraft.command.menu`         | `/eco`, `/eco menu` |
+| `economycraft.command.balance`      | `/bal`, `/bal top`  |
+| `economycraft.command.pay`          | `/pay`              |
+| `economycraft.command.shop`         | `/shop`             |
+| `economycraft.command.auction`      | `/ah`, `/auction`   |
+| `economycraft.command.sell`         | `/sell`             |
+| `economycraft.command.orders`       | `/orders`           |
+| `economycraft.command.deliveries`   | `/deliveries`       |
+| `economycraft.command.daily`        | `/daily`            |
+| `economycraft.command.transactions` | `/transactions`     |
+| `economycraft.command.worth`        | `/worth`            |
+
+---
+
 ## Config files
 
 Stored in `config/economycraft/` on a server (or `saves/<world>/economycraft/` per-world in singleplayer): `config.json`, `webhook.json` and `prices.json` at the top, player data under `data/`.
