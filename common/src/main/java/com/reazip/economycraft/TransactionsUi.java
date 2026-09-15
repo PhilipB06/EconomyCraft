@@ -58,6 +58,7 @@ public final class TransactionsUi {
             Map.entry(EconomySources.ADMIN_ADD.asString(), new SourceStyle(Items.COMMAND_BLOCK, "Admin Add", null, TransactionCategory.ADMIN)),
             Map.entry(EconomySources.ADMIN_REMOVE.asString(), new SourceStyle(Items.COMMAND_BLOCK, "Admin Remove", null, TransactionCategory.ADMIN)),
             Map.entry(EconomySources.ADMIN_SET.asString(), new SourceStyle(Items.COMMAND_BLOCK, "Admin Set", null, TransactionCategory.ADMIN)),
+            Map.entry(EconomySources.ADMIN_RESET.asString(), new SourceStyle(Items.COMMAND_BLOCK, "Admin Reset", null, TransactionCategory.ADMIN)),
             Map.entry(EconomySources.DAILY_REWARD.asString(), new SourceStyle(Items.CLOCK, "Daily Reward", null, TransactionCategory.REWARDS))
     );
 

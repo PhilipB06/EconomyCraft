@@ -6,6 +6,7 @@ import com.mojang.logging.LogUtils;
 import com.reazip.economycraft.api.v1.BalanceChangeEvent;
 import com.reazip.economycraft.api.v1.BalanceEvents;
 import com.reazip.economycraft.api.v1.BalanceMutationResult;
+import com.reazip.economycraft.api.v1.BalanceMutationType;
 import com.reazip.economycraft.api.v1.MutationSource;
 import com.reazip.economycraft.api.v1.PaymentResult;
 import com.reazip.economycraft.orders.OrderManager;
@@ -72,6 +73,7 @@ public class EconomyManager {
     private final Path dailyFile;
     private final Path dailySellFile;
     private final Path statsFile;
+    private final Path logsDir;
 
     private final Map<UUID, Long> balances = new ConcurrentHashMap<>();
     private final Map<UUID, Long> lastDaily = new ConcurrentHashMap<>();
@@ -110,7 +112,7 @@ public class EconomyManager {
         loadDailySells();
         loadStats();
 
-        Path logsDir = EconomyPaths.logsDir(server);
+        this.logsDir = EconomyPaths.logsDir(server);
         TransactionLogWriter.cleanup(logsDir, EconomyConfig.get().transactionLogRetentionDays);
         TransactionLogger transactionLogger = new TransactionLogger(logsDir, this::getBestName);
 
@@ -724,6 +726,46 @@ public class EconomyManager {
     public void removePlayer(UUID id) {
         requireServerThread();
         balanceMutations.delete(id);
+    }
+
+    public int resetAllBalances() {
+        requireServerThread();
+        long starting = clamp(EconomyConfig.get().startingBalance);
+        int changed = 0;
+        for (UUID id : new ArrayList<>(balances.keySet())) {
+            long previous = balances.get(id);
+            if (previous == starting) continue;
+            balances.put(id, starting);
+            balanceEvents.emit(new BalanceChangeEvent(id, previous, starting, BalanceMutationType.SET,
+                    Optional.empty(), Optional.of(EconomySources.ADMIN_RESET), Optional.empty()));
+            changed++;
+        }
+        updateLeaderboard();
+        save();
+        return changed;
+    }
+
+    public void resetDailyRewards() {
+        requireServerThread();
+        lastDaily.clear();
+        save();
+    }
+
+    public void resetDailySellLimits() {
+        requireServerThread();
+        dailySells.clear();
+        save();
+    }
+
+    public void resetStats() {
+        requireServerThread();
+        stats.clear();
+        save();
+    }
+
+    public void resetTransactionLog() {
+        requireServerThread();
+        TransactionLogWriter.clearAll(logsDir);
     }
 
     public boolean claimDaily(UUID player) {

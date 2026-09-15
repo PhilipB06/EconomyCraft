@@ -119,7 +119,7 @@ public final class AdminPlayersUi {
                     MenuUiSupport.hint("Browse this player's balance history.")));
             container.setItem(SET, MenuUiSupport.button(Items.GOLD_INGOT, "Set balance", ChatFormatting.GOLD,
                     MenuUiSupport.hint("Overwrite the balance with an exact amount.")));
-            container.setItem(WIPE, MenuUiSupport.button(Items.BARRIER, "Remove from economy",
+            container.setItem(WIPE, MenuUiSupport.button(ItemsCompat.redStainedGlassPane(), "Remove from economy",
                     ChatFormatting.DARK_RED,
                     MenuUiSupport.hint("Deletes their account entirely."),
                     MenuUiSupport.hint("They start fresh next time they join.")));
@@ -133,7 +133,7 @@ public final class AdminPlayersUi {
                     MenuUiSupport.labeledValue("Click", "Set a limit", MenuUiSupport.LABEL_SECONDARY_COLOR),
                     MenuUiSupport.labeledValue("Right-click", "Use server default", MenuUiSupport.LABEL_SECONDARY_COLOR)));
 
-            container.setItem(BACK, MenuUiSupport.button(ItemsCompat.redStainedGlassPane(), "Back",
+            container.setItem(BACK, MenuUiSupport.button(Items.BARRIER, "Back",
                     ChatFormatting.DARK_RED, MenuUiSupport.hint("Pick a different player")));
             MenuUiSupport.fillBackground(container);
         }

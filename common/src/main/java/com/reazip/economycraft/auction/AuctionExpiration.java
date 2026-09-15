@@ -37,4 +37,32 @@ public final class AuctionExpiration {
                 + " expired; the item was returned to your deliveries.";
         eco.getNotifications().notify(listing.seller, message);
     }
+
+    public static int clearAll(EconomyManager eco) {
+        AuctionManager auctions = eco.getAuctions();
+        DeliveryManager deliveries = eco.getDeliveries();
+        int cleared = 0;
+        for (AuctionListing listing : auctions.getListings()) {
+            AuctionListing removed = auctions.removeListing(listing.id, false);
+            if (removed == null) continue;
+            cleared++;
+
+            ItemStack stack = removed.item.copy();
+            auctions.addDelivery(removed.seller, stack, false);
+            notifyCleared(eco, removed, stack);
+        }
+        if (cleared > 0) {
+            auctions.save();
+            deliveries.save();
+        }
+        eco.getNotifications().flush();
+        return cleared;
+    }
+
+    private static void notifyCleared(EconomyManager eco, AuctionListing listing, ItemStack stack) {
+        String itemName = stack.getHoverName().getString();
+        String message = "Your auction listing for " + stack.getCount() + "x " + itemName
+                + " was cleared by an admin; the item was returned to your deliveries.";
+        eco.getNotifications().notify(listing.seller, message);
+    }
 }

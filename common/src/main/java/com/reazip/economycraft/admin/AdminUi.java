@@ -29,6 +29,7 @@ public final class AdminUi {
     private static final int PLAYERS = 14;
     private static final int RELOAD = 16;
     private static final int BACK = 18;
+    private static final int RESET = 22;
 
     public static void open(ServerPlayer player, EconomyManager eco) {
         if (!MenuUiSupport.checkOrDeny(player, EconomyPermissions.hasAnyAdmin(player))) return;
@@ -81,6 +82,12 @@ public final class AdminUi {
                         MenuUiSupport.italicHint("Only needed after editing those files directly.")));
             }
 
+            if (EconomyPermissions.checkAdmin(viewer, Nodes.ADMIN_RESET)) {
+                container.setItem(RESET, MenuUiSupport.button(Items.TNT, "Reset Tools", ChatFormatting.DARK_RED,
+                        MenuUiSupport.hint("Wipe balances, listings and more."),
+                        MenuUiSupport.line("Destructive. Use with care.", ChatFormatting.RED)));
+            }
+
             container.setItem(BACK, MenuUiSupport.button(Items.NETHER_STAR, "Main menu", ChatFormatting.YELLOW));
 
             MenuUiSupport.fillBackground(container);
@@ -120,6 +127,12 @@ public final class AdminUi {
                         viewer.sendSystemMessage(Component.literal("Reloaded config.json, webhook.json and prices.json.")
                                 .withStyle(ChatFormatting.GREEN));
                         render();
+                    }
+                }
+                case RESET -> {
+                    if (EconomyPermissions.checkAdmin(viewer, Nodes.ADMIN_RESET)) {
+                        EconomySounds.click(viewer);
+                        AdminResetUi.open(viewer, eco);
                     }
                 }
                 case BACK -> {

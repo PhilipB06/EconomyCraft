@@ -56,6 +56,20 @@ Every option in `config.json`, editable in-game.
 
 Select any player, online or not, to give, take or set their balance, remove them from the economy, or override their max active orders/auctions.
 
+### Reset Tools
+
+
+| Tool                        | Does                                                                                        |
+|-----------------------------|---------------------------------------------------------------------------------------------|
+| **Reset All Balances**      | Sets every player's balance back to `startingBalance`.                                      |
+| **Reset Daily Reward Data** | Everyone can claim their daily reward again immediately.                                    |
+| **Reset Daily Sell Limits** | Everyone's daily sell limit resets to full immediately.                                     |
+| **Clear Auctions**          | Cancels every active listing. Items are returned to sellers' deliveries.                    |
+| **Clear Orders**            | Cancels every open order. Escrowed money is refunded to requesters.                         |
+| **Reset Entire Economy**    | All of the above, plus wipes the Leaderboards stats and deletes the entire transaction log. |
+
+None of these touch shop prices/categories or permission settings.
+
 ### Admin commands
 
 `/eco addmoney`, `/eco setmoney`, `/eco removemoney`, `/eco removeplayer`.
@@ -75,6 +89,7 @@ Admin and command access is gated by permission nodes. Any admin node not set by
 | `economycraft.admin.settings` | The Settings screen                                                                           |
 | `economycraft.admin.shop`     | The Shop editor (from the Admin menu or the in-shop edit button)                              |
 | `economycraft.admin.reload`   | The "Reload from disk" button                                                                 |
+| `economycraft.admin.reset`    | The Reset Tools screen                                                                        |
 
 ### Command nodes
 

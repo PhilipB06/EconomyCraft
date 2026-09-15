@@ -218,6 +218,36 @@ public final class OrderFulfillment {
         eco.getNotifications().notify(order.requester, message);
     }
 
+    public static int clearAll(EconomyManager eco) {
+        OrderManager orders = eco.getOrders();
+        int cleared = 0;
+        for (OrderRequest snapshot : orders.getRequests()) {
+            OrderRequest order = orders.removeRequest(snapshot.id, false);
+            if (order == null) continue;
+
+            long refund = order.escrow;
+            var result = refundEscrow(eco, orders, order);
+            if (result != null && !result.successful()) {
+                LOGGER.warn("[EconomyCraft] Failed to refund order {} escrow of {} to {} while clearing orders; it was left in place",
+                        order.id, refund, order.requester);
+                continue;
+            }
+
+            cleared++;
+            notifyCleared(eco, order, refund);
+        }
+        if (cleared > 0) orders.save();
+        eco.getNotifications().flush();
+        return cleared;
+    }
+
+    private static void notifyCleared(EconomyManager eco, OrderRequest order, long refund) {
+        String itemName = order.item.getHoverName().getString();
+        String message = "Your order for " + order.amount + "x " + itemName + " was cleared by an admin"
+                + (refund > 0 ? " and " + EconomyCraft.formatMoney(refund) + " was refunded." : ".");
+        eco.getNotifications().notify(order.requester, message);
+    }
+
     public static List<OrderRequest> findBetterOrders(EconomyManager eco, ItemStack proto, UUID seller, long serverUnitSell) {
         PriceRegistry prices = eco.getPrices();
         PriceRegistry.PriceEntry protoPrice = prices.resolve(proto);

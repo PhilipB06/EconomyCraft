@@ -46,6 +46,22 @@ public final class TransactionLogWriter {
         EXECUTOR.execute(() -> cleanupNow(dir, retentionDays));
     }
 
+    public static void clearAll(Path dir) {
+        EXECUTOR.execute(() -> clearAllNow(dir));
+    }
+
+    private static void clearAllNow(Path dir) {
+        if (!Files.isDirectory(dir)) return;
+
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir, FILE_PREFIX + "*" + FILE_SUFFIX)) {
+            for (Path candidate : stream) {
+                deleteQuietly(candidate);
+            }
+        } catch (IOException e) {
+            LOGGER.error("[EconomyCraft] Failed to scan transaction logs at {}", dir, e);
+        }
+    }
+
     private static void cleanupNow(Path dir, int retentionDays) {
         if (!Files.isDirectory(dir)) return;
 

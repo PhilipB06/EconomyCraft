@@ -11,13 +11,14 @@ public final class EconomyPermissions {
 
         public static final String[] ADMIN_ALL = {
                 "economycraft.admin", "economycraft.admin.players", "economycraft.admin.settings",
-                "economycraft.admin.shop", "economycraft.admin.reload"
+                "economycraft.admin.shop", "economycraft.admin.reload", "economycraft.admin.reset"
         };
         public static final String ADMIN = ADMIN_ALL[0];
         public static final String ADMIN_PLAYERS = ADMIN_ALL[1];
         public static final String ADMIN_SETTINGS = ADMIN_ALL[2];
         public static final String ADMIN_SHOP = ADMIN_ALL[3];
         public static final String ADMIN_RELOAD = ADMIN_ALL[4];
+        public static final String ADMIN_RESET = ADMIN_ALL[5];
 
         public static final String[] COMMAND_ALL = {
                 "economycraft.command.menu", "economycraft.command.balance", "economycraft.command.pay",

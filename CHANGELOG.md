@@ -6,5 +6,6 @@
 - `/orders claim` has been changed to `/deliveries`.
 - Added filters to the transactions UI.
 - Removed `/bal top`.
+- Added admin reset tools.
 
 ### Fixes
