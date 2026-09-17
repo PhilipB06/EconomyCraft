@@ -1,9 +1,9 @@
 import org.gradle.api.GradleException
 
 plugins {
-    id "dev.architectury.loom-no-remap" version "1.17.487" apply false
-    id "dev.architectury.loom" version "1.17.487" apply false
-    id "architectury-plugin" version "3.5.169"
+    id "dev.architectury.loom-no-remap" version "1.17.493" apply false
+    id "dev.architectury.loom" version "1.17.493" apply false
+    id "architectury-plugin" version "3.5.170"
     id "com.gradleup.shadow" version "9.3.1" apply false
 }
 
@@ -32,6 +32,7 @@ ext.mcTargets = [
         [ mc: "1.21.11", fabricApi: "0.141.6+1.21.11", architecturyVer: "19.0.1", neoforge: "21.11.45", neoforgeLineLo: "21.11", neoforgeLineHi: ext.bumpLastSegment("21.11"), textPlaceholderApi: "2.8.2+1.21.10", placeholderApiNeoForge: "2.9.0+1.21.11+neoforge", obfuscated: true, javaVersion: 21 ],
         [ mc: "26.1.2", fabricApi: "0.155.3+26.1.2", architecturyVer: "20.1.14", neoforge: "26.1.2.109", neoforgeLineLo: "26.1", neoforgeLineHi: ext.bumpLastSegment("26.1"), textPlaceholderApi: "3.0.0+26.1", placeholderApiNeoForge: "3.0.0+26.1+neoforge" ],
         [ mc: "26.2", fabricApi: "0.160.0+26.2", architecturyVer: "21.1.9", neoforge: "26.2.0.88", neoforgeLineLo: "26.2", neoforgeLineHi: ext.bumpLastSegment("26.2"), textPlaceholderApi: "3.1.0-beta.1+26.2", placeholderApiNeoForge: "3.1.0-beta.1+26.2+neoforge" ],
+        [ mc: "26.3", fabricApi: "0.160.5+26.3", architecturyVer: "22.0.1", neoforge: "26.3.0.3-beta", neoforgeLineLo: "26.3", neoforgeLineHi: ext.bumpLastSegment("26.3"), textPlaceholderApi: "3.2.0+26.3", placeholderApiNeoForge: "3.1.0-beta.1+26.2+neoforge" ],
 ]
 
 // ---- TARGET RESOLVER

@@ -23,6 +23,11 @@ on:
         required: false
         type: boolean
         default: false
+      release_26_3:
+        description: "Release 26.3"
+        required: false
+        type: boolean
+        default: false
       dry_run:
         description: "Dry run - build only, skip publishing to Modrinth/CurseForge"
         required: false
@@ -87,9 +92,13 @@ jobs:
             games=$(jq -c '. + ["26.2"]' <<< "$games")
             releases=$(jq -c '. + [{"mc_game":"26.2","game_versions":"[26.2,26.3)"}]' <<< "$releases")
           fi
+          if [ "${{ inputs.release_26_3 }}" = "true" ]; then
+            games=$(jq -c '. + ["26.3"]' <<< "$games")
+            releases=$(jq -c '. + [{"mc_game":"26.3","game_versions":"[26.3,26.4)"}]' <<< "$releases")
+          fi
 
           if [ "$games" = "[]" ]; then
-            echo "::error::Select at least one Minecraft version to release (1.21.1 / 1.21.11 / 26.1.x / 26.2)."
+            echo "::error::Select at least one Minecraft version to release (1.21.1 / 1.21.11 / 26.1.x / 26.2 / 26.3)."
             exit 1
           fi
 
