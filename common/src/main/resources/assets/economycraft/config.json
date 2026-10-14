@@ -22,5 +22,6 @@
   "dynamic_prices_enabled": false,
   "dynamic_price_min_multiplier": 0.5,
   "dynamic_price_max_multiplier": 5.0,
-  "dynamic_price_min_active_days": 30
+  "dynamic_price_min_active_days": 30,
+  "dynamic_price_update_minutes": 60
 }

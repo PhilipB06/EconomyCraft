@@ -64,11 +64,14 @@ public class EconomyConfig {
     public double dynamicPriceMaxMultiplier = 5.0;
     @SerializedName("dynamic_price_min_active_days")
     public int dynamicPriceMinActiveDays = 30;
+    @SerializedName("dynamic_price_update_minutes")
+    public int dynamicPriceUpdateMinutes = 60;
 
     public static final int MIN_TRANSACTION_LOG_RETENTION_DAYS = 1;
     public static final int WARN_TRANSACTION_LOG_RETENTION_DAYS = 90;
     public static final double MIN_DYNAMIC_PRICE_MULTIPLIER = 0.5;
     public static final double MAX_DYNAMIC_PRICE_MULTIPLIER = 100.0;
+    public static final int MIN_DYNAMIC_PRICE_UPDATE_MINUTES = 1;
 
     private static EconomyConfig INSTANCE = new EconomyConfig();
     private static Path file;
@@ -108,6 +111,7 @@ public class EconomyConfig {
             parsed.maxActiveOrdersPerPlayer = clampNonNegative("max_active_orders_per_player", parsed.maxActiveOrdersPerPlayer);
             parsed.maxActiveAuctionsPerPlayer = clampNonNegative("max_active_auctions_per_player", parsed.maxActiveAuctionsPerPlayer);
             parsed.dynamicPriceMinActiveDays = clampNonNegative("dynamic_price_min_active_days", parsed.dynamicPriceMinActiveDays);
+            parsed.dynamicPriceUpdateMinutes = clampDynamicPriceUpdateMinutes(parsed.dynamicPriceUpdateMinutes);
             INSTANCE = parsed;
             normalizeDynamicPriceBounds();
         } catch (Exception e) {
@@ -160,6 +164,15 @@ public class EconomyConfig {
             return 0;
         }
         return value;
+    }
+
+    private static int clampDynamicPriceUpdateMinutes(int minutes) {
+        if (minutes < MIN_DYNAMIC_PRICE_UPDATE_MINUTES) {
+            LOGGER.warn("[EconomyCraft] dynamic_price_update_minutes ({}) is below the minimum of {} minute(s); clamping to {}.",
+                    minutes, MIN_DYNAMIC_PRICE_UPDATE_MINUTES, MIN_DYNAMIC_PRICE_UPDATE_MINUTES);
+            return MIN_DYNAMIC_PRICE_UPDATE_MINUTES;
+        }
+        return minutes;
     }
 
     public static void normalizeDynamicPriceBounds() {

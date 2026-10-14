@@ -49,7 +49,7 @@ Optional, off by default (`dynamic_prices_enabled`). Scales every buy price by:
 current price = base price × active-player median balance / starting balance
 ```
 
-The scale is clamped between `dynamic_price_min_multiplier` and `dynamic_price_max_multiplier`, and recalculated at most once an hour. Sell prices are never affected. Opt out per category or item from the Shop editor above.
+The scale is clamped between `dynamic_price_min_multiplier` and `dynamic_price_max_multiplier`, and recalculated every `dynamic_price_update_minutes` (default once an hour). Sell prices are never affected. Opt out per category or item from the Shop editor above.
 
 ### Settings
 
@@ -144,6 +144,7 @@ Stored in `config/economycraft/` on a server (or `saves/<world>/economycraft/` p
 | `dynamic_price_min_multiplier`   | `0.5`                 | Lowest allowed price scale, from `0.5` to `100`.                                                                |
 | `dynamic_price_max_multiplier`   | `5.0`                 | Highest allowed price scale, from `0.5` to `100`.                                                               |
 | `dynamic_price_min_active_days`  | `30`                  | Players must have logged in within this many days to count as active. `0` includes everyone.                    |
+| `dynamic_price_update_minutes`   | `60`                  | Minutes between price scale recalculations. Minimum `1`.                                                        |
 
 ### `webhook.json`
 

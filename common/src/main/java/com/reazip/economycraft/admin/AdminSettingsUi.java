@@ -89,6 +89,7 @@ public final class AdminSettingsUi {
         DYNAMIC_PRICE_MAX_MULT("Max Multiplier", "Highest buy price scale."),
         DYNAMIC_PRICE_ACTIVE_DAYS("Active Player Window", "Days since last login to count as active.",
                 "0 = count every player."),
+        DYNAMIC_PRICE_UPDATE_MINUTES("Price Update Interval", "Minutes between multiplier updates."),
         ORDER_EXPIRATION_HOURS("Order Expiration", "Hours until an order expires.",
                 "0 = never."),
         AUCTION_EXPIRATION_HOURS("Auction Expiration", "Hours until a listing expires.",
@@ -187,6 +188,7 @@ public final class AdminSettingsUi {
                 case DYNAMIC_PRICE_MIN_MULT -> valueItem(setting, Items.PAPER, EconomyCraft.formatMultiplier(config.dynamicPriceMinMultiplier));
                 case DYNAMIC_PRICE_MAX_MULT -> valueItem(setting, Items.PAPER, EconomyCraft.formatMultiplier(config.dynamicPriceMaxMultiplier));
                 case DYNAMIC_PRICE_ACTIVE_DAYS -> valueItem(setting, Items.CLOCK, activeDaysLabel(config.dynamicPriceMinActiveDays));
+                case DYNAMIC_PRICE_UPDATE_MINUTES -> valueItem(setting, Items.REPEATER, minutes(config.dynamicPriceUpdateMinutes));
                 case ORDER_EXPIRATION_HOURS -> valueItem(setting, Items.CLOCK, hours(config.orderExpirationHours));
                 case AUCTION_EXPIRATION_HOURS -> valueItem(setting, Items.CLOCK, hours(config.auctionExpirationHours));
                 case MAX_ACTIVE_ORDERS_PER_PLAYER -> valueItem(setting, Items.WRITABLE_BOOK, limit(config.maxActiveOrdersPerPlayer));
@@ -242,6 +244,10 @@ public final class AdminSettingsUi {
 
         private static String activeDaysLabel(long value) {
             return value <= 0 ? "All players" : days(value);
+        }
+
+        private static String minutes(long value) {
+            return value + (value == 1 ? " minute" : " minutes");
         }
 
         private static String hours(long value) {
@@ -323,6 +329,21 @@ public final class AdminSettingsUi {
                         apply.accept(next);
                         save(p);
                         eco.refreshDynamicPrices();
+                        EconomySounds.click(p);
+                        open(p, eco, page);
+                    },
+                    p -> open(p, eco, page));
+        }
+
+        private void editUpdateMinutes(Setting setting, long current, Item icon,
+                                       java.util.function.LongConsumer apply) {
+            NumberInputUi.open(viewer, setting.label, new ItemStack(icon), setting.label, current,
+                    EconomyConfig.MIN_DYNAMIC_PRICE_UPDATE_MINUTES, Integer.MAX_VALUE,
+                    new int[]{60, 10, 1}, SettingsMenu::minutes,
+                    "Confirm", null,
+                    (p, next) -> {
+                        apply.accept(next);
+                        save(p);
                         EconomySounds.click(p);
                         open(p, eco, page);
                     },
@@ -467,6 +488,8 @@ public final class AdminSettingsUi {
                         v -> EconomyConfig.get().dynamicPriceMaxMultiplier = v);
                 case DYNAMIC_PRICE_ACTIVE_DAYS -> editActiveDays(setting, config.dynamicPriceMinActiveDays, Items.CLOCK,
                         v -> EconomyConfig.get().dynamicPriceMinActiveDays = (int) v);
+                case DYNAMIC_PRICE_UPDATE_MINUTES -> editUpdateMinutes(setting, config.dynamicPriceUpdateMinutes, Items.REPEATER,
+                        v -> EconomyConfig.get().dynamicPriceUpdateMinutes = (int) v);
                 case ORDER_EXPIRATION_HOURS -> editHours(setting, config.orderExpirationHours, Items.CLOCK,
                         v -> EconomyConfig.get().orderExpirationHours = (int) v);
                 case AUCTION_EXPIRATION_HOURS -> editHours(setting, config.auctionExpirationHours, Items.CLOCK,

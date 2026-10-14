@@ -3,6 +3,7 @@
 - Enchantments now add to an item's sell price, and enchanted books sell for all of their enchantments.
 - Raised the max balance to `$1Qi` (previously `$999B`), about a million times more.
 - Added a `max_balance` setting to `config.json` and the admin settings panel.
+- Added a `dynamic_price_update_minutes` setting to control how often dynamic prices update.
 
 ### Improvements
 - Architectury API is no longer required.

@@ -18,7 +18,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class DynamicPriceEngine {
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final long REFRESH_INTERVAL_MS = TimeUnit.HOURS.toMillis(1);
 
     private final Path file;
     private final Map<UUID, Long> lastActive = new ConcurrentHashMap<>();
@@ -47,7 +46,8 @@ public final class DynamicPriceEngine {
 
     public void maybeRefresh(MinecraftServer server, Map<UUID, Long> balances) {
         flush();
-        if (System.currentTimeMillis() - lastRefreshMs < REFRESH_INTERVAL_MS) return;
+        long intervalMs = TimeUnit.MINUTES.toMillis(EconomyConfig.get().dynamicPriceUpdateMinutes);
+        if (System.currentTimeMillis() - lastRefreshMs < intervalMs) return;
         refresh(server, balances);
     }
 
