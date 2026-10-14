@@ -103,12 +103,13 @@ jobs:
           fi
 
           release_matrix=$(jq -cn --argjson releases "$releases" '
-            [{"id":"neoforge","label":"NeoForge"},{"id":"fabric","label":"Fabric"}] as $platforms
+            [{"id":"neoforge","label":"NeoForge","dependencies":""},{"id":"fabric","label":"Fabric","dependencies":"fabric-api | depends"}] as $platforms
             | [$platforms[] as $platform
               | $releases[] as $release
               | $release + {
                   "platform_id": $platform.id,
-                  "platform_label": $platform.label
+                  "platform_label": $platform.label,
+                  "dependencies": $platform.dependencies
                 }]
           ')
 
@@ -202,7 +203,6 @@ jobs:
           environment: server
           game-versions: |
             ${{ matrix.target.game_versions }}
-          dependencies: |
-            architectury-api | depends
+          dependencies: ${{ matrix.target.dependencies }}
           files: |
             artifacts/*.jar

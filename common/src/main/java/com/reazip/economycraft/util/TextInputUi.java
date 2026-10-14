@@ -89,7 +89,7 @@ public final class TextInputUi {
         protected void onTake(Player player, ItemStack stack) {
             String value = text;
             this.setCarried(ItemStack.EMPTY);
-            player.closeContainer();
+            ((ServerPlayer) player).closeContainer();
             ServerPlayer serverPlayer = (ServerPlayer) player;
             serverPlayer.connection.send(new ClientboundSetExperiencePacket(
                     serverPlayer.experienceProgress, serverPlayer.totalExperience, serverPlayer.experienceLevel));

@@ -5,6 +5,7 @@
 - Added a `max_balance` setting to `config.json` and the admin settings panel.
 
 ### Improvements
+- Architectury API is no longer required.
 - Item pickers now include items in your offhand.
 - Added `Qa` (quadrillion) and `Qi` (quintillion), e.g. `/pay Steve 2.5Qa`.
 - The Transactions screen now shows the actual item/player head. Older entries keep their previous icon.

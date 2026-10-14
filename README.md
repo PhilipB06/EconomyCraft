@@ -1,7 +1,6 @@
 # EconomyCraft
 
 A server-side economy for Fabric and NeoForge.
-Requires Architectury API.
 
 **Add-On:** [EconomyCraft Bounties](https://modrinth.com/mod/economycraft-bounties)
 

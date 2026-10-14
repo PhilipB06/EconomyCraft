@@ -43,7 +43,7 @@ public final class ContainerPreviewUi {
         protected boolean onClick(int slot, int dragType, ClickKind kind, Player player) {
             if (kind == ClickKind.PICKUP && slot == PREVIEW_BACK_SLOT) {
                 EconomySounds.click((ServerPlayer) player);
-                player.closeContainer();
+                ((ServerPlayer) player).closeContainer();
                 onBack.run();
                 return true;
             }

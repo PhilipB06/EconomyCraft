@@ -28,14 +28,6 @@ versionRange = "[${nfLo},${nfHi})"
 ordering = "NONE"
 side = "BOTH"
 
-# ---- Architectury:
-[[dependencies.economycraft]]
-modId = "architectury"
-type = "required"
-versionRange = "[${archVer},)"
-ordering = "NONE"
-side = "BOTH"
-
 # ---- Placeholder API NeoForge (optional, for mod-to-mod placeholder integration):
 [[dependencies.economycraft]]
 modId = "${placeholderModId}"

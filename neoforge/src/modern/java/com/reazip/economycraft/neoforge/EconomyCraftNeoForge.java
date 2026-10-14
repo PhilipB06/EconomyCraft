@@ -7,7 +7,8 @@ import com.reazip.economycraft.EconomyCraft;
 @Mod(EconomyCraft.MOD_ID)
 public final class EconomyCraftNeoForge {
     public EconomyCraftNeoForge() {
-        EconomyCraft.registerEvents();
+        EconomyCraft.init();
+        EconomyCraftNeoForgeEvents.register();
         EconomyCraftNeoForgePermissions.bootstrap();
 
         if (EconomyCraftNeoForgeModIds.isPlaceholderApiLoaded()) {

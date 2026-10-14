@@ -1,5 +1,6 @@
 package com.reazip.economycraft;
 
+import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.logging.LogUtils;
 import com.reazip.economycraft.auction.AuctionExpiration;
 import com.reazip.economycraft.orders.OrderFulfillment;
@@ -9,11 +10,10 @@ import com.reazip.economycraft.util.ChatCompat;
 import com.reazip.economycraft.util.EconomyPaths;
 import com.reazip.economycraft.util.IdentityCompat;
 import com.reazip.economycraft.util.ProfileCompat;
-import dev.architectury.event.events.common.CommandRegistrationEvent;
-import dev.architectury.event.events.common.LifecycleEvent;
-import dev.architectury.event.events.common.PlayerEvent;
-import dev.architectury.event.events.common.TickEvent;
 import net.minecraft.ChatFormatting;
+import net.minecraft.commands.CommandBuildContext;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -34,32 +34,35 @@ public final class EconomyCraft {
     private static volatile MinecraftServer lastServer;
     private static final int EXPIRATION_CHECK_INTERVAL_TICKS = 20 * 60;
 
-    public static void registerEvents() {
+    public static void init() {
         if (EconomyCraftApiBootstrap.INITIALIZED == null) {
             throw new IllegalStateException("EconomyCraft API bootstrap failed");
         }
-        LifecycleEvent.SERVER_STARTING.register(EconomyConfig::load);
-        LifecycleEvent.SERVER_STARTING.register(WebhookConfig::load);
-
-        CommandRegistrationEvent.EVENT.register((dispatcher, registry, selection) -> {
-            EconomyCommands.register(dispatcher, registry, selection);
-        });
-
-        LifecycleEvent.SERVER_STARTED.register(EconomyCraft::getManager);
-
-        LifecycleEvent.SERVER_STOPPING.register(server -> {
-            if (manager != null && lastServer == server) {
-                manager.deactivate();
-                manager.save();
-            }
-            AsyncFileWriter.flush();
-        });
-
-        PlayerEvent.PLAYER_JOIN.register(EconomyCraft::onPlayerJoin);
-        TickEvent.SERVER_POST.register(EconomyCraft::onServerTick);
     }
 
-    private static void onServerTick(MinecraftServer server) {
+    public static void onServerStarting(MinecraftServer server) {
+        EconomyConfig.load(server);
+        WebhookConfig.load(server);
+    }
+
+    public static void onServerStarted(MinecraftServer server) {
+        getManager(server);
+    }
+
+    public static void onServerStopping(MinecraftServer server) {
+        if (manager != null && lastServer == server) {
+            manager.deactivate();
+            manager.save();
+        }
+        AsyncFileWriter.flush();
+    }
+
+    public static void registerCommands(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext buildContext,
+                                        Commands.CommandSelection selection) {
+        EconomyCommands.register(dispatcher, buildContext, selection);
+    }
+
+    public static void onServerTick(MinecraftServer server) {
         if (server.getTickCount() % EXPIRATION_CHECK_INTERVAL_TICKS != 0) return;
 
         EconomyManager eco = getManager(server);
@@ -80,7 +83,7 @@ public final class EconomyCraft {
         }
     }
 
-    private static void onPlayerJoin(ServerPlayer player) {
+    public static void onPlayerJoin(ServerPlayer player) {
         try {
             MinecraftServer server = player.level().getServer();
             ProfileCompat.cacheName(server, player.getUUID(), IdentityCompat.of(player).name());

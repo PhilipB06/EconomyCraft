@@ -51,7 +51,6 @@ dependencies {
         // Platform loader + API
         modImplementation "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"
         modImplementation "net.fabricmc.fabric-api:fabric-api:${rootProject.findProperty('fabric_api_version') ?: tgt.fabricApi}"
-        modApi "dev.architectury:architectury-fabric:${rootProject.findProperty('architectury_version_plain') ?: tgt.architecturyVer}"
 
         // Link common module — namedElements is the remap-aware configuration Loom needs to
         // remap common's official-mappings output into this project's own mapped classpath.
@@ -65,7 +64,6 @@ dependencies {
         // Platform loader + API
         implementation "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"
         implementation "net.fabricmc.fabric-api:fabric-api:${rootProject.findProperty('fabric_api_version') ?: tgt.fabricApi}"
-        api "dev.architectury:architectury-fabric:${rootProject.findProperty('architectury_version_plain') ?: tgt.architecturyVer}"
 
         // Link common module
         common(project(path: ":common")) { transitive = false }
@@ -85,11 +83,10 @@ processResources {
     inputs.property("mcLo", mcLo)
     inputs.property("mcHi", mcHi)
     inputs.property("mcPredicate", mcPredicate)
-    inputs.property("archVer", tgt.architecturyVer)
 
     filesMatching("fabric.mod.json") {
         expand version: project.version, mcLo: mcLo, mcHi: mcHi,
-                mcPredicate: mcPredicate, archVer: tgt.architecturyVer
+                mcPredicate: mcPredicate
     }
 }
 

@@ -371,7 +371,7 @@ public final class SellUi {
                         cycleShulkerMode();
                     } else if (navSlot == NAV_MENU) {
                         EconomySounds.click((ServerPlayer) player);
-                        player.closeContainer();
+                        ((ServerPlayer) player).closeContainer();
                         HubUi.open((ServerPlayer) player);
                     }
                 }

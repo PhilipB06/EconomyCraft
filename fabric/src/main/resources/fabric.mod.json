@@ -15,8 +15,7 @@
   "depends": {
     "minecraft": "${mcPredicate}",
     "fabricloader": ">=0.15.0",
-    "fabric-api": "*",
-    "architectury": ">=${archVer}"
+    "fabric-api": "*"
   },
   "suggests": {
     "placeholder-api": "*"

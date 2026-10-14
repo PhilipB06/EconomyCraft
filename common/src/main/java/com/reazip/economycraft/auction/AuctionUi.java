@@ -499,14 +499,14 @@ public final class AuctionUi {
                     case SELLER_CANT_RECEIVE -> fail(sp, "Seller cannot receive this payment");
                     default -> fail(sp, "Listing no longer available");
                 }
-                player.closeContainer();
+                sp.closeContainer();
                 AuctionUi.open(sp, auctions, 0, query, sort, mineOnly);
                 return true;
             }
 
             if (slot == MenuUiSupport.ROW_CANCEL) {
                 EconomySounds.click((ServerPlayer) player);
-                player.closeContainer();
+                ((ServerPlayer) player).closeContainer();
                 AuctionUi.open((ServerPlayer) player, auctions, 0, query, sort, mineOnly);
                 return true;
             }
@@ -585,13 +585,13 @@ public final class AuctionUi {
                         viewer.sendSystemMessage(Component.literal("Listing no longer available"));
                     }
                 }
-                player.closeContainer();
+                sp.closeContainer();
                 AuctionUi.open(sp, auctions, 0, query, sort, mineOnly);
                 return true;
             }
             if (slot == MenuUiSupport.ROW_CANCEL) {
                 EconomySounds.click((ServerPlayer) player);
-                player.closeContainer();
+                ((ServerPlayer) player).closeContainer();
                 AuctionUi.open((ServerPlayer) player, auctions, 0, query, sort, mineOnly);
                 return true;
             }

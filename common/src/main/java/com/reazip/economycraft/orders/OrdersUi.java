@@ -501,14 +501,14 @@ public final class OrdersUi {
                 }
 
                 parent.updatePage();
-                player.closeContainer();
+                serverPlayer.closeContainer();
                 OrdersUi.open(serverPlayer, parent.eco, 0, parent.query, parent.sort, parent.mineOnly);
                 return true;
             }
 
             if (slot == MenuUiSupport.ROW_CANCEL) {
                 EconomySounds.click((ServerPlayer) player);
-                player.closeContainer();
+                ((ServerPlayer) player).closeContainer();
                 OrdersUi.open((ServerPlayer) player, parent.eco, 0, parent.query, parent.sort, parent.mineOnly);
                 return true;
             }
@@ -571,13 +571,13 @@ public final class OrdersUi {
                         serverPlayer.sendSystemMessage(Component.literal("Request no longer available").withStyle(ChatFormatting.RED));
                     }
                 }
-                player.closeContainer();
+                serverPlayer.closeContainer();
                 OrdersUi.open(serverPlayer, parent.eco, 0, parent.query, parent.sort, parent.mineOnly);
                 return true;
             }
             if (slot == MenuUiSupport.ROW_CANCEL) {
                 EconomySounds.click((ServerPlayer) player);
-                player.closeContainer();
+                ((ServerPlayer) player).closeContainer();
                 OrdersUi.open((ServerPlayer) player, parent.eco, 0, parent.query, parent.sort, parent.mineOnly);
                 return true;
             }
@@ -695,7 +695,7 @@ public final class OrdersUi {
                 if (slot == navRowStart + 5 && (page + 1) * 45 < items.size()) { EconomySounds.page((ServerPlayer) player); page++; updatePage(); return true; }
                 if (slot == navRowStart + 8) {
                     EconomySounds.click((ServerPlayer) player);
-                    player.closeContainer();
+                    ((ServerPlayer) player).closeContainer();
                     HubUi.open((ServerPlayer) player);
                     return true;
                 }
