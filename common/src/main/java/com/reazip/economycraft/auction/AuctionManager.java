@@ -148,11 +148,11 @@ public class AuctionManager {
     }
 
     public int getEffectiveLimit(UUID player) {
-        return limitOverrides.effectiveLimit(player, EconomyConfig.get().maxActiveAuctionsPerPlayer);
+        return limitOverrides.effectiveLimit(player, EconomyConfig.get().auction.maxActivePerPlayer);
     }
 
     public boolean hasReachedLimit(UUID player) {
-        return limitOverrides.hasReachedLimit(player, countActive(player), EconomyConfig.get().maxActiveAuctionsPerPlayer);
+        return limitOverrides.hasReachedLimit(player, countActive(player), EconomyConfig.get().auction.maxActivePerPlayer);
     }
 
     public void load() {
@@ -183,7 +183,7 @@ public class AuctionManager {
                         }
                         if (l.createdAt <= 0) {
                             l.createdAt = now;
-                            l.expiresAt = ExpirationUtil.expiresAt(now, EconomyConfig.get().auctionExpirationHours);
+                            l.expiresAt = ExpirationUtil.expiresAt(now, EconomyConfig.get().auction.expirationHours);
                             migrated = true;
                         }
                         listings.put(l.id, l);

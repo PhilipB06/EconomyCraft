@@ -156,7 +156,7 @@ public final class EconomyCraft {
 
     public static String formatMoney(long amount) {
         DecimalFormatSymbols symbols = DecimalFormatSymbols.getInstance(Locale.ROOT);
-        symbols.setGroupingSeparator(EconomyConfig.get().balanceSeparator.charAt(0));
+        symbols.setGroupingSeparator(EconomyConfig.get().display.balanceSeparator.charAt(0));
         return "$" + new DecimalFormat("#,##0", symbols).format(amount);
     }
 

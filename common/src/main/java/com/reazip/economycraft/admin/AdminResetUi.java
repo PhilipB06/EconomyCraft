@@ -136,7 +136,7 @@ public final class AdminResetUi {
     }
 
     private static void confirmResetBalances(ServerPlayer viewer, EconomyManager eco) {
-        long starting = EconomyConfig.get().startingBalance;
+        long starting = EconomyConfig.get().economy.startingBalance;
         ConfirmUi.open(viewer, "Reset all balances?", warningIcon(Items.GOLD_INGOT, "Reset All Balances"),
                 "Reset balances",
                 List.of(MenuUiSupport.line("Every player's balance is set to " + EconomyCraft.formatMoney(starting) + ".", ChatFormatting.RED),

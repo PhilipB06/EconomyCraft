@@ -160,11 +160,11 @@ public class OrderManager {
     }
 
     public int getEffectiveLimit(UUID player) {
-        return limitOverrides.effectiveLimit(player, EconomyConfig.get().maxActiveOrdersPerPlayer);
+        return limitOverrides.effectiveLimit(player, EconomyConfig.get().orders.maxActivePerPlayer);
     }
 
     public boolean hasReachedLimit(UUID player) {
-        return limitOverrides.hasReachedLimit(player, countActive(player), EconomyConfig.get().maxActiveOrdersPerPlayer);
+        return limitOverrides.hasReachedLimit(player, countActive(player), EconomyConfig.get().orders.maxActivePerPlayer);
     }
 
     public void load() {
@@ -195,7 +195,7 @@ public class OrderManager {
                         }
                         if (r.createdAt <= 0) {
                             r.createdAt = now;
-                            r.expiresAt = ExpirationUtil.expiresAt(now, EconomyConfig.get().orderExpirationHours);
+                            r.expiresAt = ExpirationUtil.expiresAt(now, EconomyConfig.get().orders.expirationHours);
                             migrated = true;
                         }
                         requests.put(r.id, r);

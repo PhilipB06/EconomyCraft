@@ -139,7 +139,7 @@ public final class SellUi {
             }
 
             long contentsValue = acc.total - before;
-            if (allSellable && EconomyConfig.get().dailySellLimit > 0
+            if (allSellable && EconomyConfig.get().selling.dailyLimit > 0
                     && contentsValue > manager.getDailySellRemaining(viewer.getUUID())) {
                 allSellable = false;
             }
@@ -259,7 +259,7 @@ public final class SellUi {
             Long potential = ShopDisplay.safeMultiply(unitSell, split.serverRemaining());
             if (potential == null) return;
 
-            if (EconomyConfig.get().dailySellLimit > 0
+            if (EconomyConfig.get().selling.dailyLimit > 0
                     && potential > manager.getDailySellRemaining(player.getUUID())) {
                 totals.limitBlocked += split.serverRemaining();
                 return;
@@ -272,7 +272,7 @@ public final class SellUi {
                 return;
             }
 
-            if (EconomyConfig.get().dailySellLimit > 0) {
+            if (EconomyConfig.get().selling.dailyLimit > 0) {
                 manager.recordDailySell(player.getUUID(), potential);
             }
             totals.serverSold += split.serverRemaining();

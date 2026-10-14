@@ -117,14 +117,14 @@ public final class HubUi {
     }
 
     private static void startWorth(ServerPlayer player) {
-        if (!EconomyConfig.get().worthEnabled) {
+        if (!EconomyConfig.get().selling.worthEnabled) {
             open(player);
             return;
         }
 
         ItemPickerUi.open(player, "Check an item's value", ItemPickerUi.Source.INVENTORY_AND_ALL, null,
                 (picker, choice) -> {
-                    if (!EconomyConfig.get().worthEnabled) {
+                    if (!EconomyConfig.get().selling.worthEnabled) {
                         open(picker);
                         return;
                     }
@@ -162,7 +162,7 @@ public final class HubUi {
             ItemStack balance = MenuUiSupport.createBalanceItem(viewer);
             List<Component> balanceLore = new ArrayList<>();
             balanceLore.add(MenuUiSupport.balanceLore(eco.getBalance(viewer.getUUID(), true)));
-            if (config.dailySellLimit > 0) {
+            if (config.selling.dailyLimit > 0) {
                 balanceLore.add(MenuUiSupport.labeledValue("Sell limit left today",
                         EconomyCraft.formatMoney(eco.getDailySellRemaining(viewer.getUUID())),
                         MenuUiSupport.LABEL_PRIMARY_COLOR));
@@ -170,25 +170,25 @@ public final class HubUi {
             balance.set(DataComponents.LORE, new ItemLore(balanceLore));
             container.setItem(BALANCE, balance);
 
-            if (config.shopEnabled && EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_SHOP)) {
+            if (config.shop.enabled && EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_SHOP)) {
                 container.setItem(SHOP, MenuUiSupport.button(Items.EMERALD, "Shop", ChatFormatting.GREEN,
                         MenuUiSupport.hint("Buy and sell at fixed prices."),
                         MenuUiSupport.hint("Stock never runs out.")));
             }
 
-            if (config.auctionEnabled && EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_AUCTION)) {
+            if (config.auction.enabled && EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_AUCTION)) {
                 container.setItem(AUCTION, MenuUiSupport.button(Items.CHEST, "Auction House", ChatFormatting.GOLD,
                         MenuUiSupport.hint("Buy from other players,"),
                         MenuUiSupport.hint("or put your own items up for sale.")));
             }
 
-            if (config.sellEnabled && EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_SELL)) {
+            if (config.selling.enabled && EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_SELL)) {
                 container.setItem(SELL, MenuUiSupport.button(Items.GOLD_INGOT, "Sell Items", ChatFormatting.YELLOW,
                         MenuUiSupport.hint("Drop items in and get paid."),
                         MenuUiSupport.hint("Open orders are matched first.")));
             }
 
-            if (config.ordersEnabled && EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_ORDERS)) {
+            if (config.orders.enabled && EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_ORDERS)) {
                 container.setItem(ORDERS, MenuUiSupport.button(Items.WRITABLE_BOOK, "Orders", ChatFormatting.AQUA,
                         MenuUiSupport.hint("Ask for an item and name your price,"),
                         MenuUiSupport.hint("or earn money filling other requests.")));
@@ -198,7 +198,7 @@ public final class HubUi {
                 boolean claimed = eco.hasClaimedDailyToday(viewer.getUUID());
                 container.setItem(DAILY, MenuUiSupport.button(Items.CLOCK, "Daily Reward",
                         claimed ? ChatFormatting.GRAY : ChatFormatting.GOLD,
-                        MenuUiSupport.labeledValue("Amount", EconomyCraft.formatMoney(config.dailyAmount),
+                        MenuUiSupport.labeledValue("Amount", EconomyCraft.formatMoney(config.economy.dailyReward),
                                 MenuUiSupport.LABEL_PRIMARY_COLOR),
                         claimed
                                 ? MenuUiSupport.line("Already claimed today", ChatFormatting.RED)
@@ -216,7 +216,7 @@ public final class HubUi {
                         MenuUiSupport.hint("See who's on top on the server.")));
             }
 
-            if (config.worthEnabled && EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_WORTH)) {
+            if (config.selling.worthEnabled && EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_WORTH)) {
                 container.setItem(WORTH, MenuUiSupport.button(Items.SPYGLASS, "Item Value", ChatFormatting.AQUA,
                         MenuUiSupport.hint("Look up what an item buys"),
                         MenuUiSupport.hint("and sells for.")));
@@ -259,25 +259,25 @@ public final class HubUi {
             EconomyConfig config = EconomyConfig.get();
             switch (slot) {
                 case SHOP -> {
-                    if (config.shopEnabled && EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_SHOP)) {
+                    if (config.shop.enabled && EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_SHOP)) {
                         EconomySounds.click(viewer);
                         ShopUi.open(viewer, eco);
                     }
                 }
                 case AUCTION -> {
-                    if (config.auctionEnabled && EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_AUCTION)) {
+                    if (config.auction.enabled && EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_AUCTION)) {
                         EconomySounds.click(viewer);
                         AuctionUi.open(viewer, eco.getAuctions());
                     }
                 }
                 case SELL -> {
-                    if (config.sellEnabled && EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_SELL)) {
+                    if (config.selling.enabled && EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_SELL)) {
                         EconomySounds.click(viewer);
                         SellUi.open(viewer, eco);
                     }
                 }
                 case ORDERS -> {
-                    if (config.ordersEnabled && EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_ORDERS)) {
+                    if (config.orders.enabled && EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_ORDERS)) {
                         EconomySounds.click(viewer);
                         OrdersUi.open(viewer, eco);
                     }
@@ -310,7 +310,7 @@ public final class HubUi {
                     }
                 }
                 case WORTH -> {
-                    if (config.worthEnabled && EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_WORTH)) {
+                    if (config.selling.worthEnabled && EconomyPermissions.checkCommand(viewer, Nodes.COMMAND_WORTH)) {
                         EconomySounds.click(viewer);
                         viewer.closeContainer();
                         startWorth(viewer);
@@ -322,7 +322,7 @@ public final class HubUi {
                         if (eco.claimDaily(viewer.getUUID())) {
                             EconomySounds.dailyReward(viewer);
                             viewer.sendSystemMessage(Component.literal("Claimed "
-                                    + EconomyCraft.formatMoney(config.dailyAmount)).withStyle(ChatFormatting.GREEN));
+                                    + EconomyCraft.formatMoney(config.economy.dailyReward)).withStyle(ChatFormatting.GREEN));
                         } else if (alreadyClaimed) {
                             EconomySounds.failure(viewer);
                             viewer.sendSystemMessage(MenuUiSupport.line("Already claimed today. Come back tomorrow.",

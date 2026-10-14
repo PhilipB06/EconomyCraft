@@ -64,53 +64,53 @@ public final class EconomyCommands {
         ));
 
         dispatcher.register(withCommandPermission(
-                buildBalance().requires(s -> EconomyConfig.get().standaloneCommands), Nodes.COMMAND_BALANCE));
+                buildBalance().requires(s -> EconomyConfig.get().commands.standalone), Nodes.COMMAND_BALANCE));
         dispatcher.register(withCommandPermission(
-                buildPay().requires(s -> EconomyConfig.get().standaloneCommands), Nodes.COMMAND_PAY));
+                buildPay().requires(s -> EconomyConfig.get().commands.standalone), Nodes.COMMAND_PAY));
         dispatcher.register(withCommandPermission(
-                SellCommand.register().requires(s -> EconomyConfig.get().standaloneCommands && EconomyConfig.get().sellEnabled),
+                SellCommand.register().requires(s -> EconomyConfig.get().commands.standalone && EconomyConfig.get().selling.enabled),
                 Nodes.COMMAND_SELL));
         registerStandalone(dispatcher, buildAuction("ah"), Nodes.COMMAND_AUCTION);
         registerStandalone(dispatcher, buildAuction("auction"), Nodes.COMMAND_AUCTION);
         registerStandalone(dispatcher, buildShop(), Nodes.COMMAND_SHOP);
         dispatcher.register(withCommandPermission(
-                buildOrders(buildContext).requires(s -> EconomyConfig.get().standaloneCommands), Nodes.COMMAND_ORDERS));
+                buildOrders(buildContext).requires(s -> EconomyConfig.get().commands.standalone), Nodes.COMMAND_ORDERS));
         dispatcher.register(withCommandPermission(
-                buildDeliveries().requires(s -> EconomyConfig.get().standaloneCommands), Nodes.COMMAND_DELIVERIES));
+                buildDeliveries().requires(s -> EconomyConfig.get().commands.standalone), Nodes.COMMAND_DELIVERIES));
         dispatcher.register(withCommandPermission(
-                buildDaily().requires(s -> EconomyConfig.get().standaloneCommands), Nodes.COMMAND_DAILY));
+                buildDaily().requires(s -> EconomyConfig.get().commands.standalone), Nodes.COMMAND_DAILY));
         dispatcher.register(withCommandPermission(
-                buildTransactions().requires(s -> EconomyConfig.get().standaloneCommands), Nodes.COMMAND_TRANSACTIONS));
+                buildTransactions().requires(s -> EconomyConfig.get().commands.standalone), Nodes.COMMAND_TRANSACTIONS));
         dispatcher.register(withCommandPermission(
                 WorthCommand.register(buildContext).requires(s ->
-                        EconomyConfig.get().standaloneCommands && EconomyConfig.get().worthEnabled),
+                        EconomyConfig.get().commands.standalone && EconomyConfig.get().selling.worthEnabled),
                 Nodes.COMMAND_WORTH));
 
         dispatcher.register(
                 buildAddMoney().requires(src ->
                         EconomyPermissions.checkAdmin(src, Nodes.ADMIN_PLAYERS)
-                                && EconomyConfig.get().standaloneAdminCommands
+                                && EconomyConfig.get().commands.standaloneAdmin
                 )
         );
 
         dispatcher.register(
                 buildSetMoney().requires(src ->
                         EconomyPermissions.checkAdmin(src, Nodes.ADMIN_PLAYERS)
-                                && EconomyConfig.get().standaloneAdminCommands
+                                && EconomyConfig.get().commands.standaloneAdmin
                 )
         );
 
         dispatcher.register(
                 buildRemoveMoney().requires(src ->
                         EconomyPermissions.checkAdmin(src, Nodes.ADMIN_PLAYERS)
-                                && EconomyConfig.get().standaloneAdminCommands
+                                && EconomyConfig.get().commands.standaloneAdmin
                 )
         );
 
         dispatcher.register(
                 buildRemovePlayer().requires(src ->
                         EconomyPermissions.checkAdmin(src, Nodes.ADMIN_PLAYERS)
-                                && EconomyConfig.get().standaloneAdminCommands
+                                && EconomyConfig.get().commands.standaloneAdmin
                 )
         );
 
@@ -119,7 +119,7 @@ public final class EconomyCommands {
     private static void registerStandalone(CommandDispatcher<CommandSourceStack> dispatcher,
                                            LiteralArgumentBuilder<CommandSourceStack> command, String node) {
         withCommandPermission(command, node);
-        command.requires(command.getRequirement().and(src -> EconomyConfig.get().standaloneCommands));
+        command.requires(command.getRequirement().and(src -> EconomyConfig.get().commands.standalone));
         dispatcher.register(command);
     }
 
@@ -149,7 +149,7 @@ public final class EconomyCommands {
         root.then(withCommandPermission(buildBalance(), Nodes.COMMAND_BALANCE));
         root.then(withCommandPermission(buildPay(), Nodes.COMMAND_PAY));
         root.then(withCommandPermission(
-                SellCommand.register().requires(s -> EconomyConfig.get().sellEnabled), Nodes.COMMAND_SELL));
+                SellCommand.register().requires(s -> EconomyConfig.get().selling.enabled), Nodes.COMMAND_SELL));
         root.then(withCommandPermission(buildAuction("ah"), Nodes.COMMAND_AUCTION));
         root.then(withCommandPermission(buildAuction("auction"), Nodes.COMMAND_AUCTION));
         root.then(withCommandPermission(buildShop(), Nodes.COMMAND_SHOP));
@@ -158,7 +158,7 @@ public final class EconomyCommands {
         root.then(withCommandPermission(buildDaily(), Nodes.COMMAND_DAILY));
         root.then(withCommandPermission(buildTransactions(), Nodes.COMMAND_TRANSACTIONS));
         root.then(withCommandPermission(
-                WorthCommand.register(buildContext).requires(s -> EconomyConfig.get().worthEnabled), Nodes.COMMAND_WORTH));
+                WorthCommand.register(buildContext).requires(s -> EconomyConfig.get().selling.worthEnabled), Nodes.COMMAND_WORTH));
 
         root.then(addMoney);
         root.then(setMoney);
@@ -654,7 +654,7 @@ public final class EconomyCommands {
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildAuction(String command) {
         return literal(command)
-                .requires(src -> EconomyConfig.get().auctionEnabled)
+                .requires(src -> EconomyConfig.get().auction.enabled)
                 .executes(ctx -> openAuction(ctx.getSource().getPlayerOrException(), ctx.getSource()))
                 .then(literal("list")
                         .executes(ctx -> usage(ctx.getSource(), "/" + command + " list <price> [<amount>]"))
@@ -676,7 +676,7 @@ public final class EconomyCommands {
     }
 
     private static int openAuction(ServerPlayer player, CommandSourceStack source) {
-        if (!EconomyConfig.get().auctionEnabled) {
+        if (!EconomyConfig.get().auction.enabled) {
             source.sendFailure(Component.literal("The auction house is disabled.").withStyle(ChatFormatting.RED));
             return 0;
         }
@@ -691,7 +691,7 @@ public final class EconomyCommands {
     }
 
     private static int searchAuction(ServerPlayer player, String query, CommandSourceStack source) {
-        if (!EconomyConfig.get().auctionEnabled) {
+        if (!EconomyConfig.get().auction.enabled) {
             source.sendFailure(Component.literal("The auction house is disabled.").withStyle(ChatFormatting.RED));
             return 0;
         }
@@ -706,7 +706,7 @@ public final class EconomyCommands {
     }
 
     private static int listAuctionItem(ServerPlayer player, long price, int amount, CommandSourceStack source) {
-        if (!EconomyConfig.get().auctionEnabled) {
+        if (!EconomyConfig.get().auction.enabled) {
             EconomySounds.failure(player);
             source.sendFailure(Component.literal("The auction house is disabled.").withStyle(ChatFormatting.RED));
             return 0;
@@ -743,7 +743,7 @@ public final class EconomyCommands {
         listing.price = price;
         listing.item = hand.copyWithCount(count);
         listing.createdAt = System.currentTimeMillis();
-        listing.expiresAt = ExpirationUtil.expiresAt(listing.createdAt, EconomyConfig.get().auctionExpirationHours);
+        listing.expiresAt = ExpirationUtil.expiresAt(listing.createdAt, EconomyConfig.get().auction.expirationHours);
         hand.shrink(count);
         auctions.addListing(listing);
 
@@ -761,7 +761,7 @@ public final class EconomyCommands {
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildShop() {
         return literal("shop")
-                .requires(src -> EconomyConfig.get().shopEnabled)
+                .requires(src -> EconomyConfig.get().shop.enabled)
                 .executes(ctx -> openShop(ctx.getSource().getPlayerOrException(), ctx.getSource(), null))
                 .then(argument("category", StringArgumentType.greedyString())
                         .suggests((ctx, builder) -> suggestShopCategories(ctx.getSource(), builder))
@@ -779,7 +779,7 @@ public final class EconomyCommands {
     }
 
     private static int openShop(ServerPlayer player, CommandSourceStack source, @Nullable String category) {
-        if (!EconomyConfig.get().shopEnabled) {
+        if (!EconomyConfig.get().shop.enabled) {
             source.sendFailure(Component.literal("Shop is disabled.").withStyle(ChatFormatting.RED));
             return 0;
         }
@@ -796,7 +796,7 @@ public final class EconomyCommands {
     }
 
     private static int searchShop(ServerPlayer player, String query, CommandSourceStack source) {
-        if (!EconomyConfig.get().shopEnabled) {
+        if (!EconomyConfig.get().shop.enabled) {
             source.sendFailure(Component.literal("Shop is disabled.").withStyle(ChatFormatting.RED));
             return 0;
         }
@@ -815,7 +815,7 @@ public final class EconomyCommands {
         return literal("orders")
                 .executes(ctx -> openOrders(ctx.getSource().getPlayerOrException(), ctx.getSource()))
                 .then(literal("request")
-                        .requires(src -> EconomyConfig.get().ordersEnabled)
+                        .requires(src -> EconomyConfig.get().orders.enabled)
                         .executes(ctx -> usage(ctx.getSource(), requestUsage))
                         .then(argument("item", ItemArgument.item(buildContext))
                                 .executes(ctx -> usage(ctx.getSource(), requestUsage))
@@ -828,7 +828,7 @@ public final class EconomyCommands {
                                                         LongArgumentType.getLong(ctx, "price"),
                                                         ctx.getSource()))))))
                 .then(literal("search")
-                        .requires(src -> EconomyConfig.get().ordersEnabled)
+                        .requires(src -> EconomyConfig.get().orders.enabled)
                         .executes(ctx -> usage(ctx.getSource(), "/orders search <query>"))
                         .then(argument("query", StringArgumentType.greedyString())
                                 .executes(ctx -> searchOrders(ctx.getSource().getPlayerOrException(),
@@ -837,7 +837,7 @@ public final class EconomyCommands {
     }
 
     private static int openOrders(ServerPlayer player, CommandSourceStack source) {
-        if (!EconomyConfig.get().ordersEnabled) {
+        if (!EconomyConfig.get().orders.enabled) {
             source.sendFailure(Component.literal("Orders are disabled.").withStyle(ChatFormatting.RED));
             return 0;
         }
@@ -909,7 +909,7 @@ public final class EconomyCommands {
     }
 
     private static int searchOrders(ServerPlayer player, String query, CommandSourceStack source) {
-        if (!EconomyConfig.get().ordersEnabled) {
+        if (!EconomyConfig.get().orders.enabled) {
             source.sendFailure(Component.literal("Orders are disabled.").withStyle(ChatFormatting.RED));
             return 0;
         }
@@ -933,7 +933,7 @@ public final class EconomyCommands {
         boolean alreadyClaimed = manager.hasClaimedDailyToday(player.getUUID());
         if (manager.claimDaily(player.getUUID())) {
             EconomySounds.dailyReward(player);
-            Component msg = Component.literal("Claimed " + EconomyCraft.formatMoney(EconomyConfig.get().dailyAmount))
+            Component msg = Component.literal("Claimed " + EconomyCraft.formatMoney(EconomyConfig.get().economy.dailyReward))
                     .withStyle(ChatFormatting.GREEN);
             player.sendSystemMessage(msg);
         } else if (alreadyClaimed) {

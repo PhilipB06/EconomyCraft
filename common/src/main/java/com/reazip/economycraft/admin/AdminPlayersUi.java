@@ -106,7 +106,7 @@ public final class AdminPlayersUi {
             container.setItem(MAX_ORDERS, MenuUiSupport.button(Items.WRITABLE_BOOK, "Max Orders", ChatFormatting.AQUA,
                     MenuUiSupport.hint("Most active order requests this player can have."),
                     MenuUiSupport.labeledValue("Now",
-                            limitLabel(orderOverride, EconomyConfig.get().maxActiveOrdersPerPlayer),
+                            limitLabel(orderOverride, EconomyConfig.get().orders.maxActivePerPlayer),
                             MenuUiSupport.LABEL_PRIMARY_COLOR),
                     MenuUiSupport.labeledValue("Click", "Set a limit", MenuUiSupport.LABEL_SECONDARY_COLOR),
                     MenuUiSupport.labeledValue("Right-click", "Use server default", MenuUiSupport.LABEL_SECONDARY_COLOR)));
@@ -128,7 +128,7 @@ public final class AdminPlayersUi {
             container.setItem(MAX_AUCTIONS, MenuUiSupport.button(Items.CHEST, "Max Auctions", ChatFormatting.AQUA,
                     MenuUiSupport.hint("Most active auction listings this player can have."),
                     MenuUiSupport.labeledValue("Now",
-                            limitLabel(auctionOverride, EconomyConfig.get().maxActiveAuctionsPerPlayer),
+                            limitLabel(auctionOverride, EconomyConfig.get().auction.maxActivePerPlayer),
                             MenuUiSupport.LABEL_PRIMARY_COLOR),
                     MenuUiSupport.labeledValue("Click", "Set a limit", MenuUiSupport.LABEL_SECONDARY_COLOR),
                     MenuUiSupport.labeledValue("Right-click", "Use server default", MenuUiSupport.LABEL_SECONDARY_COLOR)));
@@ -160,7 +160,7 @@ public final class AdminPlayersUi {
                         openTarget(viewer, eco, target);
                     } else {
                         Integer override = eco.getOrders().getLimitOverride(target.id());
-                        long initial = override != null ? override : EconomyConfig.get().maxActiveOrdersPerPlayer;
+                        long initial = override != null ? override : EconomyConfig.get().orders.maxActivePerPlayer;
                         NumberInputUi.open(viewer, "Max Orders for " + target.name(), subject(), "Max active orders",
                                 initial, 0, Integer.MAX_VALUE, new int[]{100, 10, 5, 1}, AdminPlayersUi::describeLimit,
                                 "Confirm", null,
@@ -179,7 +179,7 @@ public final class AdminPlayersUi {
                         openTarget(viewer, eco, target);
                     } else {
                         Integer override = eco.getAuctions().getLimitOverride(target.id());
-                        long initial = override != null ? override : EconomyConfig.get().maxActiveAuctionsPerPlayer;
+                        long initial = override != null ? override : EconomyConfig.get().auction.maxActivePerPlayer;
                         NumberInputUi.open(viewer, "Max Auctions for " + target.name(), subject(), "Max active listings",
                                 initial, 0, Integer.MAX_VALUE, new int[]{100, 10, 5, 1}, AdminPlayersUi::describeLimit,
                                 "Confirm", null,

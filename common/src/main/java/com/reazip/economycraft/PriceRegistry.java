@@ -392,7 +392,7 @@ public final class PriceRegistry {
     }
 
     public boolean isBuyable(ItemStack stack, PriceEntry entry) {
-        return EconomyConfig.get().shopEnabled && isBuyable(entry)
+        return EconomyConfig.get().shop.enabled && isBuyable(entry)
                 && ItemStack.isSameItemSameComponents(stack, createPrototype(entry));
     }
 

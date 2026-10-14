@@ -20,58 +20,120 @@ public class EconomyConfig {
             .setPrettyPrinting()
             .create();
 
-    public long startingBalance;
-    public long dailyAmount;
-    public long dailySellLimit;
-    @SerializedName("max_balance")
-    public long maxBalance = EconomyManager.ABSOLUTE_MAX_BALANCE;
-    public double taxRate;
-    @SerializedName("standalone_commands")
-    public boolean standaloneCommands;
-    @SerializedName("standalone_admin_commands")
-    public boolean standaloneAdminCommands;
-    @SerializedName("scoreboard_enabled")
-    public boolean scoreboardEnabled;
-    @SerializedName("shop_enabled")
-    public boolean shopEnabled = true;
-    @SerializedName("auction_enabled")
-    public boolean auctionEnabled = true;
-    @SerializedName("sell_enabled")
-    public boolean sellEnabled = true;
-    @SerializedName("worth_enabled")
-    public boolean worthEnabled = true;
-    @SerializedName("orders_enabled")
-    public boolean ordersEnabled = true;
-    @SerializedName("balance_separator")
-    public String balanceSeparator = ".";
-    @SerializedName("transaction_log_enabled")
-    public boolean transactionLogEnabled = true;
-    @SerializedName("transaction_log_retention_days")
-    public int transactionLogRetentionDays = 7;
-    @SerializedName("order_expiration_hours")
-    public int orderExpirationHours = 168;
-    @SerializedName("auction_expiration_hours")
-    public int auctionExpirationHours = 168;
-    @SerializedName("max_active_orders_per_player")
-    public int maxActiveOrdersPerPlayer = 0;
-    @SerializedName("max_active_auctions_per_player")
-    public int maxActiveAuctionsPerPlayer = 0;
-    @SerializedName("dynamic_prices_enabled")
-    public boolean dynamicPricesEnabled = false;
-    @SerializedName("dynamic_price_min_multiplier")
-    public double dynamicPriceMinMultiplier = 0.5;
-    @SerializedName("dynamic_price_max_multiplier")
-    public double dynamicPriceMaxMultiplier = 5.0;
-    @SerializedName("dynamic_price_min_active_days")
-    public int dynamicPriceMinActiveDays = 30;
-    @SerializedName("dynamic_price_update_minutes")
-    public int dynamicPriceUpdateMinutes = 60;
+    public Economy economy = new Economy();
+    public Display display = new Display();
+    public Commands commands = new Commands();
+    public Shop shop = new Shop();
+    public Selling selling = new Selling();
+    @SerializedName("dynamic_prices")
+    public DynamicPrices dynamicPrices = new DynamicPrices();
+    public Auction auction = new Auction();
+    public Orders orders = new Orders();
+    @SerializedName("transaction_log")
+    public TransactionLog transactionLog = new TransactionLog();
+
+    public static class Economy {
+        @SerializedName("starting_balance")
+        public long startingBalance = 1000;
+        @SerializedName("max_balance")
+        public long maxBalance = EconomyManager.ABSOLUTE_MAX_BALANCE;
+        @SerializedName("daily_reward")
+        public long dailyReward = 100;
+        @SerializedName("tax_rate")
+        public double taxRate = 0.1;
+    }
+
+    public static class Display {
+        @SerializedName("balance_separator")
+        public String balanceSeparator = ".";
+        @SerializedName("scoreboard_enabled")
+        public boolean scoreboardEnabled = true;
+    }
+
+    public static class Commands {
+        public boolean standalone = true;
+        @SerializedName("standalone_admin")
+        public boolean standaloneAdmin = false;
+    }
+
+    public static class Shop {
+        public boolean enabled = true;
+    }
+
+    public static class Selling {
+        public boolean enabled = true;
+        @SerializedName("daily_limit")
+        public long dailyLimit = 10000;
+        @SerializedName("worth_enabled")
+        public boolean worthEnabled = true;
+    }
+
+    public static class DynamicPrices {
+        public boolean enabled = false;
+        @SerializedName("min_multiplier")
+        public double minMultiplier = 0.5;
+        @SerializedName("max_multiplier")
+        public double maxMultiplier = 5.0;
+        @SerializedName("min_active_days")
+        public int minActiveDays = 30;
+        @SerializedName("update_minutes")
+        public int updateMinutes = 60;
+    }
+
+    public static class Auction {
+        public boolean enabled = true;
+        @SerializedName("expiration_hours")
+        public int expirationHours = 168;
+        @SerializedName("max_active_per_player")
+        public int maxActivePerPlayer = 0;
+    }
+
+    public static class Orders {
+        public boolean enabled = true;
+        @SerializedName("expiration_hours")
+        public int expirationHours = 168;
+        @SerializedName("max_active_per_player")
+        public int maxActivePerPlayer = 0;
+    }
+
+    public static class TransactionLog {
+        public boolean enabled = true;
+        @SerializedName("retention_days")
+        public int retentionDays = 7;
+    }
 
     public static final int MIN_TRANSACTION_LOG_RETENTION_DAYS = 1;
     public static final int WARN_TRANSACTION_LOG_RETENTION_DAYS = 90;
     public static final double MIN_DYNAMIC_PRICE_MULTIPLIER = 0.5;
     public static final double MAX_DYNAMIC_PRICE_MULTIPLIER = 100.0;
     public static final int MIN_DYNAMIC_PRICE_UPDATE_MINUTES = 1;
+
+    private static final String[][] LEGACY_FLAT_KEYS = {
+            {"startingBalance", "economy", "starting_balance"},
+            {"max_balance", "economy", "max_balance"},
+            {"dailyAmount", "economy", "daily_reward"},
+            {"taxRate", "economy", "tax_rate"},
+            {"balance_separator", "display", "balance_separator"},
+            {"scoreboard_enabled", "display", "scoreboard_enabled"},
+            {"standalone_commands", "commands", "standalone"},
+            {"standalone_admin_commands", "commands", "standalone_admin"},
+            {"shop_enabled", "shop", "enabled"},
+            {"sell_enabled", "selling", "enabled"},
+            {"dailySellLimit", "selling", "daily_limit"},
+            {"worth_enabled", "selling", "worth_enabled"},
+            {"dynamic_prices_enabled", "dynamic_prices", "enabled"},
+            {"dynamic_price_min_multiplier", "dynamic_prices", "min_multiplier"},
+            {"dynamic_price_max_multiplier", "dynamic_prices", "max_multiplier"},
+            {"dynamic_price_min_active_days", "dynamic_prices", "min_active_days"},
+            {"auction_enabled", "auction", "enabled"},
+            {"auction_expiration_hours", "auction", "expiration_hours"},
+            {"max_active_auctions_per_player", "auction", "max_active_per_player"},
+            {"orders_enabled", "orders", "enabled"},
+            {"order_expiration_hours", "orders", "expiration_hours"},
+            {"max_active_orders_per_player", "orders", "max_active_per_player"},
+            {"transaction_log_enabled", "transaction_log", "enabled"},
+            {"transaction_log_retention_days", "transaction_log", "retention_days"},
+    };
 
     private static EconomyConfig INSTANCE = new EconomyConfig();
     private static Path file;
@@ -95,28 +157,41 @@ public class EconomyConfig {
             if (parsed == null) {
                 throw new IllegalStateException("config.json parsed to null");
             }
-            parsed.taxRate = clampPercentage("taxRate", parsed.taxRate);
-            if (parsed.dailyAmount < 0) {
-                LOGGER.warn("[EconomyCraft] dailyAmount ({}) is negative; clamping to 0.", parsed.dailyAmount);
-                parsed.dailyAmount = 0;
+            fillMissingSections(parsed);
+            parsed.economy.taxRate = clampPercentage("economy.tax_rate", parsed.economy.taxRate);
+            if (parsed.economy.dailyReward < 0) {
+                LOGGER.warn("[EconomyCraft] economy.daily_reward ({}) is negative; clamping to 0.", parsed.economy.dailyReward);
+                parsed.economy.dailyReward = 0;
             }
-            if (parsed.balanceSeparator == null || parsed.balanceSeparator.isEmpty()) {
-                LOGGER.warn("[EconomyCraft] balance_separator is empty; defaulting to \".\".");
-                parsed.balanceSeparator = ".";
+            if (parsed.display.balanceSeparator == null || parsed.display.balanceSeparator.isEmpty()) {
+                LOGGER.warn("[EconomyCraft] display.balance_separator is empty; defaulting to \".\".");
+                parsed.display.balanceSeparator = ".";
             }
-            parsed.maxBalance = clampMaxBalance(parsed.maxBalance);
-            parsed.transactionLogRetentionDays = clampRetentionDays(parsed.transactionLogRetentionDays);
-            parsed.orderExpirationHours = clampNonNegative("order_expiration_hours", parsed.orderExpirationHours);
-            parsed.auctionExpirationHours = clampNonNegative("auction_expiration_hours", parsed.auctionExpirationHours);
-            parsed.maxActiveOrdersPerPlayer = clampNonNegative("max_active_orders_per_player", parsed.maxActiveOrdersPerPlayer);
-            parsed.maxActiveAuctionsPerPlayer = clampNonNegative("max_active_auctions_per_player", parsed.maxActiveAuctionsPerPlayer);
-            parsed.dynamicPriceMinActiveDays = clampNonNegative("dynamic_price_min_active_days", parsed.dynamicPriceMinActiveDays);
-            parsed.dynamicPriceUpdateMinutes = clampDynamicPriceUpdateMinutes(parsed.dynamicPriceUpdateMinutes);
+            parsed.economy.maxBalance = clampMaxBalance(parsed.economy.maxBalance);
+            parsed.transactionLog.retentionDays = clampRetentionDays(parsed.transactionLog.retentionDays);
+            parsed.orders.expirationHours = clampNonNegative("orders.expiration_hours", parsed.orders.expirationHours);
+            parsed.auction.expirationHours = clampNonNegative("auction.expiration_hours", parsed.auction.expirationHours);
+            parsed.orders.maxActivePerPlayer = clampNonNegative("orders.max_active_per_player", parsed.orders.maxActivePerPlayer);
+            parsed.auction.maxActivePerPlayer = clampNonNegative("auction.max_active_per_player", parsed.auction.maxActivePerPlayer);
+            parsed.dynamicPrices.minActiveDays = clampNonNegative("dynamic_prices.min_active_days", parsed.dynamicPrices.minActiveDays);
+            parsed.dynamicPrices.updateMinutes = clampDynamicPriceUpdateMinutes(parsed.dynamicPrices.updateMinutes);
             INSTANCE = parsed;
             normalizeDynamicPriceBounds();
         } catch (Exception e) {
             throw new IllegalStateException("[EconomyCraft] Failed to read/parse config.json at " + file, e);
         }
+    }
+
+    private static void fillMissingSections(EconomyConfig config) {
+        if (config.economy == null) config.economy = new Economy();
+        if (config.display == null) config.display = new Display();
+        if (config.commands == null) config.commands = new Commands();
+        if (config.shop == null) config.shop = new Shop();
+        if (config.selling == null) config.selling = new Selling();
+        if (config.dynamicPrices == null) config.dynamicPrices = new DynamicPrices();
+        if (config.auction == null) config.auction = new Auction();
+        if (config.orders == null) config.orders = new Orders();
+        if (config.transactionLog == null) config.transactionLog = new TransactionLog();
     }
 
     private static double clampRange(String fieldName, double value, double min, double max, String reason) {
@@ -134,12 +209,12 @@ public class EconomyConfig {
 
     private static int clampRetentionDays(int days) {
         if (days < MIN_TRANSACTION_LOG_RETENTION_DAYS) {
-            LOGGER.warn("[EconomyCraft] transaction_log_retention_days ({}) is below the minimum of {} day(s); clamping to {}.",
+            LOGGER.warn("[EconomyCraft] transaction_log.retention_days ({}) is below the minimum of {} day(s); clamping to {}.",
                     days, MIN_TRANSACTION_LOG_RETENTION_DAYS, MIN_TRANSACTION_LOG_RETENTION_DAYS);
             return MIN_TRANSACTION_LOG_RETENTION_DAYS;
         }
         if (days > WARN_TRANSACTION_LOG_RETENTION_DAYS) {
-            LOGGER.warn("[EconomyCraft] transaction_log_retention_days ({}) is above {} days; transaction logs can take up significant disk space over that long a retention period.",
+            LOGGER.warn("[EconomyCraft] transaction_log.retention_days ({}) is above {} days; transaction logs can take up significant disk space over that long a retention period.",
                     days, WARN_TRANSACTION_LOG_RETENTION_DAYS);
         }
         return days;
@@ -147,11 +222,11 @@ public class EconomyConfig {
 
     private static long clampMaxBalance(long value) {
         if (value < 1) {
-            LOGGER.warn("[EconomyCraft] max_balance ({}) is below 1; clamping to 1.", value);
+            LOGGER.warn("[EconomyCraft] economy.max_balance ({}) is below 1; clamping to 1.", value);
             return 1;
         }
         if (value > EconomyManager.ABSOLUTE_MAX_BALANCE) {
-            LOGGER.warn("[EconomyCraft] max_balance ({}) is above the absolute maximum of {}; clamping to {}.",
+            LOGGER.warn("[EconomyCraft] economy.max_balance ({}) is above the absolute maximum of {}; clamping to {}.",
                     value, EconomyManager.ABSOLUTE_MAX_BALANCE, EconomyManager.ABSOLUTE_MAX_BALANCE);
             return EconomyManager.ABSOLUTE_MAX_BALANCE;
         }
@@ -168,7 +243,7 @@ public class EconomyConfig {
 
     private static int clampDynamicPriceUpdateMinutes(int minutes) {
         if (minutes < MIN_DYNAMIC_PRICE_UPDATE_MINUTES) {
-            LOGGER.warn("[EconomyCraft] dynamic_price_update_minutes ({}) is below the minimum of {} minute(s); clamping to {}.",
+            LOGGER.warn("[EconomyCraft] dynamic_prices.update_minutes ({}) is below the minimum of {} minute(s); clamping to {}.",
                     minutes, MIN_DYNAMIC_PRICE_UPDATE_MINUTES, MIN_DYNAMIC_PRICE_UPDATE_MINUTES);
             return MIN_DYNAMIC_PRICE_UPDATE_MINUTES;
         }
@@ -176,13 +251,13 @@ public class EconomyConfig {
     }
 
     public static void normalizeDynamicPriceBounds() {
-        EconomyConfig config = INSTANCE;
-        config.dynamicPriceMinMultiplier = clampMultiplierRange("dynamic_price_min_multiplier", config.dynamicPriceMinMultiplier);
-        config.dynamicPriceMaxMultiplier = clampMultiplierRange("dynamic_price_max_multiplier", config.dynamicPriceMaxMultiplier);
-        if (config.dynamicPriceMaxMultiplier < config.dynamicPriceMinMultiplier) {
-            LOGGER.warn("[EconomyCraft] dynamic_price_max_multiplier ({}) is below dynamic_price_min_multiplier ({}); raising it to match.",
-                    config.dynamicPriceMaxMultiplier, config.dynamicPriceMinMultiplier);
-            config.dynamicPriceMaxMultiplier = config.dynamicPriceMinMultiplier;
+        DynamicPrices config = INSTANCE.dynamicPrices;
+        config.minMultiplier = clampMultiplierRange("dynamic_prices.min_multiplier", config.minMultiplier);
+        config.maxMultiplier = clampMultiplierRange("dynamic_prices.max_multiplier", config.maxMultiplier);
+        if (config.maxMultiplier < config.minMultiplier) {
+            LOGGER.warn("[EconomyCraft] dynamic_prices.max_multiplier ({}) is below dynamic_prices.min_multiplier ({}); raising it to match.",
+                    config.maxMultiplier, config.minMultiplier);
+            config.maxMultiplier = config.minMultiplier;
         }
     }
 
@@ -250,10 +325,12 @@ public class EconomyConfig {
         }
 
         boolean migratedShopSettings = migrateShopSettings(userRoot, defaults);
+        boolean migratedLayout = migrateFlatLayout(userRoot);
         int[] added = new int[]{0};
         addMissingRecursive(userRoot, defaults, added);
+        if (migratedLayout) userRoot = orderLike(userRoot, defaults);
 
-        if (migratedShopSettings || added[0] > 0) {
+        if (migratedShopSettings || migratedLayout || added[0] > 0) {
             try {
                 Files.writeString(file, GSON.toJson(userRoot), StandardCharsets.UTF_8);
             } catch (IOException ex) {
@@ -283,6 +360,40 @@ public class EconomyConfig {
             return true;
         }
         return false;
+    }
+
+    private static boolean migrateFlatLayout(JsonObject target) {
+        boolean migrated = false;
+        for (String[] move : LEGACY_FLAT_KEYS) {
+            JsonElement value = target.remove(move[0]);
+            if (value == null) continue;
+            migrated = true;
+            JsonElement section = target.get(move[1]);
+            if (section == null || !section.isJsonObject()) {
+                section = new JsonObject();
+                target.add(move[1], section);
+            }
+            JsonObject sectionObject = section.getAsJsonObject();
+            if (!sectionObject.has(move[2])) sectionObject.add(move[2], value);
+        }
+        if (migrated) LOGGER.info("[EconomyCraft] Migrated config.json to the sectioned layout.");
+        return migrated;
+    }
+
+    private static JsonObject orderLike(JsonObject source, JsonObject template) {
+        JsonObject ordered = new JsonObject();
+        for (Map.Entry<String, JsonElement> e : template.entrySet()) {
+            JsonElement value = source.get(e.getKey());
+            if (value == null) continue;
+            if (value.isJsonObject() && e.getValue().isJsonObject()) {
+                value = orderLike(value.getAsJsonObject(), e.getValue().getAsJsonObject());
+            }
+            ordered.add(e.getKey(), value);
+        }
+        for (Map.Entry<String, JsonElement> e : source.entrySet()) {
+            if (!ordered.has(e.getKey())) ordered.add(e.getKey(), e.getValue());
+        }
+        return ordered;
     }
 
     private static JsonObject readBundledDefaultJson() {

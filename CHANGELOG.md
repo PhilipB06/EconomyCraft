@@ -2,14 +2,16 @@
 - Damaged items can now be sold.
 - Enchantments now add to an item's sell price, and enchanted books sell for all of their enchantments.
 - Raised the max balance to `$1Qi` (previously `$999B`), about a million times more.
-- Added a `max_balance` setting to `config.json` and the admin settings panel.
-- Added a `dynamic_price_update_minutes` setting to control how often dynamic prices update.
+- Added an `economy.max_balance` setting to `config.json` and the admin settings panel.
+- Added a `dynamic_prices.update_minutes` setting to control how often dynamic prices update.
 
 ### Improvements
+- `config.json` is now grouped into sections. Existing configs are converted automatically.
+- The admin settings screen is now split into matching categories.
 - Architectury API is no longer required.
 - Item pickers now include items in your offhand.
 - Added `Qa` (quadrillion) and `Qi` (quintillion), e.g. `/pay Steve 2.5Qa`.
-- The Transactions screen now shows the actual item/player head. Older entries keep their previous icon.
+- The transactions screen now shows the actual item/player head. Older entries keep their previous icon.
 - A broken file now stops the server with an error that names the file.
 
 ### Fixes

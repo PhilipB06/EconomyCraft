@@ -56,7 +56,7 @@ public final class OrderFulfillment {
         request.amount = amount;
         request.escrow = price;
         request.createdAt = System.currentTimeMillis();
-        request.expiresAt = ExpirationUtil.expiresAt(request.createdAt, EconomyConfig.get().orderExpirationHours);
+        request.expiresAt = ExpirationUtil.expiresAt(request.createdAt, EconomyConfig.get().orders.expirationHours);
         eco.getOrders().addRequest(request);
         return request;
     }
@@ -252,7 +252,7 @@ public final class OrderFulfillment {
 
     private static double netRatePerUnit(OrderRequest order) {
         if (order == null || order.amount <= 0) return 0;
-        return (order.price / (double) order.amount) * (1.0 - EconomyConfig.get().taxRate);
+        return (order.price / (double) order.amount) * (1.0 - EconomyConfig.get().economy.taxRate);
     }
 
     private static void deliver(DeliveryManager deliveries, UUID requester, ItemStack proto, int amount) {

@@ -46,7 +46,7 @@ public final class DynamicPriceEngine {
 
     public void maybeRefresh(MinecraftServer server, Map<UUID, Long> balances) {
         flush();
-        long intervalMs = TimeUnit.MINUTES.toMillis(EconomyConfig.get().dynamicPriceUpdateMinutes);
+        long intervalMs = TimeUnit.MINUTES.toMillis(EconomyConfig.get().dynamicPrices.updateMinutes);
         if (System.currentTimeMillis() - lastRefreshMs < intervalMs) return;
         refresh(server, balances);
     }
@@ -57,14 +57,14 @@ public final class DynamicPriceEngine {
         flush();
 
         EconomyConfig config = EconomyConfig.get();
-        long reference = config.startingBalance;
+        long reference = config.economy.startingBalance;
         if (reference <= 0) {
             multiplier = 1.0;
-            LOGGER.warn("[EconomyCraft] Dynamic prices: startingBalance is {} (must be positive to compute a reference median); leaving the multiplier at 1x.", reference);
+            LOGGER.warn("[EconomyCraft] Dynamic prices: economy.starting_balance is {} (must be positive to compute a reference median); leaving the multiplier at 1x.", reference);
             return;
         }
 
-        List<Long> activeBalances = collectActiveBalances(balances, config.dynamicPriceMinActiveDays);
+        List<Long> activeBalances = collectActiveBalances(balances, config.dynamicPrices.minActiveDays);
         if (activeBalances.isEmpty()) {
             multiplier = 1.0;
             return;
@@ -72,7 +72,7 @@ public final class DynamicPriceEngine {
 
         double median = median(activeBalances);
         double raw = median / (double) reference;
-        multiplier = Math.clamp(raw, config.dynamicPriceMinMultiplier, config.dynamicPriceMaxMultiplier);
+        multiplier = Math.clamp(raw, config.dynamicPrices.minMultiplier, config.dynamicPrices.maxMultiplier);
         LOGGER.info("[EconomyCraft] Dynamic prices: {} active player(s), median balance {}, reference {}, multiplier {}x",
                 activeBalances.size(), median, reference, multiplier);
     }

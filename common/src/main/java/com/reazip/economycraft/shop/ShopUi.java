@@ -408,7 +408,7 @@ public final class ShopUi {
 
                 int stackSize = Math.max(1, entry.stack());
                 long unitBuy = eco.getEffectiveBuyPrice(entry);
-                boolean canSell = entry.unitSell() > 0 && EconomyConfig.get().sellEnabled;
+                boolean canSell = entry.unitSell() > 0 && EconomyConfig.get().selling.enabled;
                 boolean hasContents = MenuUiSupport.hasContainerContents(display);
 
                 List<Component> lore = new ArrayList<>();
@@ -594,7 +594,7 @@ public final class ShopUi {
         }
 
         private void handleSell(PriceRegistry.PriceEntry entry, int amount) {
-            if (!EconomyConfig.get().sellEnabled || entry.unitSell() <= 0) {
+            if (!EconomyConfig.get().selling.enabled || entry.unitSell() <= 0) {
                 EconomySounds.failure(viewer);
                 viewer.sendSystemMessage(Component.literal("This item cannot be sold.").withStyle(ChatFormatting.RED));
                 return;
@@ -617,7 +617,7 @@ public final class ShopUi {
             }
 
             long remaining = eco.getDailySellRemaining(viewer.getUUID());
-            if (EconomyConfig.get().dailySellLimit > 0 && total > remaining) {
+            if (EconomyConfig.get().selling.dailyLimit > 0 && total > remaining) {
                 EconomySounds.failure(viewer);
                 viewer.sendSystemMessage(Component.literal(remaining <= 0
                         ? "Daily sell limit reached. Try again tomorrow."
@@ -636,7 +636,7 @@ public final class ShopUi {
                         .withStyle(ChatFormatting.RED));
                 return;
             }
-            if (EconomyConfig.get().dailySellLimit > 0) {
+            if (EconomyConfig.get().selling.dailyLimit > 0) {
                 eco.recordDailySell(viewer.getUUID(), total);
             }
 

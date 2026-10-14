@@ -161,7 +161,7 @@ public final class AuctionUi {
         listing.price = price;
         listing.item = prototype.copyWithCount(amount);
         listing.createdAt = System.currentTimeMillis();
-        listing.expiresAt = ExpirationUtil.expiresAt(listing.createdAt, EconomyConfig.get().auctionExpirationHours);
+        listing.expiresAt = ExpirationUtil.expiresAt(listing.createdAt, EconomyConfig.get().auction.expirationHours);
         auctions.addListing(listing);
 
         long tax = MoneyMath.tax(price);

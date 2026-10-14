@@ -6,7 +6,7 @@ public final class MoneyMath {
     private MoneyMath() {}
 
     public static long tax(long amount) {
-        return Math.round(amount * EconomyConfig.get().taxRate);
+        return Math.round(amount * EconomyConfig.get().economy.taxRate);
     }
 
     public static long scale(long amount, long numerator, long denominator) {

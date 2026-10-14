@@ -43,17 +43,17 @@ Browse categories and click an item to edit it.
 
 ### Dynamic shop pricing
 
-Optional, off by default (`dynamic_prices_enabled`). Scales every buy price by:
+Optional, off by default (`dynamic_prices.enabled`). Scales every buy price by:
 
 ```
 current price = base price × active-player median balance / starting balance
 ```
 
-The scale is clamped between `dynamic_price_min_multiplier` and `dynamic_price_max_multiplier`, and recalculated every `dynamic_price_update_minutes` (default once an hour). Sell prices are never affected. Opt out per category or item from the Shop editor above.
+The scale is clamped between `dynamic_prices.min_multiplier` and `dynamic_prices.max_multiplier`, and recalculated every `dynamic_prices.update_minutes` (default once an hour). Sell prices are never affected. Opt out per category or item from the Shop editor above.
 
 ### Settings
 
-Every option in `config.json`, editable in-game.
+Every option in `config.json`, editable in-game and grouped into the same categories as the file.
 
 ### Players
 
@@ -64,7 +64,7 @@ Select any player, online or not, to give, take or set their balance, remove the
 
 | Tool                        | Does                                                                                        |
 |-----------------------------|---------------------------------------------------------------------------------------------|
-| **Reset All Balances**      | Sets every player's balance back to `startingBalance`.                                      |
+| **Reset All Balances**      | Sets every player's balance back to `economy.starting_balance`.                             |
 | **Reset Daily Reward Data** | Everyone can claim their daily reward again immediately.                                    |
 | **Reset Daily Sell Limits** | Everyone's daily sell limit resets to full immediately.                                     |
 | **Clear Auctions**          | Cancels every active listing. Items are returned to sellers' deliveries.                    |
@@ -120,31 +120,31 @@ Stored in `config/economycraft/` on a server (or `saves/<world>/economycraft/` p
 
 | Key                              | Default               | Description                                                                                                     |
 |----------------------------------|-----------------------|-----------------------------------------------------------------------------------------------------------------|
-| `startingBalance`                | `1000`                | Money new players start with.                                                                                   |
-| `dailyAmount`                    | `100`                 | Money given by the daily reward.                                                                                |
-| `dailySellLimit`                 | `10000`               | Most a player can earn per day from selling. `0` disables the limit.                                            |
-| `max_balance`                    | `1000000000000000000` | Most money one player can hold, from `1` up to `$1Qi`.                                                          |
-| `taxRate`                        | `0.1`                 | Tax on trades and orders, as a decimal (`0.1` = 10%).                                                           |
-| `standalone_commands`            | `true`                | Allow `/pay`, `/daily` etc. without the `/eco` prefix.                                                          |
-| `standalone_admin_commands`      | `false`               | Allow `/addmoney`, `/setmoney` etc. without the `/eco` prefix.                                                  |
-| `scoreboard_enabled`             | `true`                | Show the balance sidebar.                                                                                       |
-| `shop_enabled`                   | `true`                | Enable the fixed-price shop.                                                                                    |
-| `auction_enabled`                | `true`                | Enable the auction house.                                                                                       |
-| `orders_enabled`                 | `true`                | Enable the orders board. Deliveries still work either way.                                                      |
-| `sell_enabled`                   | `true`                | Enable selling.                                                                                                 |
-| `worth_enabled`                  | `true`                | Enable item value lookups (`/worth`).                                                                           |
-| `balance_separator`              | `"."`                 | Thousands separator, e.g. `","` gives `$1,000`.                                                                 |
-| `transaction_log_enabled`        | `true`                | Record every balance change to a daily log file.                                                                |
-| `transaction_log_retention_days` | `7`                   | How many days of transaction logs to keep.                                                                      |
-| `order_expiration_hours`         | `168`                 | Hours before an unfulfilled order expires and its escrow is refunded. `0` disables expiration.                  |
-| `auction_expiration_hours`       | `168`                 | Hours before an unsold auction expires and its item goes to deliveries. `0` disables expiration.                |
-| `max_active_orders_per_player`   | `0`                   | Most open orders a player can have at once. `0` = unlimited. Overridable per player.                            |
-| `max_active_auctions_per_player` | `0`                   | Most active auctions a player can have at once. `0` = unlimited. Overridable per player.                        |
-| `dynamic_prices_enabled`         | `false`               | Scale shop buy prices with the active-player median balance. See [Dynamic shop pricing](#dynamic-shop-pricing). |
-| `dynamic_price_min_multiplier`   | `0.5`                 | Lowest allowed price scale, from `0.5` to `100`.                                                                |
-| `dynamic_price_max_multiplier`   | `5.0`                 | Highest allowed price scale, from `0.5` to `100`.                                                               |
-| `dynamic_price_min_active_days`  | `30`                  | Players must have logged in within this many days to count as active. `0` includes everyone.                    |
-| `dynamic_price_update_minutes`   | `60`                  | Minutes between price scale recalculations. Minimum `1`.                                                        |
+| `economy.starting_balance`       | `1000`                | Money new players start with.                                                                                   |
+| `economy.max_balance`            | `1000000000000000000` | Most money one player can hold, from `1` up to `$1Qi`.                                                          |
+| `economy.daily_reward`           | `100`                 | Money given by the daily reward.                                                                                |
+| `economy.tax_rate`               | `0.1`                 | Tax on trades and orders, as a decimal (`0.1` = 10%).                                                           |
+| `display.balance_separator`      | `"."`                 | Thousands separator, e.g. `","` gives `$1,000`.                                                                 |
+| `display.scoreboard_enabled`     | `true`                | Show the balance sidebar.                                                                                       |
+| `commands.standalone`            | `true`                | Allow `/pay`, `/daily` etc. without the `/eco` prefix.                                                          |
+| `commands.standalone_admin`      | `false`               | Allow `/addmoney`, `/setmoney` etc. without the `/eco` prefix.                                                  |
+| `shop.enabled`                   | `true`                | Enable the fixed-price shop.                                                                                    |
+| `selling.enabled`                | `true`                | Enable selling.                                                                                                 |
+| `selling.daily_limit`            | `10000`               | Most a player can earn per day from selling. `0` disables the limit.                                            |
+| `selling.worth_enabled`          | `true`                | Enable item value lookups (`/worth`).                                                                           |
+| `dynamic_prices.enabled`         | `false`               | Scale shop buy prices with the active-player median balance. See [Dynamic shop pricing](#dynamic-shop-pricing). |
+| `dynamic_prices.min_multiplier`  | `0.5`                 | Lowest allowed price scale, from `0.5` to `100`.                                                                |
+| `dynamic_prices.max_multiplier`  | `5.0`                 | Highest allowed price scale, from `0.5` to `100`.                                                               |
+| `dynamic_prices.min_active_days` | `30`                  | Players must have logged in within this many days to count as active. `0` includes everyone.                    |
+| `dynamic_prices.update_minutes`  | `60`                  | Minutes between price scale recalculations. Minimum `1`.                                                        |
+| `auction.enabled`                | `true`                | Enable the auction house.                                                                                       |
+| `auction.expiration_hours`       | `168`                 | Hours before an unsold auction expires and its item goes to deliveries. `0` disables expiration.                |
+| `auction.max_active_per_player`  | `0`                   | Most active auctions a player can have at once. `0` = unlimited. Overridable per player.                        |
+| `orders.enabled`                 | `true`                | Enable the orders board. Deliveries still work either way.                                                      |
+| `orders.expiration_hours`        | `168`                 | Hours before an unfulfilled order expires and its escrow is refunded. `0` disables expiration.                  |
+| `orders.max_active_per_player`   | `0`                   | Most open orders a player can have at once. `0` = unlimited. Overridable per player.                            |
+| `transaction_log.enabled`        | `true`                | Record every balance change to a daily log file.                                                                |
+| `transaction_log.retention_days` | `7`                   | How many days of transaction logs to keep.                                                                      |
 
 ### `webhook.json`
 
@@ -200,7 +200,7 @@ Ranks beyond the number of players resolve as invalid.
 
 ## Transaction logs and webhook
 
-Every balance change is logged to `logs/transactions-YYYY-MM-DD.log` inside the config folder, and kept for `transaction_log_retention_days` days (default `7`). Setting it above 90 logs a console warning on start.
+Every balance change is logged to `logs/transactions-YYYY-MM-DD.log` inside the config folder, and kept for `transaction_log.retention_days` days (default `7`). Setting it above 90 logs a console warning on start.
 
 Enable `webhook_enabled` in `webhook.json` to also POST each transaction to a Discord-compatible webhook; use `webhook_min_amount` to only notify on larger transactions.
 

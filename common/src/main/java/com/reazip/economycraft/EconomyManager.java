@@ -99,7 +99,7 @@ public class EconomyManager {
     public static final long ABSOLUTE_MAX_BALANCE = 1_000_000_000_000_000_000L;
 
     public static long maxBalance() {
-        return Math.clamp(EconomyConfig.get().maxBalance, 1, ABSOLUTE_MAX_BALANCE);
+        return Math.clamp(EconomyConfig.get().economy.maxBalance, 1, ABSOLUTE_MAX_BALANCE);
     }
 
     public EconomyManager(MinecraftServer server) {
@@ -118,12 +118,12 @@ public class EconomyManager {
         loadStats();
 
         this.logsDir = EconomyPaths.logsDir(server);
-        TransactionLogWriter.cleanup(logsDir, EconomyConfig.get().transactionLogRetentionDays);
+        TransactionLogWriter.cleanup(logsDir, EconomyConfig.get().transactionLog.retentionDays);
         TransactionLogger transactionLogger = new TransactionLogger(logsDir, this::getBestName);
 
         this.balanceMutations = new BalanceMutationEngine(
                 balances,
-                () -> EconomyConfig.get().startingBalance,
+                () -> EconomyConfig.get().economy.startingBalance,
                 this::updateLeaderboard,
                 () -> {
                     updateLeaderboard();
@@ -476,7 +476,7 @@ public class EconomyManager {
         Scoreboard board = server.getScoreboard();
         teardownObjective(board);
 
-        if (EconomyConfig.get().scoreboardEnabled) {
+        if (EconomyConfig.get().display.scoreboardEnabled) {
             setupObjective();
         }
     }
@@ -535,7 +535,7 @@ public class EconomyManager {
     private void syncScoreboard() {
         Scoreboard board = server.getScoreboard();
 
-        if (!EconomyConfig.get().scoreboardEnabled) {
+        if (!EconomyConfig.get().display.scoreboardEnabled) {
             teardownObjective(board);
             return;
         }
@@ -652,16 +652,16 @@ public class EconomyManager {
     public record LeaderboardEntry(UUID id, String name, long value) {}
 
     public boolean toggleScoreboard() {
-        EconomyConfig.get().scoreboardEnabled = !EconomyConfig.get().scoreboardEnabled;
+        EconomyConfig.get().display.scoreboardEnabled = !EconomyConfig.get().display.scoreboardEnabled;
         EconomyConfig.save();
 
-        if (EconomyConfig.get().scoreboardEnabled) {
+        if (EconomyConfig.get().display.scoreboardEnabled) {
             setupObjective();
         } else {
             teardownObjective(server.getScoreboard());
         }
 
-        return EconomyConfig.get().scoreboardEnabled;
+        return EconomyConfig.get().display.scoreboardEnabled;
     }
 
     public AuctionManager getAuctions() {
@@ -701,7 +701,7 @@ public class EconomyManager {
     }
 
     public boolean isDynamicPricingActive(String category, boolean itemEnabled) {
-        return EconomyConfig.get().dynamicPricesEnabled && prices.isDynamicPricingEnabled(category, itemEnabled);
+        return EconomyConfig.get().dynamicPrices.enabled && prices.isDynamicPricingEnabled(category, itemEnabled);
     }
 
     public long getEffectiveBuyPrice(long baseBuyPrice, boolean dynamicPricingActive) {
@@ -724,7 +724,7 @@ public class EconomyManager {
 
     public int resetAllBalances() {
         requireServerThread();
-        long starting = Math.clamp(EconomyConfig.get().startingBalance, 0, maxBalance());
+        long starting = Math.clamp(EconomyConfig.get().economy.startingBalance, 0, maxBalance());
         int changed = 0;
         for (UUID id : new ArrayList<>(balances.keySet())) {
             long previous = balances.get(id);
@@ -766,7 +766,7 @@ public class EconomyManager {
         long today = LocalDate.now().toEpochDay();
         long last = lastDaily.getOrDefault(player, -1L);
         if (last == today) return false;
-        BalanceMutationResult result = addMoney(player, EconomyConfig.get().dailyAmount, EconomySources.DAILY_REWARD);
+        BalanceMutationResult result = addMoney(player, EconomyConfig.get().economy.dailyReward, EconomySources.DAILY_REWARD);
         if (!result.successful()) return false;
         lastDaily.put(player, today);
         save();
@@ -778,7 +778,7 @@ public class EconomyManager {
     }
 
     public void recordDailySell(UUID player, long saleAmount) {
-        long limit = EconomyConfig.get().dailySellLimit;
+        long limit = EconomyConfig.get().selling.dailyLimit;
         if (limit <= 0) return;
 
         DailySellData data = getOrCreateTodaySellData(player);
@@ -790,7 +790,7 @@ public class EconomyManager {
     }
 
     public long getDailySellRemaining(UUID player) {
-        long limit = EconomyConfig.get().dailySellLimit;
+        long limit = EconomyConfig.get().selling.dailyLimit;
         if (limit <= 0) return Long.MAX_VALUE;
 
         DailySellData data = getOrCreateTodaySellData(player);
