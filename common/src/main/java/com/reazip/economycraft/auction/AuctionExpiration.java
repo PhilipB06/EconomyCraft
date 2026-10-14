@@ -21,7 +21,7 @@ public final class AuctionExpiration {
             anyExpired = true;
 
             ItemStack stack = removed.item.copy();
-            auctions.addDelivery(removed.seller, stack, false);
+            deliveries.addDelivery(removed.seller, stack, false);
             notifyExpired(eco, removed, stack);
         }
         if (anyExpired) {
@@ -48,7 +48,7 @@ public final class AuctionExpiration {
             cleared++;
 
             ItemStack stack = removed.item.copy();
-            auctions.addDelivery(removed.seller, stack, false);
+            deliveries.addDelivery(removed.seller, stack, false);
             notifyCleared(eco, removed, stack);
         }
         if (cleared > 0) {

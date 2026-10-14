@@ -28,6 +28,7 @@ import net.minecraft.commands.arguments.item.ItemInput;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Inventory;
 import org.slf4j.Logger;
 
 import java.util.*;
@@ -41,6 +42,7 @@ import com.reazip.economycraft.orders.OrderFulfillment;
 import com.reazip.economycraft.orders.OrderManager;
 import com.reazip.economycraft.orders.OrderRequest;
 import com.reazip.economycraft.orders.OrdersUi;
+import com.reazip.economycraft.util.MoneyMath;
 import net.minecraft.world.item.ItemStack;
 
 import static net.minecraft.commands.Commands.argument;
@@ -50,7 +52,6 @@ import org.jetbrains.annotations.Nullable;
 
 public final class EconomyCommands {
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final int MAIN_INVENTORY_SLOTS = 36;
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext buildContext,
                                 Commands.CommandSelection selection) {
         dispatcher.register(buildRoot(
@@ -257,7 +258,7 @@ public final class EconomyCommands {
                         .executes(ctx -> usage(ctx.getSource(), payUsage))
                         .then(argument("amount", StringArgumentType.word())
                                 .executes(ctx -> {
-                                    Long amount = parseAmount(ctx.getSource(), StringArgumentType.getString(ctx, "amount"), 1, EconomyManager.MAX);
+                                    Long amount = parseAmount(ctx.getSource(), StringArgumentType.getString(ctx, "amount"), 1, EconomyManager.maxBalance());
                                     if (amount == null) return 0;
                                     return pay(ctx.getSource().getPlayerOrException(),
                                             StringArgumentType.getString(ctx, "player"),
@@ -399,7 +400,7 @@ public final class EconomyCommands {
                 .then(argument("targets", GameProfileArgument.gameProfile())
                         .then(argument("amount", StringArgumentType.word())
                                 .executes(ctx -> {
-                                    Long amount = parseAmount(ctx.getSource(), StringArgumentType.getString(ctx, "amount"), 1, EconomyManager.MAX);
+                                    Long amount = parseAmount(ctx.getSource(), StringArgumentType.getString(ctx, "amount"), 1, EconomyManager.maxBalance());
                                     if (amount == null) return 0;
                                     return addMoney(
                                             IdentityCompat.getArgAsPlayerRefs(ctx, "targets"),
@@ -413,7 +414,7 @@ public final class EconomyCommands {
                 .then(argument("targets", GameProfileArgument.gameProfile())
                         .then(argument("amount", StringArgumentType.word())
                                 .executes(ctx -> {
-                                    Long amount = parseAmount(ctx.getSource(), StringArgumentType.getString(ctx, "amount"), 0, EconomyManager.MAX);
+                                    Long amount = parseAmount(ctx.getSource(), StringArgumentType.getString(ctx, "amount"), 0, EconomyManager.maxBalance());
                                     if (amount == null) return 0;
                                     return setMoney(
                                             IdentityCompat.getArgAsPlayerRefs(ctx, "targets"),
@@ -431,7 +432,7 @@ public final class EconomyCommands {
                                 ctx.getSource()))
                         .then(argument("amount", StringArgumentType.word())
                                 .executes(ctx -> {
-                                    Long amount = parseAmount(ctx.getSource(), StringArgumentType.getString(ctx, "amount"), 1, EconomyManager.MAX);
+                                    Long amount = parseAmount(ctx.getSource(), StringArgumentType.getString(ctx, "amount"), 1, EconomyManager.maxBalance());
                                     if (amount == null) return 0;
                                     return removeMoney(
                                             IdentityCompat.getArgAsPlayerRefs(ctx, "targets"),
@@ -548,7 +549,7 @@ public final class EconomyCommands {
             UUID id = p.id();
 
             if (amount == null) {
-                if (!manager.getBalances().containsKey(id)) {
+                if (manager.getBalance(id, false) == null) {
                     source.sendFailure(Component.literal(
                                     "Failed to remove all money from " + p.name() + "'s balance. Unknown player.")
                             .withStyle(ChatFormatting.RED));
@@ -579,7 +580,7 @@ public final class EconomyCommands {
         for (var p : profiles) {
             UUID id = p.id();
             if (amount == null) {
-                if (!manager.getBalances().containsKey(id)) {
+                if (manager.getBalance(id, false) == null) {
                     source.sendFailure(Component.literal(
                                     "Failed to remove all money from " + p.name() + "'s balance. Unknown player.")
                             .withStyle(ChatFormatting.RED));
@@ -657,7 +658,7 @@ public final class EconomyCommands {
                 .executes(ctx -> openAuction(ctx.getSource().getPlayerOrException(), ctx.getSource()))
                 .then(literal("list")
                         .executes(ctx -> usage(ctx.getSource(), "/" + command + " list <price> [<amount>]"))
-                        .then(argument("price", LongArgumentType.longArg(1, EconomyManager.MAX))
+                        .then(argument("price", LongArgumentType.longArg(1))
                                 .executes(ctx -> listAuctionItem(ctx.getSource().getPlayerOrException(),
                                          LongArgumentType.getLong(ctx, "price"), -1,
                                          ctx.getSource()))
@@ -710,6 +711,12 @@ public final class EconomyCommands {
             source.sendFailure(Component.literal("The auction house is disabled.").withStyle(ChatFormatting.RED));
             return 0;
         }
+        if (price > EconomyManager.maxBalance()) {
+            EconomySounds.failure(player);
+            source.sendFailure(Component.literal("Price can't be more than "
+                    + EconomyCraft.formatMoney(EconomyManager.maxBalance()) + ".").withStyle(ChatFormatting.RED));
+            return 0;
+        }
         ItemStack hand = player.getMainHandItem();
         if (hand.isEmpty()) {
             EconomySounds.failure(player);
@@ -740,7 +747,7 @@ public final class EconomyCommands {
         hand.shrink(count);
         auctions.addListing(listing);
 
-        long tax = Math.round(price * EconomyConfig.get().taxRate);
+        long tax = MoneyMath.tax(price);
 
         Component msg = Component.literal("Listed item for " + EconomyCraft.formatMoney(price) +
                         (tax > 0 ? " (buyers pay " + EconomyCraft.formatMoney(price + tax) + ")" : ""))
@@ -812,12 +819,12 @@ public final class EconomyCommands {
                         .executes(ctx -> usage(ctx.getSource(), requestUsage))
                         .then(argument("item", ItemArgument.item(buildContext))
                                 .executes(ctx -> usage(ctx.getSource(), requestUsage))
-                                .then(argument("amount", LongArgumentType.longArg(1, EconomyManager.MAX))
+                                .then(argument("amount", IntegerArgumentType.integer(1))
                                         .executes(ctx -> usage(ctx.getSource(), requestUsage))
-                                        .then(argument("price", LongArgumentType.longArg(1, EconomyManager.MAX))
+                                        .then(argument("price", LongArgumentType.longArg(1))
                                                 .executes(ctx -> requestItem(ctx.getSource().getPlayerOrException(),
                                                         ItemArgument.getItem(ctx, "item"),
-                                                        (int) Math.min(LongArgumentType.getLong(ctx, "amount"), EconomyManager.MAX),
+                                                        IntegerArgumentType.getInteger(ctx, "amount"),
                                                         LongArgumentType.getLong(ctx, "price"),
                                                         ctx.getSource()))))))
                 .then(literal("search")
@@ -845,6 +852,12 @@ public final class EconomyCommands {
     }
 
     private static int requestItem(ServerPlayer player, ItemInput input, int amount, long price, CommandSourceStack source) {
+        if (price > EconomyManager.maxBalance()) {
+            EconomySounds.failure(player);
+            source.sendFailure(Component.literal("Price can't be more than "
+                    + EconomyCraft.formatMoney(EconomyManager.maxBalance()) + ".").withStyle(ChatFormatting.RED));
+            return 0;
+        }
         ItemStack item;
         try {
             item = ItemArgumentCompat.createItemStack(input, 1);
@@ -861,10 +874,10 @@ public final class EconomyCommands {
                     + orders.getEffectiveLimit(player.getUUID()) + " active order request(s).").withStyle(ChatFormatting.RED));
             return 0;
         }
-        int maxAmount = MAIN_INVENTORY_SLOTS * item.getMaxStackSize();
+        int maxAmount = Inventory.INVENTORY_SIZE * item.getMaxStackSize();
         if (amount > maxAmount) {
             EconomySounds.failure(player);
-            source.sendFailure(Component.literal("Amount exceeds " + MAIN_INVENTORY_SLOTS + " stacks (max " + maxAmount + ")").withStyle(ChatFormatting.RED));
+            source.sendFailure(Component.literal("Amount exceeds " + Inventory.INVENTORY_SIZE + " stacks (max " + maxAmount + ")").withStyle(ChatFormatting.RED));
             return 0;
         }
 
@@ -874,7 +887,7 @@ public final class EconomyCommands {
             source.sendFailure(Component.literal("You can't afford to reserve " + EconomyCraft.formatMoney(price)).withStyle(ChatFormatting.RED));
             return 0;
         }
-        long tax = Math.round(price * EconomyConfig.get().taxRate);
+        long tax = MoneyMath.tax(price);
 
         Component msg = Component.literal("Created request" +
                 (tax > 0 ? " (fulfiller receives " + EconomyCraft.formatMoney(price - tax) + ")" : ""))

@@ -4,6 +4,7 @@ import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyManager;
 import com.reazip.economycraft.HubUi;
+import com.reazip.economycraft.SellService;
 import com.reazip.economycraft.orders.OrdersUi;
 import com.reazip.economycraft.util.ChatCompat;
 import com.reazip.economycraft.util.ClickKind;
@@ -18,6 +19,7 @@ import com.reazip.economycraft.util.MenuUiSupport;
 import com.reazip.economycraft.util.NumberInputUi;
 import com.reazip.economycraft.util.SortMode;
 import com.reazip.economycraft.util.TextInputUi;
+import com.reazip.economycraft.util.MoneyMath;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.ClickEvent;
@@ -66,7 +68,7 @@ public final class AuctionUi {
     }
 
     private static boolean canAfford(ServerPlayer player, long price) {
-        long total = price + Math.round(price * EconomyConfig.get().taxRate);
+        long total = price + MoneyMath.tax(price);
         return EconomyCraft.getManager(player.level().getServer()).getBalance(player.getUUID(), true) >= total;
     }
 
@@ -112,13 +114,13 @@ public final class AuctionUi {
 
     private static void choosePrice(ServerPlayer player, AuctionManager auctions, ItemStack prototype, int amount) {
         NumberInputUi.openMoney(player, "Set your price", prototype.copyWithCount(amount), "Price",
-                100, 1, EconomyManager.MAX, "Confirm and list", price -> listingLore(amount, price),
+                100, 1, EconomyManager.maxBalance(), "Confirm and list", price -> listingLore(amount, price),
                 (p, price) -> createListing(p, auctions, prototype, amount, price),
                 p -> backFromPrice(player, auctions, prototype));
     }
 
     private static void backFromPrice(ServerPlayer player, AuctionManager auctions, ItemStack prototype) {
-        int held = countHeld(player, prototype);
+        int held = SellService.countHeld(player, prototype);
         if (Math.min(held, prototype.getMaxStackSize()) <= 1) {
             startListing(player, auctions);
         } else {
@@ -127,7 +129,7 @@ public final class AuctionUi {
     }
 
     private static List<Component> listingLore(int amount, long price) {
-        long tax = Math.round(price * EconomyConfig.get().taxRate);
+        long tax = MoneyMath.tax(price);
         List<Component> lore = new ArrayList<>();
         lore.add(MenuUiSupport.labeledValue("Amount", String.valueOf(amount), MenuUiSupport.LABEL_PRIMARY_COLOR));
         lore.add(MenuUiSupport.labeledValue("You receive", EconomyCraft.formatMoney(price),
@@ -162,7 +164,7 @@ public final class AuctionUi {
         listing.expiresAt = ExpirationUtil.expiresAt(listing.createdAt, EconomyConfig.get().auctionExpirationHours);
         auctions.addListing(listing);
 
-        long tax = Math.round(price * EconomyConfig.get().taxRate);
+        long tax = MoneyMath.tax(price);
         EconomySounds.success(player);
         player.sendSystemMessage(Component.literal("Listed " + amount + "x " + prototype.getHoverName().getString()
                         + " for " + EconomyCraft.formatMoney(price)
@@ -171,29 +173,10 @@ public final class AuctionUi {
         open(player, auctions);
     }
 
-    private static int countHeld(ServerPlayer player, ItemStack prototype) {
-        Inventory inv = player.getInventory();
-        int total = 0;
-        for (int i = 0; i < ItemPickerUi.MAIN_INVENTORY_SLOTS; i++) {
-            ItemStack stack = inv.getItem(i);
-            if (ItemStack.isSameItemSameComponents(stack, prototype)) total += stack.getCount();
-        }
-        return total;
-    }
-
     private static boolean takeFromInventory(ServerPlayer player, ItemStack prototype, int amount) {
-        if (countHeld(player, prototype) < amount) return false;
-        Inventory inv = player.getInventory();
-        int remaining = amount;
-        for (int i = 0; i < ItemPickerUi.MAIN_INVENTORY_SLOTS && remaining > 0; i++) {
-            ItemStack stack = inv.getItem(i);
-            if (!ItemStack.isSameItemSameComponents(stack, prototype)) continue;
-            int take = Math.min(stack.getCount(), remaining);
-            stack.shrink(take);
-            if (stack.isEmpty()) inv.setItem(i, ItemStack.EMPTY);
-            remaining -= take;
-        }
-        return remaining == 0;
+        if (SellService.countHeld(player, prototype) < amount) return false;
+        SellService.removeHeld(player, prototype, amount);
+        return true;
     }
 
     private static void sendStoredMessage(ServerPlayer player) {
@@ -310,7 +293,7 @@ public final class AuctionUi {
                 String sellerName = MenuUiSupport.resolvePlayerName(viewer.level().getServer(), l.seller);
                 boolean mine = viewer.getUUID().equals(l.seller);
 
-                long tax = Math.round(l.price * EconomyConfig.get().taxRate);
+                long tax = MoneyMath.tax(l.price);
                 List<Component> lore = new ArrayList<>();
                 lore.add(createPriceLore(l.price, tax));
                 lore.add(MenuUiSupport.labeledValue("Seller", mine ? "you" : sellerName, MenuUiSupport.LABEL_PRIMARY_COLOR));
@@ -460,7 +443,7 @@ public final class AuctionUi {
             String sellerName = MenuUiSupport.resolvePlayerName(viewer.level().getServer(), listing.seller);
 
             ItemStack item = listing.item.copy();
-            long tax = Math.round(listing.price * EconomyConfig.get().taxRate);
+            long tax = MoneyMath.tax(listing.price);
             List<Component> lore = new ArrayList<>();
             lore.add(createPriceLore(listing.price, tax));
             lore.add(MenuUiSupport.labeledValue("Seller", sellerName, MenuUiSupport.LABEL_PRIMARY_COLOR));
@@ -558,7 +541,7 @@ public final class AuctionUi {
             container.setItem(MenuUiSupport.ROW_CONFIRM, MenuUiSupport.confirmButton("Confirm"));
 
             ItemStack item = listing.item.copy();
-            long tax = Math.round(listing.price * EconomyConfig.get().taxRate);
+            long tax = MoneyMath.tax(listing.price);
             item.set(DataComponents.LORE, new ItemLore(List.of(
                     createPriceLore(listing.price, tax),
                     MenuUiSupport.labeledValue("Seller", "you", MenuUiSupport.LABEL_PRIMARY_COLOR),
@@ -583,7 +566,7 @@ public final class AuctionUi {
 
             if (slot == MenuUiSupport.ROW_CONFIRM) {
                 ServerPlayer sp = (ServerPlayer) player;
-                AuctionTrade.CancelResult result = AuctionTrade.cancel(auctions, sp, listing.id);
+                AuctionTrade.CancelResult result = AuctionTrade.cancel(EconomyCraft.getManager(sp.level().getServer()), sp, listing.id);
                 switch (result.status()) {
                     case OK -> {
                         EconomySounds.itemPickedUp(viewer);

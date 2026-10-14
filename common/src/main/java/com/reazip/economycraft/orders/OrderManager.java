@@ -4,15 +4,14 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
-import com.reazip.economycraft.DeliveryManager;
 import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.util.AsyncFileWriter;
 import com.reazip.economycraft.util.EconomyPaths;
 import com.reazip.economycraft.util.ExpirationUtil;
+import com.reazip.economycraft.util.MoneyMath;
 import com.reazip.economycraft.util.PlayerLimitOverrides;
 import com.reazip.economycraft.util.SequentialIdAllocator;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.item.ItemStack;
 import org.slf4j.Logger;
 
 import java.nio.file.Files;
@@ -27,14 +26,12 @@ public class OrderManager {
     private final Path file;
     private final Map<Integer, OrderRequest> requests = new ConcurrentHashMap<>();
     private final PlayerLimitOverrides limitOverrides = new PlayerLimitOverrides();
-    private final DeliveryManager deliveries;
     private final List<Runnable> listeners = new ArrayList<>();
     private int nextId = 1;
 
-    public OrderManager(MinecraftServer server, DeliveryManager deliveries) {
+    public OrderManager(MinecraftServer server) {
         this.server = server;
         this.file = EconomyPaths.dataDir(server).resolve("orders.json");
-        this.deliveries = deliveries;
         load();
     }
 
@@ -67,10 +64,6 @@ public class OrderManager {
         return r;
     }
 
-    public void restoreRequest(OrderRequest request) {
-        putAndPersist(request);
-    }
-
     private void putAndPersist(OrderRequest request) {
         requests.put(request.id, request);
         notifyListeners();
@@ -91,40 +84,35 @@ public class OrderManager {
     }
 
     public ClaimResult claim(int id, int requestedAmount, int held, boolean clampToHeld) {
-        ClaimResult[] outcome = new ClaimResult[1];
-        requests.computeIfPresent(id, (key, order) -> {
-            int give = requestedAmount <= 0 ? order.amount : Math.min(requestedAmount, order.amount);
-            if (clampToHeld) {
-                give = Math.min(give, held);
-            }
-            if (give <= 0) {
-                outcome[0] = new ClaimResult(ClaimStatus.INVALID_AMOUNT, order, 0, 0, 0, false);
-                return order;
-            }
-            if (requiresCompleteFulfillment(order) && give < order.amount) {
-                outcome[0] = new ClaimResult(ClaimStatus.FULL_AMOUNT_REQUIRED, order, 0, 0, 0, false);
-                return order;
-            }
-            if (!clampToHeld && held < give) {
-                outcome[0] = new ClaimResult(ClaimStatus.NOT_ENOUGH_ITEMS, order, 0, 0, 0, false);
-                return order;
-            }
+        OrderRequest order = requests.get(id);
+        if (order == null) {
+            return new ClaimResult(ClaimStatus.ORDER_GONE, null, 0, 0, 0, false);
+        }
 
-            long payment = partialPayment(order, give);
-            long escrowUsed = Math.min(payment, Math.max(0, order.escrow));
+        int give = requestedAmount <= 0 ? order.amount : Math.min(requestedAmount, order.amount);
+        if (clampToHeld) {
+            give = Math.min(give, held);
+        }
+        if (give <= 0) {
+            return new ClaimResult(ClaimStatus.INVALID_AMOUNT, order, 0, 0, 0, false);
+        }
+        if (requiresCompleteFulfillment(order) && give < order.amount) {
+            return new ClaimResult(ClaimStatus.FULL_AMOUNT_REQUIRED, order, 0, 0, 0, false);
+        }
+        if (!clampToHeld && held < give) {
+            return new ClaimResult(ClaimStatus.NOT_ENOUGH_ITEMS, order, 0, 0, 0, false);
+        }
 
-            order.amount -= give;
-            order.price -= payment;
-            order.escrow -= escrowUsed;
-            boolean exhausted = order.amount <= 0;
+        long payment = partialPayment(order, give);
+        long escrowUsed = Math.min(payment, Math.max(0, order.escrow));
 
-            outcome[0] = new ClaimResult(ClaimStatus.OK, order, give, payment, escrowUsed, exhausted);
-            return exhausted ? null : order;
-        });
+        order.amount -= give;
+        order.price -= payment;
+        order.escrow -= escrowUsed;
+        boolean exhausted = order.amount <= 0;
+        if (exhausted) requests.remove(id);
 
-        return outcome[0] != null
-                ? outcome[0]
-                : new ClaimResult(ClaimStatus.ORDER_GONE, null, 0, 0, 0, false);
+        return new ClaimResult(ClaimStatus.OK, order, give, payment, escrowUsed, exhausted);
     }
 
     public void rollbackClaim(OrderRequest order, int give, long payment, long escrowUsed, boolean exhausted) {
@@ -142,7 +130,8 @@ public class OrderManager {
 
     static long partialPayment(OrderRequest order, int give) {
         if (order == null || order.amount <= 0 || give <= 0) return 0;
-        return Math.min(Math.round((double) order.price * give / order.amount), order.price);
+        if (give >= order.amount) return order.price;
+        return Math.min(MoneyMath.scale(order.price, give, order.amount), order.price);
     }
 
     public static long rewardPerItem(long reward, int amount) {
@@ -176,10 +165,6 @@ public class OrderManager {
 
     public boolean hasReachedLimit(UUID player) {
         return limitOverrides.hasReachedLimit(player, countActive(player), EconomyConfig.get().maxActiveOrdersPerPlayer);
-    }
-
-    public void addDelivery(UUID player, ItemStack stack) {
-        deliveries.addDelivery(player, stack);
     }
 
     public void load() {

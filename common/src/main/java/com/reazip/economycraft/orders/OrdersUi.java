@@ -1,6 +1,5 @@
 package com.reazip.economycraft.orders;
 
-import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyManager;
 import com.reazip.economycraft.HubUi;
@@ -18,6 +17,7 @@ import com.reazip.economycraft.util.MenuUiSupport;
 import com.reazip.economycraft.util.NumberInputUi;
 import com.reazip.economycraft.util.SortMode;
 import com.reazip.economycraft.util.TextInputUi;
+import com.reazip.economycraft.util.MoneyMath;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
@@ -81,7 +81,7 @@ public final class OrdersUi {
         if (amount > 1) {
             long rewardPerItem = OrderManager.rewardPerItem(reward, amount);
             if (rewardPerItem > 0) {
-                long taxPerItem = Math.round(rewardPerItem * EconomyConfig.get().taxRate);
+                long taxPerItem = MoneyMath.tax(rewardPerItem);
                 lore.add(createRewardLore("Reward per item", rewardPerItem, taxPerItem));
             }
         }
@@ -102,7 +102,7 @@ public final class OrdersUi {
     }
 
     private static void chooseAmount(ServerPlayer player, EconomyManager eco, ItemStack prototype) {
-        int max = SellService.MAIN_INVENTORY_SLOTS * prototype.getMaxStackSize();
+        int max = Inventory.INVENTORY_SIZE * prototype.getMaxStackSize();
         NumberInputUi.openCount(player, "How many?", prototype, "Amount", prototype.getMaxStackSize(), 1, max,
                 (p, amount) -> choosePrice(p, eco, prototype, amount.intValue()),
                 p -> startRequest(p, eco));
@@ -111,14 +111,14 @@ public final class OrdersUi {
     private static void choosePrice(ServerPlayer player, EconomyManager eco, ItemStack prototype, int amount) {
         NumberInputUi.openMoney(player, "What will you pay?",
                 prototype.copyWithCount(Math.min(amount, prototype.getMaxStackSize())),
-                "Total reward", 100L * amount, 1, EconomyManager.MAX,
+                "Total reward", 100L * amount, 1, EconomyManager.maxBalance(),
                 "Confirm and post", price -> requestLore(player, eco, amount, price),
                 (p, price) -> createRequest(p, eco, prototype, amount, price),
                 p -> chooseAmount(p, eco, prototype));
     }
 
     private static List<Component> requestLore(ServerPlayer player, EconomyManager eco, int amount, long price) {
-        long tax = Math.round(price * EconomyConfig.get().taxRate);
+        long tax = MoneyMath.tax(price);
         long balance = eco.getBalance(player.getUUID(), true);
 
         List<Component> lore = new ArrayList<>();
@@ -151,7 +151,7 @@ public final class OrdersUi {
             return;
         }
 
-        long tax = Math.round(price * EconomyConfig.get().taxRate);
+        long tax = MoneyMath.tax(price);
         EconomySounds.success(player);
         player.sendSystemMessage(Component.literal("Requested " + amount + "x "
                         + prototype.getHoverName().getString() + " for " + EconomyCraft.formatMoney(price)
@@ -267,7 +267,7 @@ public final class OrdersUi {
                 boolean mine = viewer.getUUID().equals(r.requester);
                 String reqName = MenuUiSupport.resolvePlayerName(server, r.requester);
 
-                long tax = Math.round(r.price * EconomyConfig.get().taxRate);
+                long tax = MoneyMath.tax(r.price);
                 List<Component> lore = new ArrayList<>();
                 addRewardLore(lore, r.price, tax, r.amount);
                 lore.add(MenuUiSupport.labeledValue("Amount", String.valueOf(r.amount), MenuUiSupport.LABEL_PRIMARY_COLOR));
@@ -338,7 +338,7 @@ public final class OrdersUi {
                 int index = page * itemsPerPage + slot;
                 if (index < requests.size()) {
                     OrderRequest req = requests.get(index);
-                    int held = OrderFulfillment.countHeld(viewer, req.item);
+                    int held = SellService.countHeld(viewer, req.item);
                     if (req.requester.equals(viewer.getUUID())) {
                         EconomySounds.click(viewer);
                         openRemove(viewer, req);
@@ -423,7 +423,7 @@ public final class OrdersUi {
             this.request = req;
             this.parent = parent;
 
-            int give = Math.min(OrderFulfillment.countHeld(parent.viewer, req.item), req.amount);
+            int give = Math.min(SellService.countHeld(parent.viewer, req.item), req.amount);
             boolean complete = give >= req.amount;
             long payout = OrderFulfillment.payoutFor(req, give);
 
@@ -434,7 +434,7 @@ public final class OrdersUi {
             ItemStack item = req.item.copy();
             var server = parent.viewer.level().getServer();
             String requesterName = MenuUiSupport.resolvePlayerName(server, req.requester);
-            long tax = Math.round(req.price * EconomyConfig.get().taxRate);
+            long tax = MoneyMath.tax(req.price);
             item.setCount(1);
             List<Component> itemLore = new ArrayList<>();
             addRewardLore(itemLore, req.price, tax, req.amount);
@@ -472,7 +472,7 @@ public final class OrdersUi {
                 var server = serverPlayer.level().getServer();
 
                 OrderRequest current = parent.orders.getRequest(request.id);
-                int give = current == null ? 0 : Math.min(OrderFulfillment.countHeld(serverPlayer, current.item), current.amount);
+                int give = current == null ? 0 : Math.min(SellService.countHeld(serverPlayer, current.item), current.amount);
                 if (current == null) {
                     EconomySounds.failure(serverPlayer);
                     serverPlayer.sendSystemMessage(Component.literal("Request no longer available").withStyle(ChatFormatting.RED));
@@ -534,7 +534,7 @@ public final class OrdersUi {
             container.setItem(MenuUiSupport.ROW_CONFIRM, MenuUiSupport.confirmButton("Confirm"));
 
             ItemStack item = req.item.copy();
-            long tax = Math.round(req.price * EconomyConfig.get().taxRate);
+            long tax = MoneyMath.tax(req.price);
             List<Component> itemLore = new ArrayList<>();
             addRewardLore(itemLore, req.price, tax, req.amount);
             itemLore.add(MenuUiSupport.labeledValue("Amount", String.valueOf(req.amount), MenuUiSupport.LABEL_PRIMARY_COLOR));
@@ -565,10 +565,6 @@ public final class OrdersUi {
                     case OK -> {
                         EconomySounds.itemPickedUp(serverPlayer);
                         serverPlayer.sendSystemMessage(Component.literal("Request removed").withStyle(ChatFormatting.GREEN));
-                    }
-                    case REFUND_FAILED -> {
-                        EconomySounds.failure(serverPlayer);
-                        serverPlayer.sendSystemMessage(Component.literal("Your balance is too high to receive the refund").withStyle(ChatFormatting.RED));
                     }
                     default -> {
                         EconomySounds.failure(serverPlayer);

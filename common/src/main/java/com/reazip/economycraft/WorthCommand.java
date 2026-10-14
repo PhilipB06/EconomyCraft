@@ -59,23 +59,26 @@ public final class WorthCommand {
         return showWorth(source, stack, stack.getHoverName().getString(), amount);
     }
 
-    private static int showWorth(CommandSourceStack source, ItemStack stack, String itemName, int amount) {
+    static int showWorth(CommandSourceStack source, ItemStack stack, String itemName, int amount) {
         EconomyManager eco = EconomyCraft.getManager(source.getServer());
-        PriceEntry entry = eco.getPrices().resolve(stack);
+        PriceRegistry prices = eco.getPrices();
+        PriceEntry entry = prices.resolve(stack);
         if (entry == null || (entry.unitBuy() <= 0 && entry.unitSell() <= 0)) {
             source.sendFailure(Component.literal(itemName + " has no configured price.").withStyle(ChatFormatting.RED));
             return 0;
         }
 
-        String buy = formatBuy(entry.unitBuy() > 0 ? eco.getEffectiveBuyPrice(entry) : 0, amount);
-        String sell = formatSell(entry.unitSell(), amount);
+        boolean buyable = prices.isBuyable(stack, entry);
+        String buy = buyable ? formatAmount(eco.getEffectiveBuyPrice(entry), amount) : "";
+        Long unitSell = prices.getUnitSell(stack, entry);
+        String sell = formatSell(unitSell == null ? 0 : unitSell, amount);
         if (buy == null || sell == null) {
             source.sendFailure(Component.literal("Amount is too large.").withStyle(ChatFormatting.RED));
             return 0;
         }
 
         String prefix = amount == 1 ? itemName : amount + "x " + itemName;
-        Component msg = Component.literal(prefix + " - Buy: " + buy + ", Sell: " + sell)
+        Component msg = Component.literal(prefix + " - " + (buyable ? "Buy: " + buy + ", " : "") + "Sell: " + sell)
                 .withStyle(ChatFormatting.YELLOW);
 
         ServerPlayer executor = tryGetPlayer(source);
@@ -86,12 +89,6 @@ public final class WorthCommand {
         }
 
         return 1;
-    }
-
-    @Nullable
-    private static String formatBuy(long unitBuy, int amount) {
-        if (unitBuy <= 0) return "not for sale";
-        return formatAmount(unitBuy, amount);
     }
 
     @Nullable

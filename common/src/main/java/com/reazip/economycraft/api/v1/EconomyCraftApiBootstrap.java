@@ -116,7 +116,7 @@ final class BalanceApiImpl implements BalanceApi {
     @Override
     public long getMaximumBalance() {
         manager().requireServerThread();
-        return EconomyManager.MAX;
+        return EconomyManager.maxBalance();
     }
 
     @Override
@@ -241,7 +241,7 @@ final class LeaderboardApiImpl implements LeaderboardApi {
         EconomyManager manager = manager();
         manager.requireServerThread();
         if (limit <= 0) return List.of();
-        List<LeaderboardEntry> entries = manager.getBalancesSnapshot().entrySet().stream()
+        List<LeaderboardEntry> entries = manager.getBalances().entrySet().stream()
                 .map(entry -> new LeaderboardEntry(entry.getKey(), entry.getValue()))
                 .sorted(Comparator.comparingLong(LeaderboardEntry::balance).reversed()
                         .thenComparing(LeaderboardEntry::playerId))

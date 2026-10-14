@@ -192,7 +192,7 @@ public final class AdminPlayersUi {
                     }
                 }
                 case GIVE -> NumberInputUi.openMoney(viewer, "Give to " + target.name(), subject(), "Amount",
-                        100, 1, EconomyManager.MAX,
+                        100, 1, EconomyManager.maxBalance(),
                         (p, amount) -> {
                             if (eco.addMoney(target.id(), amount, EconomySources.ADMIN_ADD).successful()) {
                                 announce(p, "Gave " + EconomyCraft.formatMoney(amount) + " to " + target.name());
@@ -218,7 +218,7 @@ public final class AdminPlayersUi {
                         },
                         p -> openTarget(p, eco, target));
                 case SET -> NumberInputUi.openMoney(viewer, "Set " + target.name() + "'s balance", subject(), "Balance",
-                        balance, 0, EconomyManager.MAX,
+                        balance, 0, EconomyManager.maxBalance(),
                         (p, amount) -> {
                             eco.setMoney(target.id(), amount, EconomySources.ADMIN_SET);
                             announce(p, "Set " + target.name() + "'s balance to " + EconomyCraft.formatMoney(amount));

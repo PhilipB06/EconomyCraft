@@ -75,7 +75,7 @@ public final class IdentifierCompat {
         registryContainsKey = findRegistryMethod(boolean.class, idClass);
         registryGetOptional = findRegistryMethod(Optional.class, idClass);
         resourceKeyCreate = findResourceKeyCreate(idClass);
-        resourceKeyIdentifier = findResourceKeyIdentifier(idClass);
+        resourceKeyIdentifier = findResourceKeyIdentifier(idClass, idSample);
         Method[] eitherMethods = findEitherMethods();
         if (eitherMethods != null) {
             eitherLeft = eitherMethods[0];
@@ -324,9 +324,11 @@ public final class IdentifierCompat {
         throw new ExceptionInInitializerError("ResourceKey.create method not found");
     }
 
-    private static Method findResourceKeyIdentifier(Class<?> idClass) {
+    private static Method findResourceKeyIdentifier(Class<?> idClass, Object idSample) {
+        ResourceKey<?> sampleKey = BuiltInRegistries.ITEM.getResourceKey(Items.AIR).orElseThrow();
         for (Method method : ResourceKey.class.getMethods()) {
-            if (method.getParameterCount() == 0 && idClass.isAssignableFrom(method.getReturnType())) {
+            if (method.getParameterCount() == 0 && idClass.isAssignableFrom(method.getReturnType())
+                    && idSample.equals(invoke(method, sampleKey))) {
                 return method;
             }
         }

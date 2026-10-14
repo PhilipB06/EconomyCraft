@@ -30,6 +30,7 @@ public final class EconomyPaths {
             "balances.json",
             "daily.json",
             "daily_sells.json",
+            "stats.json",
             "deliveries.json",
             "auctions.json",
             "shop.json",

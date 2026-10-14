@@ -12,12 +12,14 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
 import net.minecraft.server.MinecraftServer;
 
 final class BalanceEventDispatcher implements BalanceEvents {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Map<MinecraftServer, BalanceEventDispatcher> BY_SERVER = new IdentityHashMap<>();
     private final CopyOnWriteArrayList<BalanceChangeListener> listeners = new CopyOnWriteArrayList<>();
+    private final CopyOnWriteArrayList<BiConsumer<BalanceChangeEvent, String>> internalListeners = new CopyOnWriteArrayList<>();
 
     static synchronized BalanceEventDispatcher forServer(MinecraftServer server) {
         return BY_SERVER.computeIfAbsent(server, ignored -> new BalanceEventDispatcher());
@@ -25,7 +27,14 @@ final class BalanceEventDispatcher implements BalanceEvents {
 
     static synchronized void release(MinecraftServer server) {
         BalanceEventDispatcher dispatcher = BY_SERVER.remove(server);
-        if (dispatcher != null) dispatcher.listeners.clear();
+        if (dispatcher != null) {
+            dispatcher.listeners.clear();
+            dispatcher.internalListeners.clear();
+        }
+    }
+
+    void registerInternal(BiConsumer<BalanceChangeEvent, String> listener) {
+        internalListeners.add(Objects.requireNonNull(listener, "listener"));
     }
 
     @Override
@@ -41,6 +50,17 @@ final class BalanceEventDispatcher implements BalanceEvents {
     }
 
     void emit(BalanceChangeEvent event) {
+        emit(event, null);
+    }
+
+    void emit(BalanceChangeEvent event, String item) {
+        for (BiConsumer<BalanceChangeEvent, String> listener : internalListeners) {
+            try {
+                listener.accept(event, item);
+            } catch (Throwable error) {
+                LOGGER.error("[EconomyCraft] Internal balance change listener failed", error);
+            }
+        }
         for (BalanceChangeListener listener : listeners) {
             try {
                 listener.onBalanceChanged(event);

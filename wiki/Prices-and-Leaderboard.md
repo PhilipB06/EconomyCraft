@@ -27,7 +27,7 @@ The API does not check:
 - Player inventory or available space.
 - Player balance.
 - Daily sell limits.
-- Item damage or container-content sell restrictions.
+- Item damage, enchantments or container-content sell restrictions. `unitSellPrice()` is the configured price of one plain item; a damaged or enchanted stack sells for a different amount.
 - Whether the shop or selling is enabled.
 - Category visibility or menu navigation.
 

@@ -1,22 +1,22 @@
 package com.reazip.economycraft.orders;
 
-import com.mojang.logging.LogUtils;
+import com.reazip.economycraft.DeliveryManager;
 import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyManager;
 import com.reazip.economycraft.EconomySources;
 import com.reazip.economycraft.PriceRegistry;
 import com.reazip.economycraft.SellService;
-import com.reazip.economycraft.api.v1.BalanceMutationResult;
 import com.reazip.economycraft.util.ChatCompat;
 import com.reazip.economycraft.util.ExpirationUtil;
+import com.reazip.economycraft.util.MoneyMath;
+import com.reazip.economycraft.util.TransactionItems;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
-import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,8 +25,6 @@ import java.util.function.IntConsumer;
 
 public final class OrderFulfillment {
     private OrderFulfillment() {}
-
-    private static final Logger LOGGER = LogUtils.getLogger();
 
     public enum Status {
         OK, ORDER_GONE, OWN_ORDER, INVALID_AMOUNT, NOT_ENOUGH_ITEMS, REQUESTER_CANT_PAY,
@@ -40,7 +38,7 @@ public final class OrderFulfillment {
     }
 
     public enum CancelStatus {
-        OK, ORDER_GONE, NOT_OWNER, REFUND_FAILED
+        OK, ORDER_GONE, NOT_OWNER
     }
 
     private record PaymentOutcome(boolean success, long payout, Status failureStatus) {}
@@ -64,10 +62,6 @@ public final class OrderFulfillment {
     }
 
     public static Result fulfill(EconomyManager eco, ServerPlayer fulfiller, int orderId, int requestedAmount) {
-        return fulfill(eco, fulfiller, orderId, requestedAmount, false);
-    }
-
-    public static Result fulfill(EconomyManager eco, ServerPlayer fulfiller, int orderId, int requestedAmount, boolean excludeArmor) {
         OrderManager orders = eco.getOrders();
         OrderRequest peek = orders.getRequest(orderId);
         if (peek == null || peek.item == null || peek.item.isEmpty()) {
@@ -78,11 +72,11 @@ public final class OrderFulfillment {
         }
 
         ItemStack itemProto = peek.item.copy();
-        int held = countHeld(fulfiller, itemProto, excludeArmor);
+        int held = SellService.countHeld(fulfiller, itemProto);
 
         OrderManager.ClaimResult claim = orders.claim(orderId, requestedAmount, held, false);
         return applyFulfillment(eco, orders, claim, peek.requester, fulfiller.getUUID(), itemProto,
-                give -> removeItems(fulfiller, itemProto, give, excludeArmor));
+                give -> SellService.removeHeld(fulfiller, itemProto, give));
     }
 
     public static Result fulfillExact(EconomyManager eco, ServerPlayer fulfiller, int orderId, int requestedAmount, ItemStack sourceStack) {
@@ -122,14 +116,15 @@ public final class OrderFulfillment {
         }
 
         String detail = EconomyCraft.describeItem(claim.given(), itemProto.getHoverName().getString());
-        PaymentOutcome outcome = settleOrderPayment(eco, requester, fulfillerId, claim.payment(), claim.escrowUsed(), detail);
+        PaymentOutcome outcome = settleOrderPayment(eco, requester, fulfillerId, claim.payment(), claim.escrowUsed(), detail,
+                TransactionItems.keyOf(itemProto));
         if (!outcome.success()) {
             orders.rollbackClaim(claim.order(), claim.given(), claim.payment(), claim.escrowUsed(), claim.exhausted());
             return new Result(outcome.failureStatus(), 0, 0, claim.order().amount, itemProto, requester);
         }
 
         takeItems.accept(claim.given());
-        deliver(orders, requester, itemProto, claim.given());
+        deliver(eco.getDeliveries(), requester, itemProto, claim.given());
         notifyRequester(eco.getServer(), requester, claim.given(), itemProto);
         orders.markChanged();
 
@@ -138,20 +133,20 @@ public final class OrderFulfillment {
     }
 
     private static PaymentOutcome settleOrderPayment(EconomyManager eco, UUID requester, UUID fulfillerId, long payment,
-                                                       long escrowUsed, String detail) {
-        long tax = Math.round(payment * EconomyConfig.get().taxRate);
+                                                       long escrowUsed, String detail, String item) {
+        long tax = MoneyMath.tax(payment);
         long payout = payment - tax;
         long shortfall = payment - escrowUsed;
 
         if (shortfall > 0) {
-            var transfer = eco.transferMoney(requester, fulfillerId, shortfall, payout, EconomySources.ORDER_FULFILLMENT, detail);
+            var transfer = eco.transferMoney(requester, fulfillerId, shortfall, payout, EconomySources.ORDER_FULFILLMENT, detail, item);
             if (!transfer.successful()) {
                 Status status = transfer.status() == com.reazip.economycraft.api.v1.BalanceMutationStatus.MAX_BALANCE_EXCEEDED
                         ? Status.FULFILLER_CANT_RECEIVE : Status.REQUESTER_CANT_PAY;
                 return new PaymentOutcome(false, 0, status);
             }
         } else if (payout > 0) {
-            var credit = eco.addMoney(fulfillerId, payout, EconomySources.ORDER_FULFILLMENT, detail);
+            var credit = eco.addMoney(fulfillerId, payout, EconomySources.ORDER_FULFILLMENT, detail, item);
             if (!credit.successful()) {
                 return new PaymentOutcome(false, 0, Status.FULFILLER_CANT_RECEIVE);
             }
@@ -168,9 +163,7 @@ public final class OrderFulfillment {
         OrderRequest order = orders.removeRequest(orderId);
         if (order == null) return CancelStatus.ORDER_GONE;
 
-        var refund = refundEscrow(eco, orders, order);
-        if (refund != null && !refund.successful()) return CancelStatus.REFUND_FAILED;
-
+        refundEscrow(eco, order);
         return CancelStatus.OK;
     }
 
@@ -185,28 +178,19 @@ public final class OrderFulfillment {
             if (order == null) continue;
             anyExpired = true;
 
-            long refund = order.escrow;
-            var result = refundEscrow(eco, orders, order);
-            if (result != null && !result.successful()) {
-                LOGGER.warn("[EconomyCraft] Expired order {} escrow refund of {} to {} failed ({}); will retry next sweep",
-                        order.id, refund, order.requester, result.status());
-                continue;
-            }
-
-            notifyExpired(eco, order, refund);
+            notifyExpired(eco, order, refundEscrow(eco, order));
         }
         if (anyExpired) orders.save();
         eco.getNotifications().flush();
     }
 
-    private static BalanceMutationResult refundEscrow(EconomyManager eco, OrderManager orders, OrderRequest order) {
-        if (order.escrow <= 0) return null;
-        String detail = EconomyCraft.describeItem(order.amount, order.item.getHoverName().getString());
-        var refund = eco.addMoney(order.requester, order.escrow, EconomySources.ORDER_ESCROW_REFUND, detail);
-        if (refund.successful()) {
-            order.escrow = 0;
-        } else {
-            orders.restoreRequest(order);
+    private static long refundEscrow(EconomyManager eco, OrderRequest order) {
+        if (order.escrow <= 0) return 0;
+        long room = Math.max(0, EconomyManager.maxBalance() - eco.getBalance(order.requester, true));
+        long refund = Math.min(order.escrow, room);
+        if (refund > 0) {
+            String detail = EconomyCraft.describeItem(order.amount, order.item.getHoverName().getString());
+            eco.addMoney(order.requester, refund, EconomySources.ORDER_ESCROW_REFUND, detail);
         }
         return refund;
     }
@@ -225,16 +209,8 @@ public final class OrderFulfillment {
             OrderRequest order = orders.removeRequest(snapshot.id, false);
             if (order == null) continue;
 
-            long refund = order.escrow;
-            var result = refundEscrow(eco, orders, order);
-            if (result != null && !result.successful()) {
-                LOGGER.warn("[EconomyCraft] Failed to refund order {} escrow of {} to {} while clearing orders; it was left in place",
-                        order.id, refund, order.requester);
-                continue;
-            }
-
             cleared++;
-            notifyCleared(eco, order, refund);
+            notifyCleared(eco, order, refundEscrow(eco, order));
         }
         if (cleared > 0) orders.save();
         eco.getNotifications().flush();
@@ -268,29 +244,9 @@ public final class OrderFulfillment {
         return out;
     }
 
-    public static int countHeld(ServerPlayer player, ItemStack proto) {
-        return countHeld(player, proto, false);
-    }
-
-    private static int countHeld(ServerPlayer player, ItemStack proto, boolean excludeArmor) {
-        if (proto == null || proto.isEmpty()) return 0;
-        int total = 0;
-        var inv = player.getInventory();
-        int limit = excludeArmor ? SellService.MAIN_INVENTORY_SLOTS : inv.getContainerSize();
-        for (int i = 0; i < limit; i++) {
-            ItemStack s = inv.getItem(i);
-            if (ItemStack.isSameItemSameComponents(s, proto)) total += s.getCount();
-        }
-        if (excludeArmor) {
-            ItemStack offhand = player.getOffhandItem();
-            if (ItemStack.isSameItemSameComponents(offhand, proto)) total += offhand.getCount();
-        }
-        return total;
-    }
-
     public static long payoutFor(OrderRequest order, int give) {
         long payment = OrderManager.partialPayment(order, give);
-        long tax = Math.round(payment * EconomyConfig.get().taxRate);
+        long tax = MoneyMath.tax(payment);
         return payment - tax;
     }
 
@@ -299,32 +255,11 @@ public final class OrderFulfillment {
         return (order.price / (double) order.amount) * (1.0 - EconomyConfig.get().taxRate);
     }
 
-    private static void removeItems(ServerPlayer player, ItemStack proto, int amount, boolean excludeArmor) {
-        int remaining = amount;
-        var inv = player.getInventory();
-        int limit = excludeArmor ? SellService.MAIN_INVENTORY_SLOTS : inv.getContainerSize();
-        for (int i = 0; i < limit && remaining > 0; i++) {
-            ItemStack s = inv.getItem(i);
-            if (ItemStack.isSameItemSameComponents(s, proto)) {
-                int take = Math.min(s.getCount(), remaining);
-                s.shrink(take);
-                remaining -= take;
-            }
-        }
-        if (excludeArmor && remaining > 0) {
-            ItemStack offhand = player.getOffhandItem();
-            if (ItemStack.isSameItemSameComponents(offhand, proto)) {
-                int take = Math.min(offhand.getCount(), remaining);
-                offhand.shrink(take);
-            }
-        }
-    }
-
-    private static void deliver(OrderManager orders, UUID requester, ItemStack proto, int amount) {
+    private static void deliver(DeliveryManager deliveries, UUID requester, ItemStack proto, int amount) {
         int remaining = amount;
         while (remaining > 0) {
             int c = Math.min(proto.getMaxStackSize(), remaining);
-            orders.addDelivery(requester, proto.copyWithCount(c));
+            deliveries.addDelivery(requester, proto.copyWithCount(c));
             remaining -= c;
         }
     }

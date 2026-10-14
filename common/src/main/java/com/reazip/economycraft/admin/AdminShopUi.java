@@ -677,10 +677,11 @@ public final class AdminShopUi {
             Component deleteHint = "misc".equalsIgnoreCase(draft.key())
                     ? MenuUiSupport.hint("The fallback category cannot be deleted.")
                     : MenuUiSupport.hint("Moves its items to misc and disables buying them.");
-            container.setItem(DELETE, MenuUiSupport.button(Items.BARRIER, "Delete Category", ChatFormatting.DARK_RED,
+            container.setItem(DELETE, MenuUiSupport.button(ItemsCompat.redStainedGlassPane(), "Delete Category",
+                    ChatFormatting.DARK_RED,
                     deleteHint));
 
-            container.setItem(BACK, MenuUiSupport.button(ItemsCompat.redStainedGlassPane(), "Back",
+            container.setItem(BACK, MenuUiSupport.button(Items.BARRIER, "Back",
                     ChatFormatting.DARK_RED, MenuUiSupport.hint("Changes are already saved.")));
             MenuUiSupport.fillBackground(container);
         }
@@ -934,10 +935,11 @@ public final class AdminShopUi {
             container.setItem(DYNAMIC_PRICE, dynamicPriceToggleButton(draft.dynamicPriceEnabled(),
                     "Whether this item's buy price scales with the server economy."));
 
-            container.setItem(DELETE, MenuUiSupport.button(Items.BARRIER, "Delete", ChatFormatting.DARK_RED,
+            container.setItem(DELETE, MenuUiSupport.button(ItemsCompat.redStainedGlassPane(), "Delete",
+                    ChatFormatting.DARK_RED,
                     MenuUiSupport.hint("Removes it from the shop for good.")));
 
-            container.setItem(BACK, MenuUiSupport.button(ItemsCompat.redStainedGlassPane(), "Back",
+            container.setItem(BACK, MenuUiSupport.button(Items.BARRIER, "Back",
                     ChatFormatting.DARK_RED, MenuUiSupport.hint("Changes are already saved.")));
 
             MenuUiSupport.fillBackground(container);
@@ -965,14 +967,14 @@ public final class AdminShopUi {
                 case BUY -> {
                     EconomySounds.click(viewer);
                     NumberInputUi.openMoney(viewer, "Buy price", draft.display(), "Buy price",
-                            draft.unitBuy(), 0, EconomyManager.MAX,
+                            draft.unitBuy(), 0, EconomyManager.ABSOLUTE_MAX_BALANCE,
                             (p, value) -> update(draft.withBuy(value)),
                             p -> openEditor(p, eco, origin, draft, returnCategory));
                 }
                 case SELL -> {
                     EconomySounds.click(viewer);
                     NumberInputUi.openMoney(viewer, "Sell price", draft.display(), "Sell price",
-                            draft.unitSell(), 0, EconomyManager.MAX,
+                            draft.unitSell(), 0, EconomyManager.ABSOLUTE_MAX_BALANCE,
                             (p, value) -> update(draft.withSell(value)),
                             p -> openEditor(p, eco, origin, draft, returnCategory));
                 }

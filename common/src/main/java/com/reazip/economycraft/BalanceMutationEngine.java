@@ -49,19 +49,19 @@ final class BalanceMutationEngine {
         return initialized;
     }
 
-    BalanceMutationResult add(UUID playerId, long amount, MutationSource source, String detail) {
+    BalanceMutationResult add(UUID playerId, long amount, MutationSource source, String detail, String item) {
         Objects.requireNonNull(playerId, "playerId");
         BalanceState state = state(playerId);
         if (amount <= 0) return result(BalanceMutationStatus.INVALID_AMOUNT, BalanceMutationType.ADD,
                 playerId, amount, state.balance(), state.balance(), source);
-        if (amount > EconomyManager.MAX - state.balance()) {
+        if (amount > EconomyManager.maxBalance() - state.balance()) {
             return result(BalanceMutationStatus.MAX_BALANCE_EXCEEDED, BalanceMutationType.ADD,
                     playerId, amount, state.balance(), state.balance(), source);
         }
-        return commitSingle(state, amount, state.balance() + amount, BalanceMutationType.ADD, source, detail);
+        return commitSingle(state, amount, state.balance() + amount, BalanceMutationType.ADD, source, detail, item);
     }
 
-    BalanceMutationResult remove(UUID playerId, long amount, MutationSource source, String detail) {
+    BalanceMutationResult remove(UUID playerId, long amount, MutationSource source, String detail, String item) {
         Objects.requireNonNull(playerId, "playerId");
         BalanceState state = state(playerId);
         if (amount <= 0) return result(BalanceMutationStatus.INVALID_AMOUNT, BalanceMutationType.REMOVE,
@@ -70,7 +70,7 @@ final class BalanceMutationEngine {
             return result(BalanceMutationStatus.INSUFFICIENT_FUNDS, BalanceMutationType.REMOVE,
                     playerId, amount, state.balance(), state.balance(), source);
         }
-        return commitSingle(state, amount, state.balance() - amount, BalanceMutationType.REMOVE, source, detail);
+        return commitSingle(state, amount, state.balance() - amount, BalanceMutationType.REMOVE, source, detail, item);
     }
 
     BalanceMutationResult set(UUID playerId, long requestedBalance, MutationSource source, String detail) {
@@ -80,7 +80,7 @@ final class BalanceMutationEngine {
             return result(BalanceMutationStatus.INVALID_AMOUNT, BalanceMutationType.SET,
                     playerId, requestedBalance, state.balance(), state.balance(), source);
         }
-        if (requestedBalance > EconomyManager.MAX) {
+        if (requestedBalance > EconomyManager.maxBalance()) {
             return result(BalanceMutationStatus.MAX_BALANCE_EXCEEDED, BalanceMutationType.SET,
                     playerId, requestedBalance, state.balance(), state.balance(), source);
         }
@@ -92,14 +92,14 @@ final class BalanceMutationEngine {
             return result(BalanceMutationStatus.NO_CHANGE, BalanceMutationType.SET,
                     playerId, requestedBalance, state.balance(), state.balance(), source);
         }
-        return commitSingle(state, requestedBalance, requestedBalance, BalanceMutationType.SET, source, detail);
+        return commitSingle(state, requestedBalance, requestedBalance, BalanceMutationType.SET, source, detail, null);
     }
 
     PaymentResult pay(UUID senderId, UUID receiverId, long amount, MutationSource source, String detail) {
-        return transfer(senderId, receiverId, amount, amount, source, detail);
+        return transfer(senderId, receiverId, amount, amount, source, detail, null);
     }
 
-    PaymentResult transfer(UUID senderId, UUID receiverId, long debitAmount, long creditAmount, MutationSource source, String detail) {
+    PaymentResult transfer(UUID senderId, UUID receiverId, long debitAmount, long creditAmount, MutationSource source, String detail, String item) {
         Objects.requireNonNull(senderId, "senderId");
         Objects.requireNonNull(receiverId, "receiverId");
         BalanceState sender = state(senderId);
@@ -117,7 +117,7 @@ final class BalanceMutationEngine {
             return paymentResult(BalanceMutationStatus.INSUFFICIENT_FUNDS, senderId, receiverId, debitAmount,
                     sender.balance(), sender.balance(), receiver.balance(), receiver.balance(), source);
         }
-        if (creditAmount > EconomyManager.MAX - receiver.balance()) {
+        if (creditAmount > EconomyManager.maxBalance() - receiver.balance()) {
             return paymentResult(BalanceMutationStatus.MAX_BALANCE_EXCEEDED, senderId, receiverId, debitAmount,
                     sender.balance(), sender.balance(), receiver.balance(), receiver.balance(), source);
         }
@@ -133,10 +133,10 @@ final class BalanceMutationEngine {
         PaymentResult result = new PaymentResult(BalanceMutationStatus.SUCCESS, senderId, receiverId, debitAmount,
                 sender.balance(), senderNew, receiver.balance(), receiverNew, optionalSource);
         events.emit(new BalanceChangeEvent(senderId, sender.balance(), senderNew,
-                BalanceMutationType.PAYMENT_SENT, Optional.of(receiverId), optionalSource, optionalDetail));
+                BalanceMutationType.PAYMENT_SENT, Optional.of(receiverId), optionalSource, optionalDetail), item);
         if (creditAmount > 0) {
             events.emit(new BalanceChangeEvent(receiverId, receiver.balance(), receiverNew,
-                    BalanceMutationType.PAYMENT_RECEIVED, Optional.of(senderId), optionalSource, optionalDetail));
+                    BalanceMutationType.PAYMENT_RECEIVED, Optional.of(senderId), optionalSource, optionalDetail), item);
         }
         onTransfer.accept(result);
         return result;
@@ -153,7 +153,8 @@ final class BalanceMutationEngine {
             long newBalance,
             BalanceMutationType type,
             MutationSource source,
-            String detail
+            String detail,
+            String item
     ) {
         balances.put(state.playerId(), newBalance);
         onMutationCommitted.run();
@@ -161,7 +162,7 @@ final class BalanceMutationEngine {
         BalanceMutationResult result = new BalanceMutationResult(BalanceMutationStatus.SUCCESS, type,
                 state.playerId(), requestedAmount, state.balance(), newBalance, optionalSource);
         events.emit(new BalanceChangeEvent(state.playerId(), state.balance(), newBalance, type,
-                Optional.empty(), optionalSource, Optional.ofNullable(detail)));
+                Optional.empty(), optionalSource, Optional.ofNullable(detail)), item);
         return result;
     }
 
@@ -173,7 +174,7 @@ final class BalanceMutationEngine {
     }
 
     private long configuredStartingBalance() {
-        return Math.clamp(startingBalance.getAsLong(), 0, EconomyManager.MAX);
+        return Math.clamp(startingBalance.getAsLong(), 0, EconomyManager.maxBalance());
     }
 
     private static BalanceMutationResult result(

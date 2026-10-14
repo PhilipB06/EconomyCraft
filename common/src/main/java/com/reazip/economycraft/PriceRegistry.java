@@ -12,6 +12,7 @@ import com.reazip.economycraft.util.EconomyPaths;
 import com.reazip.economycraft.util.IdentifierCompat;
 import com.reazip.economycraft.util.ItemsCompat;
 import com.reazip.economycraft.util.MenuUiSupport;
+import com.reazip.economycraft.util.MoneyMath;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceKey;
@@ -291,6 +292,7 @@ public final class PriceRegistry {
         if (expected.customItem() != null) {
             return ItemStack.isSameItemSameComponents(stack, expected.customItem());
         }
+        if (stack.is(Items.ENCHANTED_BOOK) && storedEnchantments(stack).size() > 1) return false;
         for (IdentifierCompat.Id key : resolvePriceKeys(stack)) {
             if (!key.equals(expected.id())) continue;
             List<PriceEntry> candidates = prices.get(key);
@@ -326,12 +328,52 @@ public final class PriceRegistry {
         }
     }
 
-    public Long getUnitSell(ItemStack stack) {
-        PriceEntry p = resolve(stack);
-        return (p != null && p.unitSell() > 0) ? p.unitSell() : null;
+    public Long getUnitSell(ItemStack stack, PriceEntry p) {
+        if (p == null || p.unitSell() <= 0) return null;
+        if (p.customItem() != null) return p.unitSell();
+        long total;
+        try {
+            total = stack.is(Items.ENCHANTED_BOOK)
+                    ? Math.max(p.unitSell(), enchantmentSellValue(storedEnchantments(stack)))
+                    : Math.addExact(p.unitSell(), enchantmentSellValue(stack.getOrDefault(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY)));
+        } catch (ArithmeticException ex) {
+            return null;
+        }
+        if (isDamaged(stack)) total = scaleByDurability(total, stack);
+        return total > 0 ? total : null;
     }
 
-    public boolean isSellBlockedByDamage(ItemStack stack) {
+    private static ItemEnchantments storedEnchantments(ItemStack stack) {
+        return stack.getOrDefault(DataComponents.STORED_ENCHANTMENTS, ItemEnchantments.EMPTY);
+    }
+
+    private long enchantmentSellValue(ItemEnchantments enchantments) {
+        long sum = 0;
+        for (Object2IntMap.Entry<Holder<Enchantment>> e : enchantments.entrySet()) {
+            sum = Math.addExact(sum, enchantmentUnitSell(e.getKey(), e.getIntValue()));
+        }
+        return sum;
+    }
+
+    private long enchantmentUnitSell(Holder<Enchantment> holder, int level) {
+        for (IdentifierCompat.Id key : enchantedBookKeys(holder, level)) {
+            List<PriceEntry> candidates = prices.get(key);
+            if (candidates == null) continue;
+            for (PriceEntry p : candidates) {
+                if (p.customItem() == null && p.unitSell() > 0) return p.unitSell();
+            }
+        }
+        return 0;
+    }
+
+    private static long scaleByDurability(long unit, ItemStack stack) {
+        long max = stack.getMaxDamage();
+        if (max <= 0) return unit;
+        long remaining = Math.max(0, max - stack.getDamageValue());
+        return MoneyMath.scale(unit, remaining, max);
+    }
+
+    public boolean isDamaged(ItemStack stack) {
         return stack != null && stack.isDamageableItem() && stack.getDamageValue() > 0;
     }
 
@@ -347,6 +389,11 @@ public final class PriceRegistry {
 
     private boolean isBuyable(PriceEntry entry) {
         return entry.unitBuy() > 0 && isCategoryEnabled(entry.category());
+    }
+
+    public boolean isBuyable(ItemStack stack, PriceEntry entry) {
+        return EconomyConfig.get().shopEnabled && isBuyable(entry)
+                && ItemStack.isSameItemSameComponents(stack, createPrototype(entry));
     }
 
     public Set<String> buyCategories() {
@@ -932,26 +979,28 @@ public final class PriceRegistry {
         }
 
         if (stack.is(Items.ENCHANTED_BOOK)) {
-            ItemEnchantments stored = stack.getOrDefault(DataComponents.STORED_ENCHANTMENTS, ItemEnchantments.EMPTY);
+            ItemEnchantments stored = storedEnchantments(stack);
             for (Object2IntMap.Entry<Holder<Enchantment>> e : stored.entrySet()) {
-                Holder<Enchantment> holder = e.getKey();
-                int level = e.getIntValue();
-                if (level <= 0) continue;
-                IdentifierCompat.Id enchId = holder.unwrapKey().map(IdentifierCompat::fromResourceKey).orElse(null);
-                if (enchId == null) continue;
-                String base = "enchanted_book_" + enchId.path() + "_" + level;
-                IdentifierCompat.Id key = IdentifierCompat.fromNamespaceAndPath(enchId.namespace(), base);
-                out.add(key);
-
-                if ("binding_curse".equals(enchId.path())) {
-                    out.add(IdentifierCompat.fromNamespaceAndPath(enchId.namespace(), "enchanted_book_curse_of_binding_" + level));
-                } else if ("vanishing_curse".equals(enchId.path())) {
-                    out.add(IdentifierCompat.fromNamespaceAndPath(enchId.namespace(), "enchanted_book_curse_of_vanishing_" + level));
-                }
+                out.addAll(enchantedBookKeys(e.getKey(), e.getIntValue()));
             }
         }
 
         out.add(itemId);
+        return out;
+    }
+
+    private static List<IdentifierCompat.Id> enchantedBookKeys(Holder<Enchantment> holder, int level) {
+        if (level <= 0) return List.of();
+        IdentifierCompat.Id enchId = holder.unwrapKey().map(IdentifierCompat::fromResourceKey).orElse(null);
+        if (enchId == null) return List.of();
+
+        List<IdentifierCompat.Id> out = new ArrayList<>(2);
+        out.add(IdentifierCompat.fromNamespaceAndPath(enchId.namespace(), "enchanted_book_" + enchId.path() + "_" + level));
+        if ("binding_curse".equals(enchId.path())) {
+            out.add(IdentifierCompat.fromNamespaceAndPath(enchId.namespace(), "enchanted_book_curse_of_binding_" + level));
+        } else if ("vanishing_curse".equals(enchId.path())) {
+            out.add(IdentifierCompat.fromNamespaceAndPath(enchId.namespace(), "enchanted_book_curse_of_vanishing_" + level));
+        }
         return out;
     }
 

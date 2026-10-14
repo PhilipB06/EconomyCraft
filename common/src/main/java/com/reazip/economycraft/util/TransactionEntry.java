@@ -19,7 +19,8 @@ public record TransactionEntry(
         long balanceBefore,
         long balanceAfter,
         @Nullable String source,
-        @Nullable String detail
+        @Nullable String detail,
+        @Nullable String item
 ) {
     public static @Nullable TransactionEntry fromJson(JsonObject obj) {
         try {
@@ -34,7 +35,8 @@ public record TransactionEntry(
                     obj.get("balance_before").getAsLong(),
                     obj.get("balance_after").getAsLong(),
                     optionalString(obj, "source"),
-                    optionalString(obj, "detail")
+                    optionalString(obj, "detail"),
+                    optionalString(obj, "item")
             );
         } catch (RuntimeException e) {
             return null;

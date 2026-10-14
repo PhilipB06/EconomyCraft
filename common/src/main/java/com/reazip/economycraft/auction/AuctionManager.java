@@ -4,7 +4,6 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
-import com.reazip.economycraft.DeliveryManager;
 import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.util.AsyncFileWriter;
@@ -33,14 +32,12 @@ public class AuctionManager {
     private final Path file;
     private final Map<Integer, AuctionListing> listings = new ConcurrentHashMap<>();
     private final PlayerLimitOverrides limitOverrides = new PlayerLimitOverrides();
-    private final DeliveryManager deliveries;
     private final List<Runnable> listeners = new ArrayList<>();
     private int nextId = 1;
 
-    public AuctionManager(MinecraftServer server, DeliveryManager deliveries) {
+    public AuctionManager(MinecraftServer server) {
         this.server = server;
         this.file = prepareAuctionFile(EconomyPaths.dataDir(server));
-        this.deliveries = deliveries;
         load();
     }
 
@@ -131,14 +128,6 @@ public class AuctionManager {
 
         EconomySounds.moneyReceived(seller);
         seller.sendSystemMessage(msg);
-    }
-
-    public void addDelivery(UUID player, ItemStack stack) {
-        deliveries.addDelivery(player, stack);
-    }
-
-    void addDelivery(UUID player, ItemStack stack, boolean persist) {
-        deliveries.addDelivery(player, stack, persist);
     }
 
     public int countActive(UUID player) {

@@ -122,8 +122,6 @@ public final class HubUi {
             return;
         }
 
-        EconomyManager eco = EconomyCraft.getManager(player.level().getServer());
-        PriceRegistry prices = eco.getPrices();
         ItemPickerUi.open(player, "Check an item's value", ItemPickerUi.Source.INVENTORY_AND_ALL, null,
                 (picker, choice) -> {
                     if (!EconomyConfig.get().worthEnabled) {
@@ -131,17 +129,8 @@ public final class HubUi {
                         return;
                     }
 
-                    PriceRegistry.PriceEntry entry = prices.resolve(choice.prototype());
-                    String name = choice.prototype().getHoverName().getString();
-                    if (entry == null || (entry.unitBuy() <= 0 && entry.unitSell() <= 0)) {
-                        picker.sendSystemMessage(MenuUiSupport.line(name + " has no price on this server.", ChatFormatting.RED));
-                    } else {
-                        long buy = eco.getEffectiveBuyPrice(entry);
-                        picker.sendSystemMessage(Component.literal(name
-                                        + " - Buy: " + (entry.unitBuy() > 0 ? EconomyCraft.formatMoney(buy) : "not for sale")
-                                        + ", Sell: " + (entry.unitSell() > 0 ? EconomyCraft.formatMoney(entry.unitSell()) : "not sellable"))
-                                .withStyle(ChatFormatting.YELLOW));
-                    }
+                    ItemStack item = choice.prototype();
+                    WorthCommand.showWorth(picker.createCommandSourceStack(), item, item.getHoverName().getString(), 1);
                     startWorth(picker);
                 },
                 HubUi::open);

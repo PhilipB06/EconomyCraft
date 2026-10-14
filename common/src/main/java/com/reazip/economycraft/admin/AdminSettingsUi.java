@@ -67,34 +67,35 @@ public final class AdminSettingsUi {
     }
 
     private enum Setting {
-        STARTING_BALANCE("Starting Balance", "Money a brand new player begins with."),
-        DAILY_AMOUNT("Daily Reward", "Paid out once a day per player."),
+        STARTING_BALANCE("Starting Balance", "Money new players start with."),
+        MAX_BALANCE("Max Balance", "Most money a player can have."),
+        DAILY_AMOUNT("Daily Reward", "Money from /daily, once a day."),
         DAILY_SELL_LIMIT("Daily Sell Limit", "Most a player can earn selling per day."),
-        TAX_RATE("Tax Rate", "Cut the server takes from trades and orders."),
+        TAX_RATE("Tax Rate", "Tax on auctions and orders."),
         SEPARATOR("Number Separator", "Thousands separator shown in prices.",
                 "Type \"space\" for a blank one."),
         SCOREBOARD("Balance Sidebar", "The balance leaderboard on the right."),
-        SHOP("Shop", "The built-in shop with fixed prices."),
-        AUCTION("Auction House", "The marketplace players list their own items on."),
-        ORDERS("Orders", "The request board players post wanted items on."),
+        SHOP("Shop", "The server shop."),
+        AUCTION("Auction House", "The player marketplace."),
+        ORDERS("Orders", "The player request board."),
         SELL("Selling", "The /sell menu and right-click selling."),
         WORTH("Item Values", "The /worth command and Item Value menu."),
-        STANDALONE("Short Commands", "Allow /pay, /shop and /ah without the /eco prefix."),
-        STANDALONE_ADMIN("Short Admin Commands", "Allow /addmoney without the /eco prefix."),
-        TRANSACTION_LOG("Transaction Logs", "Record every balance change to a daily log file."),
-        TRANSACTION_LOG_RETENTION("Log Retention", "How many days of transaction logs to keep before deleting them."),
-        DYNAMIC_PRICES("Dynamic Prices", "Scale shop buy prices with the active-player median balance."),
-        DYNAMIC_PRICE_MIN_MULT("Min Multiplier", "Lowest allowed price scale, even if the median balance craters."),
-        DYNAMIC_PRICE_MAX_MULT("Max Multiplier", "Highest allowed price scale, even if the median balance soars."),
-        DYNAMIC_PRICE_ACTIVE_DAYS("Active Player Window", "Players must have logged in within this many days to count toward the median.",
-                "0 = include every player, active or not."),
-        ORDER_EXPIRATION_HOURS("Order Expiration", "Hours before an open order request auto-expires.",
-                "0 = never expires."),
-        AUCTION_EXPIRATION_HOURS("Auction Expiration", "Hours before an auction listing auto-expires.",
-                "0 = never expires."),
-        MAX_ACTIVE_ORDERS_PER_PLAYER("Max Order Requests", "Most open order requests a player can have at once.",
+        STANDALONE("Short Commands", "Allow /pay, /shop and /ah without /eco."),
+        STANDALONE_ADMIN("Short Admin Commands", "Allow /addmoney without /eco."),
+        TRANSACTION_LOG("Transaction Logs", "Save every balance change to a file."),
+        TRANSACTION_LOG_RETENTION("Log Retention", "Days to keep transaction logs."),
+        DYNAMIC_PRICES("Dynamic Prices", "Shop buy prices follow the median balance."),
+        DYNAMIC_PRICE_MIN_MULT("Min Multiplier", "Lowest buy price scale."),
+        DYNAMIC_PRICE_MAX_MULT("Max Multiplier", "Highest buy price scale."),
+        DYNAMIC_PRICE_ACTIVE_DAYS("Active Player Window", "Days since last login to count as active.",
+                "0 = count every player."),
+        ORDER_EXPIRATION_HOURS("Order Expiration", "Hours until an order expires.",
+                "0 = never."),
+        AUCTION_EXPIRATION_HOURS("Auction Expiration", "Hours until a listing expires.",
+                "0 = never."),
+        MAX_ACTIVE_ORDERS_PER_PLAYER("Max Order Requests", "Most open orders per player.",
                 "0 = no limit."),
-        MAX_ACTIVE_AUCTIONS_PER_PLAYER("Max Auction Listings", "Most active auction listings a player can have at once.",
+        MAX_ACTIVE_AUCTIONS_PER_PLAYER("Max Auction Listings", "Most active listings per player.",
                 "0 = no limit.");
 
         final String label;
@@ -165,6 +166,7 @@ public final class AdminSettingsUi {
         private ItemStack buildItem(Setting setting, EconomyConfig config) {
             return switch (setting) {
                 case STARTING_BALANCE -> valueItem(setting, Items.GOLD_INGOT, EconomyCraft.formatMoney(config.startingBalance));
+                case MAX_BALANCE -> valueItem(setting, Items.GOLD_BLOCK, EconomyCraft.formatMoney(config.maxBalance));
                 case DAILY_AMOUNT -> valueItem(setting, Items.CLOCK, EconomyCraft.formatMoney(config.dailyAmount));
                 case DAILY_SELL_LIMIT -> valueItem(setting, Items.HOPPER, config.dailySellLimit <= 0
                         ? "No limit" : EconomyCraft.formatMoney(config.dailySellLimit));
@@ -231,7 +233,7 @@ public final class AdminSettingsUi {
         }
 
         private static String percent(double factor) {
-            return Math.round(factor * 100) + "%";
+            return NumberInputUi.formatHundredths(Math.round(factor * 10000)) + "%";
         }
 
         private static String days(long value) {
@@ -252,8 +254,13 @@ public final class AdminSettingsUi {
 
         private void editMoney(Setting setting, long current, long min, Item icon,
                                java.util.function.LongConsumer apply) {
+            editMoney(setting, current, min, EconomyManager.maxBalance(), icon, apply);
+        }
+
+        private void editMoney(Setting setting, long current, long min, long max, Item icon,
+                               java.util.function.LongConsumer apply) {
             NumberInputUi.openMoney(viewer, setting.label, new ItemStack(icon), setting.label, current, min,
-                    EconomyManager.MAX,
+                    max,
                     (p, next) -> {
                         apply.accept(next);
                         save(p);
@@ -265,10 +272,10 @@ public final class AdminSettingsUi {
 
         private void editPercent(Setting setting, double current, Item icon,
                                  java.util.function.DoubleConsumer apply) {
-            NumberInputUi.openPercent(viewer, setting.label, new ItemStack(icon), setting.label,
-                    Math.round(current * 100),
-                    (p, next) -> {
-                        apply.accept(next / 100.0);
+            NumberInputUi.openDecimal(viewer, setting.label, new ItemStack(icon), setting.label,
+                    Math.round(current * 10000), 0, 10000, "%",
+                    (p, hundredths) -> {
+                        apply.accept(hundredths / 10000.0);
                         save(p);
                         EconomySounds.click(p);
                         open(p, eco, page);
@@ -293,13 +300,11 @@ public final class AdminSettingsUi {
 
         private void editMultiplier(Setting setting, double current, Item icon,
                                     java.util.function.DoubleConsumer apply) {
-            long initial = Math.round(current * 100);
-            NumberInputUi.open(viewer, setting.label, new ItemStack(icon), setting.label, initial,
-                    0, Math.round(EconomyConfig.MAX_DYNAMIC_PRICE_MULTIPLIER * 100),
-                    new int[]{1000, 100, 25, 1}, v -> EconomyCraft.formatMultiplier(v / 100.0),
-                    "Confirm", null,
-                    (p, next) -> {
-                        apply.accept(next / 100.0);
+            NumberInputUi.openDecimal(viewer, setting.label, new ItemStack(icon), setting.label,
+                    Math.round(current * 100), Math.round(EconomyConfig.MIN_DYNAMIC_PRICE_MULTIPLIER * 100),
+                    Math.round(EconomyConfig.MAX_DYNAMIC_PRICE_MULTIPLIER * 100), "x",
+                    (p, hundredths) -> {
+                        apply.accept(hundredths / 100.0);
                         EconomyConfig.normalizeDynamicPriceBounds();
                         save(p);
                         eco.refreshDynamicPrices();
@@ -386,6 +391,8 @@ public final class AdminSettingsUi {
             switch (setting) {
                 case STARTING_BALANCE -> editMoney(setting, config.startingBalance, 0, Items.GOLD_INGOT,
                         v -> EconomyConfig.get().startingBalance = v);
+                case MAX_BALANCE -> editMoney(setting, config.maxBalance, 1, EconomyManager.ABSOLUTE_MAX_BALANCE,
+                        Items.GOLD_BLOCK, v -> EconomyConfig.get().maxBalance = v);
                 case DAILY_AMOUNT -> editMoney(setting, config.dailyAmount, 0, Items.CLOCK,
                         v -> EconomyConfig.get().dailyAmount = v);
                 case DAILY_SELL_LIMIT -> editMoney(setting, config.dailySellLimit, 0, Items.HOPPER,

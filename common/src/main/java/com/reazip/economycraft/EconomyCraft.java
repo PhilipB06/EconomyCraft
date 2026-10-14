@@ -24,6 +24,7 @@ import org.slf4j.Logger;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 public final class EconomyCraft {
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -169,7 +170,8 @@ public final class EconomyCraft {
         return new DecimalFormat("0.##", symbols).format(multiplier) + "x";
     }
 
-    private static final String[] SHORT_MONEY_SUFFIXES = {"", "k", "M", "B", "T"};
+    private static final String[] SHORT_MONEY_SUFFIXES = {"", "k", "M", "B", "T", "Qa", "Qi"};
+    private static final Pattern SHORT_MONEY_NUMBER = Pattern.compile("\\d+\\.?\\d*|\\.\\d+");
 
     public static String formatMoneyShort(long amount) {
         long value = Math.abs(amount);
@@ -196,14 +198,9 @@ public final class EconomyCraft {
         for (int magnitude = SHORT_MONEY_SUFFIXES.length - 1; magnitude >= 1; magnitude--) {
             String suffix = SHORT_MONEY_SUFFIXES[magnitude];
             if (s.length() > suffix.length() && s.regionMatches(true, s.length() - suffix.length(), suffix, 0, suffix.length())) {
-                double value;
-                try {
-                    value = Double.parseDouble(s.substring(0, s.length() - suffix.length()));
-                } catch (NumberFormatException e) {
-                    return null;
-                }
-                if (!Double.isFinite(value) || value < 0) return null;
-                double scaled = value * Math.pow(1000, magnitude);
+                String number = s.substring(0, s.length() - suffix.length()).trim();
+                if (!SHORT_MONEY_NUMBER.matcher(number).matches()) return null;
+                double scaled = Double.parseDouble(number) * Math.pow(1000, magnitude);
                 if (scaled > Long.MAX_VALUE) return null;
                 return Math.round(scaled);
             }

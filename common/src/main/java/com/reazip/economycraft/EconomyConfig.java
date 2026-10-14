@@ -23,6 +23,8 @@ public class EconomyConfig {
     public long startingBalance;
     public long dailyAmount;
     public long dailySellLimit;
+    @SerializedName("max_balance")
+    public long maxBalance = EconomyManager.ABSOLUTE_MAX_BALANCE;
     public double taxRate;
     @SerializedName("standalone_commands")
     public boolean standaloneCommands;
@@ -65,6 +67,7 @@ public class EconomyConfig {
 
     public static final int MIN_TRANSACTION_LOG_RETENTION_DAYS = 1;
     public static final int WARN_TRANSACTION_LOG_RETENTION_DAYS = 90;
+    public static final double MIN_DYNAMIC_PRICE_MULTIPLIER = 0.5;
     public static final double MAX_DYNAMIC_PRICE_MULTIPLIER = 100.0;
 
     private static EconomyConfig INSTANCE = new EconomyConfig();
@@ -98,6 +101,7 @@ public class EconomyConfig {
                 LOGGER.warn("[EconomyCraft] balance_separator is empty; defaulting to \".\".");
                 parsed.balanceSeparator = ".";
             }
+            parsed.maxBalance = clampMaxBalance(parsed.maxBalance);
             parsed.transactionLogRetentionDays = clampRetentionDays(parsed.transactionLogRetentionDays);
             parsed.orderExpirationHours = clampNonNegative("order_expiration_hours", parsed.orderExpirationHours);
             parsed.auctionExpirationHours = clampNonNegative("auction_expiration_hours", parsed.auctionExpirationHours);
@@ -112,7 +116,7 @@ public class EconomyConfig {
     }
 
     private static double clampRange(String fieldName, double value, double min, double max, String reason) {
-        double clamped = Math.clamp(value, min, max);
+        double clamped = Double.isNaN(value) ? min : Math.clamp(value, min, max);
         if (clamped != value) {
             LOGGER.warn("[EconomyCraft] {} ({}) is outside the valid {}-{} range{}; clamping to {}.",
                     fieldName, value, min, max, reason, clamped);
@@ -137,6 +141,19 @@ public class EconomyConfig {
         return days;
     }
 
+    private static long clampMaxBalance(long value) {
+        if (value < 1) {
+            LOGGER.warn("[EconomyCraft] max_balance ({}) is below 1; clamping to 1.", value);
+            return 1;
+        }
+        if (value > EconomyManager.ABSOLUTE_MAX_BALANCE) {
+            LOGGER.warn("[EconomyCraft] max_balance ({}) is above the absolute maximum of {}; clamping to {}.",
+                    value, EconomyManager.ABSOLUTE_MAX_BALANCE, EconomyManager.ABSOLUTE_MAX_BALANCE);
+            return EconomyManager.ABSOLUTE_MAX_BALANCE;
+        }
+        return value;
+    }
+
     private static int clampNonNegative(String fieldName, int value) {
         if (value < 0) {
             LOGGER.warn("[EconomyCraft] {} ({}) is negative; clamping to 0 (unlimited).", fieldName, value);
@@ -157,7 +174,7 @@ public class EconomyConfig {
     }
 
     private static double clampMultiplierRange(String fieldName, double value) {
-        return clampRange(fieldName, value, 0.0, MAX_DYNAMIC_PRICE_MULTIPLIER, "");
+        return clampRange(fieldName, value, MIN_DYNAMIC_PRICE_MULTIPLIER, MAX_DYNAMIC_PRICE_MULTIPLIER, "");
     }
 
     public static void save() {

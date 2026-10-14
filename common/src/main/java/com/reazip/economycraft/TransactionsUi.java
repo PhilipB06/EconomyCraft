@@ -11,6 +11,7 @@ import com.reazip.economycraft.util.EconomySounds;
 import com.reazip.economycraft.util.MenuUiSupport;
 import com.reazip.economycraft.util.PlayerPickerUi;
 import com.reazip.economycraft.util.TransactionEntry;
+import com.reazip.economycraft.util.TransactionItems;
 import com.reazip.economycraft.util.TransactionLogReader;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -47,6 +48,8 @@ public final class TransactionsUi {
     private static final Set<String> LOGGED_UNKNOWN_SOURCES = ConcurrentHashMap.newKeySet();
 
     record SourceStyle(Item icon, String typeLabel, @Nullable String verb, @Nullable TransactionCategory category) {}
+
+    private static final SourceStyle AUCTION_SALE_STYLE = new SourceStyle(Items.CHEST, "Auction Sale", "Sold", TransactionCategory.AUCTION);
 
     private static final Map<String, SourceStyle> SOURCE_STYLES = Map.ofEntries(
             Map.entry(EconomySources.SHOP_PURCHASE.asString(), new SourceStyle(Items.EMERALD, "Shop Purchase", "Bought", TransactionCategory.SHOP)),
@@ -113,7 +116,13 @@ public final class TransactionsUi {
 
     static SourceStyle styleFor(TransactionEntry entry) {
         SourceStyle known = entry.source() != null ? SOURCE_STYLES.get(entry.source()) : null;
-        if (known != null) return known;
+        if (known != null) {
+            if (entry.type() == BalanceMutationType.PAYMENT_RECEIVED
+                    && EconomySources.AUCTION_PURCHASE.asString().equals(entry.source())) {
+                return AUCTION_SALE_STYLE;
+            }
+            return known;
+        }
 
         if (entry.type() == BalanceMutationType.PAYMENT_SENT) {
             return new SourceStyle(Items.PAPER, "Payment Sent", "Paid", TransactionCategory.PAYMENTS);
@@ -233,7 +242,15 @@ public final class TransactionsUi {
             }
             lore.add(MenuUiSupport.labeledValue("Date", formatDate(entry.time()), MenuUiSupport.LABEL_PRIMARY_COLOR));
 
-            return MenuUiSupport.button(style.icon(), rowText, color, lore.toArray(new Component[0]));
+            return MenuUiSupport.button(rowIcon(entry, style), rowText, color, lore.toArray(new Component[0]));
+        }
+
+        private ItemStack rowIcon(TransactionEntry entry, SourceStyle style) {
+            if (style.category() == TransactionCategory.PAYMENTS) {
+                return MenuUiSupport.playerHead(viewer.level().getServer(), entry.counterparty(), entry.counterpartyName());
+            }
+            Item item = TransactionItems.resolve(entry.item());
+            return new ItemStack(item != null ? item : style.icon());
         }
 
         private ItemStack headerItem() {

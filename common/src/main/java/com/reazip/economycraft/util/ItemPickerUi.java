@@ -25,7 +25,6 @@ import java.util.function.Predicate;
 public final class ItemPickerUi {
     private ItemPickerUi() {}
 
-    public static final int MAIN_INVENTORY_SLOTS = 36;
     private static final int MAX_SEARCH_RESULTS = 450;
 
     public enum Source {
@@ -101,21 +100,10 @@ public final class ItemPickerUi {
                                             @Nullable String query) {
             List<Choice> out = new ArrayList<>();
             Inventory inv = player.getInventory();
-            for (int i = 0; i < MAIN_INVENTORY_SLOTS; i++) {
-                ItemStack stack = inv.getItem(i);
-                if (stack.isEmpty()) continue;
-                if (filter != null && !filter.test(stack)) continue;
-                if (!MenuUiSupport.matchesSearch(stack, query)) continue;
-
-                ItemStack prototype = stack.copyWithCount(1);
-                int existing = indexOf(out, prototype);
-                if (existing >= 0) {
-                    Choice previous = out.get(existing);
-                    out.set(existing, new Choice(previous.prototype(), previous.heldCount() + stack.getCount()));
-                } else {
-                    out.add(new Choice(prototype, stack.getCount()));
-                }
+            for (int i = 0; i < Inventory.INVENTORY_SIZE; i++) {
+                addChoice(out, inv.getItem(i), filter, query);
             }
+            addChoice(out, player.getOffhandItem(), filter, query);
 
             if (source == Source.INVENTORY_AND_ALL && query != null && !query.isBlank()) {
                 String needle = query.trim().toLowerCase(Locale.ROOT);
@@ -129,6 +117,22 @@ public final class ItemPickerUi {
                 }
             }
             return out;
+        }
+
+        private static void addChoice(List<Choice> out, ItemStack stack, @Nullable Predicate<ItemStack> filter,
+                                      @Nullable String query) {
+            if (stack.isEmpty()) return;
+            if (filter != null && !filter.test(stack)) return;
+            if (!MenuUiSupport.matchesSearch(stack, query)) return;
+
+            ItemStack prototype = stack.copyWithCount(1);
+            int existing = indexOf(out, prototype);
+            if (existing >= 0) {
+                Choice previous = out.get(existing);
+                out.set(existing, new Choice(previous.prototype(), previous.heldCount() + stack.getCount()));
+            } else {
+                out.add(new Choice(prototype, stack.getCount()));
+            }
         }
 
         private static int indexOf(List<Choice> list, ItemStack stack) {

@@ -1,10 +1,12 @@
 package com.reazip.economycraft.auction;
 
-import com.reazip.economycraft.EconomyConfig;
+import com.reazip.economycraft.DeliveryManager;
 import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyManager;
 import com.reazip.economycraft.EconomySources;
 import com.reazip.economycraft.api.v1.PaymentResult;
+import com.reazip.economycraft.util.MoneyMath;
+import com.reazip.economycraft.util.TransactionItems;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 
@@ -45,11 +47,12 @@ public final class AuctionTrade {
         }
 
         long cost = claimed.price;
-        long tax = Math.round(cost * EconomyConfig.get().taxRate);
+        long tax = MoneyMath.tax(cost);
         long total = cost + tax;
 
         String detail = EconomyCraft.describeItem(claimed.item.getCount(), claimed.item.getHoverName().getString());
-        PaymentResult payment = eco.transferMoney(buyer.getUUID(), claimed.seller, total, cost, EconomySources.AUCTION_PURCHASE, detail);
+        PaymentResult payment = eco.transferMoney(buyer.getUUID(), claimed.seller, total, cost, EconomySources.AUCTION_PURCHASE, detail,
+                TransactionItems.keyOf(claimed.item));
         if (!payment.successful()) {
             auctions.restoreListing(claimed);
             PurchaseStatus status = payment.status() == com.reazip.economycraft.api.v1.BalanceMutationStatus.MAX_BALANCE_EXCEEDED
@@ -59,11 +62,12 @@ public final class AuctionTrade {
 
         auctions.notifySellerSale(claimed, buyer);
 
-        boolean stored = deliverOrStore(auctions, buyer, claimed.item.copy());
+        boolean stored = deliverOrStore(eco.getDeliveries(), buyer, claimed.item.copy());
         return new PurchaseResult(PurchaseStatus.OK, claimed.item.copy(), total, claimed.seller, stored);
     }
 
-    public static CancelResult cancel(AuctionManager auctions, ServerPlayer seller, int listingId) {
+    public static CancelResult cancel(EconomyManager eco, ServerPlayer seller, int listingId) {
+        AuctionManager auctions = eco.getAuctions();
         AuctionListing peek = auctions.getListing(listingId);
         if (peek == null) {
             return new CancelResult(CancelStatus.LISTING_GONE, ItemStack.EMPTY, false);
@@ -77,14 +81,14 @@ public final class AuctionTrade {
             return new CancelResult(CancelStatus.LISTING_GONE, ItemStack.EMPTY, false);
         }
 
-        boolean stored = deliverOrStore(auctions, seller, removed.item.copy());
+        boolean stored = deliverOrStore(eco.getDeliveries(), seller, removed.item.copy());
         return new CancelResult(CancelStatus.OK, removed.item.copy(), stored);
     }
 
-    private static boolean deliverOrStore(AuctionManager auctions, ServerPlayer player, ItemStack stack) {
+    private static boolean deliverOrStore(DeliveryManager deliveries, ServerPlayer player, ItemStack stack) {
         boolean stored = !player.getInventory().add(stack);
         if (stored) {
-            auctions.addDelivery(player.getUUID(), stack);
+            deliveries.addDelivery(player.getUUID(), stack);
         }
         return stored;
     }

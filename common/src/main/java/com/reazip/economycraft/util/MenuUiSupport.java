@@ -23,6 +23,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.item.component.ItemLore;
+import net.minecraft.world.item.component.ResolvableProfile;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
 import org.jetbrains.annotations.Nullable;
@@ -30,6 +31,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiFunction;
 
@@ -67,7 +69,10 @@ public final class MenuUiSupport {
     }
 
     public static ItemStack button(Item item, String name, ChatFormatting color, Component... lore) {
-        ItemStack stack = new ItemStack(item);
+        return button(new ItemStack(item), name, color, lore);
+    }
+
+    public static ItemStack button(ItemStack stack, String name, ChatFormatting color, Component... lore) {
         stack.set(DataComponents.CUSTOM_NAME, Component.literal(name)
                 .withStyle(s -> s.withItalic(false).withBold(true).withColor(color)));
         if (lore.length > 0) {
@@ -240,6 +245,21 @@ public final class MenuUiSupport {
         String displayName = player != null ? IdentityCompat.of(player).name() : name;
         head.set(DataComponents.CUSTOM_NAME, Component.literal(displayName).withStyle(s -> s.withItalic(false).withBold(true).withColor(BALANCE_NAME_COLOR)));
         head.set(DataComponents.LORE, new ItemLore(List.of(balanceLore(balance))));
+        return head;
+    }
+
+    public static ItemStack playerHead(MinecraftServer server, @Nullable UUID playerId, @Nullable String fallbackName) {
+        ItemStack head = new ItemStack(Items.PLAYER_HEAD);
+        ServerPlayer online = playerId != null ? server.getPlayerList().getPlayer(playerId) : null;
+        Optional<ResolvableProfile> profile;
+        if (online != null) {
+            profile = ProfileComponentCompat.tryResolvedOrUnresolved(online.getGameProfile());
+        } else {
+            String name = playerId != null ? resolvePlayerName(server, playerId) : null;
+            if (name == null || name.isBlank()) name = fallbackName;
+            profile = name == null || name.isBlank() ? Optional.empty() : ProfileComponentCompat.tryUnresolved(name);
+        }
+        profile.ifPresent(resolvable -> head.set(DataComponents.PROFILE, resolvable));
         return head;
     }
 

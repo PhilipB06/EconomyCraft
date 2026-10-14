@@ -80,7 +80,7 @@ public final class DynamicPriceEngine {
     public long applyMultiplier(long baseBuyPrice) {
         if (baseBuyPrice <= 0) return baseBuyPrice;
         long rounded = Math.round(baseBuyPrice * multiplier);
-        return Math.clamp(rounded, 1, EconomyManager.MAX);
+        return Math.clamp(rounded, 1, EconomyManager.ABSOLUTE_MAX_BALANCE);
     }
 
     private static List<UUID> onlinePlayerIds(MinecraftServer server) {
