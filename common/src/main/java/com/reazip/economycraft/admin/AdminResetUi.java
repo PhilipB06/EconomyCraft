@@ -211,13 +211,13 @@ public final class AdminResetUi {
                         MenuUiSupport.line("Deletes the entire transaction log.", ChatFormatting.RED),
                         MenuUiSupport.hint("This cannot be undone.")),
                 p -> {
+                    int auctionsCleared = AuctionExpiration.clearAll(eco);
+                    int ordersCleared = OrderFulfillment.clearAll(eco, false);
                     int changed = eco.resetAllBalances();
                     eco.resetDailyRewards();
                     eco.resetDailySellLimits();
                     eco.resetStats();
                     eco.resetTransactionLog();
-                    int auctionsCleared = AuctionExpiration.clearAll(eco);
-                    int ordersCleared = OrderFulfillment.clearAll(eco);
                     announce(p, "Reset the entire economy: " + changed + " balance" + (changed == 1 ? "" : "s")
                             + ", " + auctionsCleared + " auction" + (auctionsCleared == 1 ? "" : "s")
                             + ", " + ordersCleared + " order" + (ordersCleared == 1 ? "" : "s") + ".");

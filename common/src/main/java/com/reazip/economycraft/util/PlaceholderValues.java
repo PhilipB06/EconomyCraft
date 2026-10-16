@@ -10,15 +10,15 @@ public final class PlaceholderValues {
     private PlaceholderValues() {}
 
     public static String balance(EconomyManager economy, UUID playerId) {
-        return String.valueOf(economy.getBalance(playerId, true));
+        return String.valueOf(economy.peekBalance(playerId));
     }
 
     public static String balanceFormatted(EconomyManager economy, UUID playerId) {
-        return EconomyCraft.formatMoney(economy.getBalance(playerId, true));
+        return EconomyCraft.formatMoney(economy.peekBalance(playerId));
     }
 
     public static String balanceShort(EconomyManager economy, UUID playerId) {
-        return EconomyCraft.formatMoneyShort(economy.getBalance(playerId, true));
+        return EconomyCraft.formatMoneyShort(economy.peekBalance(playerId));
     }
 
     public static String dailySellRemaining(EconomyManager economy, UUID playerId) {

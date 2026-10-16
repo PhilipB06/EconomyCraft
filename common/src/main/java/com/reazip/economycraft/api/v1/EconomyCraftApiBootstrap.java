@@ -92,6 +92,19 @@ final class EconomyCraftApiImpl implements EconomyCraftApi {
         requireServerThread();
         return EconomyCraft.formatMoney(amount);
     }
+
+    @Override
+    public String formatMoneyChat(long amount) {
+        requireServerThread();
+        return EconomyCraft.formatMoneyChat(amount);
+    }
+
+    @Override
+    public OptionalLong parseMoney(String input) {
+        requireServerThread();
+        Long amount = EconomyCraft.parseMoneyShort(input);
+        return amount == null ? OptionalLong.empty() : OptionalLong.of(amount);
+    }
 }
 
 final class BalanceApiImpl implements BalanceApi {

@@ -141,6 +141,12 @@ public final class AuctionUi {
     }
 
     private static void createListing(ServerPlayer player, AuctionManager auctions, ItemStack prototype, int amount, long price) {
+        if (!EconomyConfig.get().auction.enabled) {
+            EconomySounds.failure(player);
+            player.sendSystemMessage(MenuUiSupport.line("The auction house is disabled.", ChatFormatting.RED));
+            player.closeContainer();
+            return;
+        }
         if (auctions.hasReachedLimit(player.getUUID())) {
             EconomySounds.failure(player);
             player.sendSystemMessage(MenuUiSupport.line("You have reached your limit of "
@@ -479,6 +485,11 @@ public final class AuctionUi {
                 var server = sp.level().getServer();
                 EconomyManager eco = EconomyCraft.getManager(server);
 
+                if (!EconomyConfig.get().auction.enabled) {
+                    fail(sp, "The auction house is disabled.");
+                    sp.closeContainer();
+                    return true;
+                }
                 AuctionTrade.PurchaseResult result = AuctionTrade.purchase(eco, sp, listing.id);
                 switch (result.status()) {
                     case OK -> {

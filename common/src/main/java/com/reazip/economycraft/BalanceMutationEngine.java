@@ -49,6 +49,10 @@ final class BalanceMutationEngine {
         return initialized;
     }
 
+    long peekBalance(UUID playerId) {
+        return state(Objects.requireNonNull(playerId, "playerId")).balance();
+    }
+
     BalanceMutationResult add(UUID playerId, long amount, MutationSource source, String detail, String item) {
         Objects.requireNonNull(playerId, "playerId");
         BalanceState state = state(playerId);

@@ -295,6 +295,11 @@ public final class SellUi {
         }
 
         private void performSale(ServerPlayer player) {
+            if (!EconomyConfig.get().selling.enabled) {
+                EconomySounds.failure(player);
+                player.sendSystemMessage(Component.literal("Selling is disabled.").withStyle(ChatFormatting.RED));
+                return;
+            }
             SaleTotals totals = new SaleTotals();
 
             for (int i = 0; i < DEPOSIT_SLOTS; i++) {

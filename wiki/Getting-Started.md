@@ -51,9 +51,13 @@ LeaderboardApi leaderboard = api.leaderboard();
 BalanceEvents events = api.balanceEvents();
 
 String displayed = api.formatMoney(125000);
+String chat = api.formatMoneyChat(125000);
+OptionalLong typed = api.parseMoney("1.5k");
 ```
 
-`formatMoney(...)` uses the server's configured currency symbol, symbol position and thousands separator. For example, the defaults format `125000` as `$125.000`. It never includes the optional currency name.
+`formatMoney(...)` uses the server's configured currency symbol, symbol position and thousands separator. For example, the defaults format `125000` as `$125.000`. It never includes the optional currency name. Use `formatMoneyChat(...)` for chat messages; it uses the currency name when one is set.
+
+`parseMoney(...)` reads amounts typed by players exactly like EconomyCraft's own commands, so `1.5k`, `20M` and `$5k` work in your commands too.
 
 ---
 

@@ -21,8 +21,14 @@ public interface EconomyCraftApi {
     LeaderboardApi leaderboard();
     BalanceEvents balanceEvents();
     String formatMoney(long amount);
+    String formatMoneyChat(long amount);
+    OptionalLong parseMoney(String input);
 }
 ```
+
+- `formatMoney` formats an amount the way menus show it, e.g. `$125.000`.
+- `formatMoneyChat` formats an amount the way chat messages show it. It uses the optional currency name when one is set (`125.000 coins`), otherwise it is the same as `formatMoney`.
+- `parseMoney` reads an amount the same way `/pay` does: plain numbers, shorthand like `1.5k`, `20M` or `2.5Qa`, and the configured currency symbol or name, e.g. `$5k`. It returns an empty value when the text is not an amount. It does not check limits, so validate the minimum and `balances().getMaximumBalance()` yourself.
 
 ---
 

@@ -203,6 +203,10 @@ public final class OrderFulfillment {
     }
 
     public static int clearAll(EconomyManager eco) {
+        return clearAll(eco, true);
+    }
+
+    public static int clearAll(EconomyManager eco, boolean refund) {
         OrderManager orders = eco.getOrders();
         int cleared = 0;
         for (OrderRequest snapshot : orders.getRequests()) {
@@ -210,7 +214,7 @@ public final class OrderFulfillment {
             if (order == null) continue;
 
             cleared++;
-            notifyCleared(eco, order, refundEscrow(eco, order));
+            notifyCleared(eco, order, refund ? refundEscrow(eco, order) : 0);
         }
         if (cleared > 0) orders.save();
         eco.getNotifications().flush();
@@ -225,6 +229,7 @@ public final class OrderFulfillment {
     }
 
     public static List<OrderRequest> findBetterOrders(EconomyManager eco, ItemStack proto, UUID seller, long serverUnitSell) {
+        if (!EconomyConfig.get().orders.enabled) return List.of();
         PriceRegistry prices = eco.getPrices();
         PriceRegistry.PriceEntry protoPrice = prices.resolve(proto);
         if (protoPrice == null) return List.of();

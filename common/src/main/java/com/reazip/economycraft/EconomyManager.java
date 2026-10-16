@@ -335,6 +335,10 @@ public class EconomyManager {
         return balanceMutations.getBalance(player);
     }
 
+    public long peekBalance(UUID player) {
+        return balanceMutations.peekBalance(player);
+    }
+
     public BalanceMutationResult addMoney(UUID player, long amount, @Nullable MutationSource source) {
         return addMoney(player, amount, source, null);
     }
@@ -445,9 +449,15 @@ public class EconomyManager {
         long diff = event.difference();
         if (diff == 0) return;
 
-        boolean trade = event.source().map(MutationSource::asString).map(TRADE_SOURCES::contains).orElse(false);
+        String source = event.source().map(MutationSource::asString).orElse(null);
+        boolean trade = source != null && TRADE_SOURCES.contains(source);
+        boolean escrowRefund = EconomySources.ORDER_ESCROW_REFUND.asString().equals(source);
         stats.compute(event.playerId(), (id, current) -> {
             PlayerStats base = current != null ? current : new PlayerStats(0, 0, 0, 0);
+            if (escrowRefund && diff > 0) {
+                return new PlayerStats(base.earned(), Math.max(0, base.spent() - diff), base.sold(),
+                        Math.max(0, base.bought() - diff));
+            }
             if (diff > 0) {
                 return new PlayerStats(MoneyMath.saturatedAdd(base.earned(), diff), base.spent(),
                         MoneyMath.saturatedAdd(base.sold(), trade ? diff : 0), base.bought());
@@ -793,8 +803,9 @@ public class EconomyManager {
         long limit = EconomyConfig.get().selling.dailyLimit;
         if (limit <= 0) return Long.MAX_VALUE;
 
-        DailySellData data = getOrCreateTodaySellData(player);
-        return Math.max(0, limit - data.amount());
+        DailySellData data = dailySells.get(player);
+        long sold = data != null && data.day() == LocalDate.now().toEpochDay() ? data.amount() : 0;
+        return Math.max(0, limit - sold);
     }
 
     private DailySellData getOrCreateTodaySellData(UUID player) {

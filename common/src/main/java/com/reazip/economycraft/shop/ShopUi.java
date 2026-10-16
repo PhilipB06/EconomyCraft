@@ -538,6 +538,11 @@ public final class ShopUi {
         }
 
         private void handlePurchase(PriceRegistry.PriceEntry entry, int amount) {
+            if (!EconomyConfig.get().shop.enabled) {
+                EconomySounds.failure(viewer);
+                viewer.sendSystemMessage(Component.literal("Shop is disabled.").withStyle(ChatFormatting.RED));
+                return;
+            }
             if (entry.unitBuy() <= 0 || !prices.isCategoryEnabled(entry.category())) {
                 EconomySounds.failure(viewer);
                 viewer.sendSystemMessage(Component.literal("This item cannot be purchased.")

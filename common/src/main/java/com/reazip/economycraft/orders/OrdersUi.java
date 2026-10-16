@@ -1,5 +1,6 @@
 package com.reazip.economycraft.orders;
 
+import com.reazip.economycraft.EconomyConfig;
 import com.reazip.economycraft.EconomyCraft;
 import com.reazip.economycraft.EconomyManager;
 import com.reazip.economycraft.HubUi;
@@ -134,6 +135,12 @@ public final class OrdersUi {
     }
 
     private static void createRequest(ServerPlayer player, EconomyManager eco, ItemStack prototype, int amount, long price) {
+        if (!EconomyConfig.get().orders.enabled) {
+            EconomySounds.failure(player);
+            player.sendSystemMessage(Component.literal("Orders are disabled.").withStyle(ChatFormatting.RED));
+            player.closeContainer();
+            return;
+        }
         if (eco.getOrders().hasReachedLimit(player.getUUID())) {
             EconomySounds.failure(player);
             player.sendSystemMessage(Component.literal("You have reached your limit of "
@@ -471,6 +478,11 @@ public final class OrdersUi {
                 ServerPlayer serverPlayer = (ServerPlayer) player;
                 var server = serverPlayer.level().getServer();
 
+                if (!EconomyConfig.get().orders.enabled) {
+                    fail(serverPlayer, "Orders are disabled.");
+                    serverPlayer.closeContainer();
+                    return true;
+                }
                 OrderRequest current = parent.orders.getRequest(request.id);
                 int give = current == null ? 0 : Math.min(SellService.countHeld(serverPlayer, current.item), current.amount);
                 if (current == null) {
