@@ -155,9 +155,30 @@ public final class EconomyCraft {
     }
 
     public static String formatMoney(long amount) {
+        return withCurrency(amount < 0, groupedNumber(Math.abs(amount)));
+    }
+
+    public static String formatMoneyChat(long amount) {
+        String name = EconomyConfig.get().display.currencyName;
+        if (name.isEmpty()) return formatMoney(amount);
+        return (amount < 0 ? "-" : "") + groupedNumber(Math.abs(amount)) + " " + name;
+    }
+
+    private static String groupedNumber(long value) {
         DecimalFormatSymbols symbols = DecimalFormatSymbols.getInstance(Locale.ROOT);
         symbols.setGroupingSeparator(EconomyConfig.get().display.balanceSeparator.charAt(0));
-        return "$" + new DecimalFormat("#,##0", symbols).format(amount);
+        return new DecimalFormat("#,##0", symbols).format(value);
+    }
+
+    private static String withCurrency(boolean negative, String number) {
+        EconomyConfig.Display display = EconomyConfig.get().display;
+        String symbol = display.currencySymbol;
+        String sign = negative ? "-" : "";
+        if (symbol.isEmpty()) return sign + number;
+        if (display.currencySymbolPosition == EconomyConfig.CurrencyPosition.SUFFIX) {
+            return sign + number + (Character.isLetter(symbol.codePointAt(0)) ? " " : "") + symbol;
+        }
+        return sign + symbol + (Character.isLetter(symbol.codePointBefore(symbol.length())) ? " " : "") + number;
     }
 
     public static String describeItem(int count, String name) {
@@ -190,12 +211,46 @@ public final class EconomyCraft {
             magnitude++;
             number = format.format(scaled / 1000);
         }
-        return "$" + (amount < 0 ? "-" : "") + number + SHORT_MONEY_SUFFIXES[magnitude];
+        return withCurrency(amount < 0, number + SHORT_MONEY_SUFFIXES[magnitude]);
+    }
+
+    public static boolean isShortMoneySuffix(String text) {
+        for (String suffix : SHORT_MONEY_SUFFIXES) {
+            if (!suffix.isEmpty() && suffix.equalsIgnoreCase(text)) return true;
+        }
+        return false;
     }
 
     public static @Nullable Long parseMoneyShort(String input) {
         if (input == null) return null;
         String s = input.trim();
+        if (s.isEmpty()) return null;
+
+        Long parsed = parsePlainMoneyShort(s);
+        if (parsed != null) return parsed;
+        String stripped = stripCurrency(s);
+        return stripped.equals(s) ? null : parsePlainMoneyShort(stripped);
+    }
+
+    private static String stripCurrency(String input) {
+        EconomyConfig.Display display = EconomyConfig.get().display;
+        String s = stripAffix(input, display.currencyName);
+        return stripAffix(s, display.currencySymbol);
+    }
+
+    private static String stripAffix(String input, String affix) {
+        if (affix.isEmpty() || input.length() <= affix.length()) return input;
+        if (input.regionMatches(true, 0, affix, 0, affix.length())) {
+            return input.substring(affix.length()).trim();
+        }
+        int start = input.length() - affix.length();
+        if (input.regionMatches(true, start, affix, 0, affix.length())) {
+            return input.substring(0, start).trim();
+        }
+        return input;
+    }
+
+    private static @Nullable Long parsePlainMoneyShort(String s) {
         if (s.isEmpty()) return null;
 
         for (int magnitude = SHORT_MONEY_SUFFIXES.length - 1; magnitude >= 1; magnitude--) {

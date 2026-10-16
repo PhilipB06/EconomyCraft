@@ -123,7 +123,7 @@ public class AuctionManager {
         Component msg = Component.literal(
                 "Sold " + amount + "x " + itemName +
                         " to " + buyerName +
-                        " for " + EconomyCraft.formatMoney(price)
+                        " for " + EconomyCraft.formatMoneyChat(price)
         ).withStyle(ChatFormatting.GREEN);
 
         EconomySounds.moneyReceived(seller);

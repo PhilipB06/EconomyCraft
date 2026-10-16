@@ -583,7 +583,7 @@ public final class ShopUi {
             EconomySounds.success(viewer);
             viewer.sendSystemMessage(Component.literal(
                             "Purchased " + amount + "x " + base.getHoverName().getString() +
-                                    " for " + EconomyCraft.formatMoney(total))
+                                    " for " + EconomyCraft.formatMoneyChat(total))
                     .withStyle(ChatFormatting.GREEN));
 
             if (stored) {
@@ -643,7 +643,7 @@ public final class ShopUi {
             SellService.removeMatching(viewer, prices, entry, toSell, excludeEnchanted);
 
             EconomySounds.success(viewer);
-            viewer.sendSystemMessage(Component.literal("Sold " + toSell + "x " + name + " for " + EconomyCraft.formatMoney(total))
+            viewer.sendSystemMessage(Component.literal("Sold " + toSell + "x " + name + " for " + EconomyCraft.formatMoneyChat(total))
                     .withStyle(ChatFormatting.GREEN));
             updatePage();
         }

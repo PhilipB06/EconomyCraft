@@ -5,6 +5,7 @@ import com.google.gson.annotations.SerializedName;
 import com.mojang.logging.LogUtils;
 import com.reazip.economycraft.util.EconomyPaths;
 import net.minecraft.server.MinecraftServer;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -46,8 +47,19 @@ public class EconomyConfig {
     public static class Display {
         @SerializedName("balance_separator")
         public String balanceSeparator = ".";
+        @SerializedName("currency_symbol")
+        public String currencySymbol = DEFAULT_CURRENCY_SYMBOL;
+        @SerializedName("currency_symbol_position")
+        public CurrencyPosition currencySymbolPosition = CurrencyPosition.PREFIX;
+        @SerializedName("currency_name")
+        public String currencyName = "";
         @SerializedName("scoreboard_enabled")
         public boolean scoreboardEnabled = true;
+    }
+
+    public enum CurrencyPosition {
+        @SerializedName("prefix") PREFIX,
+        @SerializedName("suffix") SUFFIX
     }
 
     public static class Commands {
@@ -107,6 +119,9 @@ public class EconomyConfig {
     public static final double MIN_DYNAMIC_PRICE_MULTIPLIER = 0.5;
     public static final double MAX_DYNAMIC_PRICE_MULTIPLIER = 100.0;
     public static final int MIN_DYNAMIC_PRICE_UPDATE_MINUTES = 1;
+    public static final String DEFAULT_CURRENCY_SYMBOL = "$";
+    public static final int MAX_CURRENCY_SYMBOL_LENGTH = 16;
+    public static final int MAX_CURRENCY_NAME_LENGTH = 32;
 
     private static final String[][] LEGACY_FLAT_KEYS = {
             {"startingBalance", "economy", "starting_balance"},
@@ -166,6 +181,16 @@ public class EconomyConfig {
             if (parsed.display.balanceSeparator == null || parsed.display.balanceSeparator.isEmpty()) {
                 LOGGER.warn("[EconomyCraft] display.balance_separator is empty; defaulting to \".\".");
                 parsed.display.balanceSeparator = ".";
+            } else if (textProblem(parsed.display.balanceSeparator.substring(0, 1)) != null) {
+                LOGGER.warn("[EconomyCraft] display.balance_separator ({}) {}; defaulting to \".\".",
+                        parsed.display.balanceSeparator, textProblem(parsed.display.balanceSeparator.substring(0, 1)));
+                parsed.display.balanceSeparator = ".";
+            }
+            parsed.display.currencySymbol = validCurrencySymbol(parsed.display.currencySymbol);
+            parsed.display.currencyName = validCurrencyName(parsed.display.currencyName);
+            if (parsed.display.currencySymbolPosition == null) {
+                LOGGER.warn("[EconomyCraft] display.currency_symbol_position must be \"prefix\" or \"suffix\"; defaulting to \"prefix\".");
+                parsed.display.currencySymbolPosition = CurrencyPosition.PREFIX;
             }
             parsed.economy.maxBalance = clampMaxBalance(parsed.economy.maxBalance);
             parsed.transactionLog.retentionDays = clampRetentionDays(parsed.transactionLog.retentionDays);
@@ -192,6 +217,47 @@ public class EconomyConfig {
         if (config.auction == null) config.auction = new Auction();
         if (config.orders == null) config.orders = new Orders();
         if (config.transactionLog == null) config.transactionLog = new TransactionLog();
+    }
+
+    private static String validCurrencySymbol(@Nullable String symbol) {
+        String trimmed = symbol == null ? DEFAULT_CURRENCY_SYMBOL : symbol.trim();
+        String problem = currencySymbolProblem(trimmed);
+        if (problem == null) return trimmed;
+        LOGGER.warn("[EconomyCraft] display.currency_symbol ({}) {}; defaulting to \"{}\".",
+                trimmed, problem, DEFAULT_CURRENCY_SYMBOL);
+        return DEFAULT_CURRENCY_SYMBOL;
+    }
+
+    private static String validCurrencyName(@Nullable String name) {
+        String trimmed = name == null ? "" : name.trim();
+        String problem = currencyNameProblem(trimmed);
+        if (problem == null) return trimmed;
+        LOGGER.warn("[EconomyCraft] display.currency_name ({}) {}; leaving it unset.", trimmed, problem);
+        return "";
+    }
+
+    public static @Nullable String currencySymbolProblem(String symbol) {
+        if (symbol.length() > MAX_CURRENCY_SYMBOL_LENGTH) {
+            return "is longer than " + MAX_CURRENCY_SYMBOL_LENGTH + " characters";
+        }
+        String problem = textProblem(symbol);
+        if (problem != null) return problem;
+        if (symbol.chars().anyMatch(Character::isDigit)) return "contains a digit";
+        if (EconomyCraft.isShortMoneySuffix(symbol)) return "clashes with the " + symbol + " amount shorthand";
+        return null;
+    }
+
+    public static @Nullable String currencyNameProblem(String name) {
+        if (name.length() > MAX_CURRENCY_NAME_LENGTH) {
+            return "is longer than " + MAX_CURRENCY_NAME_LENGTH + " characters";
+        }
+        return textProblem(name);
+    }
+
+    public static @Nullable String textProblem(String text) {
+        if (text.indexOf('§') >= 0) return "contains a § formatting code";
+        if (text.chars().anyMatch(Character::isISOControl)) return "contains a control character";
+        return null;
     }
 
     private static double clampRange(String fieldName, double value, double min, double max, String reason) {

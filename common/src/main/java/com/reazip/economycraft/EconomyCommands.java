@@ -256,7 +256,7 @@ public final class EconomyCommands {
                 .then(argument("player", StringArgumentType.word())
                         .suggests((ctx, builder) -> suggestPlayers(ctx.getSource(), builder))
                         .executes(ctx -> usage(ctx.getSource(), payUsage))
-                        .then(argument("amount", StringArgumentType.word())
+                        .then(argument("amount", StringArgumentType.greedyString())
                                 .executes(ctx -> {
                                     Long amount = parseAmount(ctx.getSource(), StringArgumentType.getString(ctx, "amount"), 1, EconomyManager.maxBalance());
                                     if (amount == null) return 0;
@@ -298,10 +298,10 @@ public final class EconomyCommands {
 
         Component msg;
         if (executor != null && executor.getUUID().equals(target.id())) {
-            msg = Component.literal("Balance: " + EconomyCraft.formatMoney(bal))
+            msg = Component.literal("Balance: " + EconomyCraft.formatMoneyChat(bal))
                     .withStyle(ChatFormatting.YELLOW);
         } else {
-            msg = Component.literal(target.name() + "'s balance: " + EconomyCraft.formatMoney(bal))
+            msg = Component.literal(target.name() + "'s balance: " + EconomyCraft.formatMoneyChat(bal))
                     .withStyle(ChatFormatting.YELLOW);
         }
 
@@ -373,7 +373,7 @@ public final class EconomyCommands {
             ServerPlayer executor = tryGetPlayer(source);
             if (executor != null) EconomySounds.success(executor);
 
-            Component msg = Component.literal("Paid " + EconomyCraft.formatMoney(amount) + " to " + displayName)
+            Component msg = Component.literal("Paid " + EconomyCraft.formatMoneyChat(amount) + " to " + displayName)
                     .withStyle(ChatFormatting.GREEN);
 
             reply(source, executor, msg, false);
@@ -381,7 +381,7 @@ public final class EconomyCommands {
             if (toOnline != null) {
                 EconomySounds.moneyReceived(toOnline);
                 toOnline.sendSystemMessage(
-                        Component.literal(from.getName().getString() + " sent you " + EconomyCraft.formatMoney(amount))
+                        Component.literal(from.getName().getString() + " sent you " + EconomyCraft.formatMoneyChat(amount))
                                 .withStyle(ChatFormatting.GREEN)
                 );
             }
@@ -398,7 +398,7 @@ public final class EconomyCommands {
     private static LiteralArgumentBuilder<CommandSourceStack> buildAddMoney() {
         return literal("addmoney").requires(src -> EconomyPermissions.checkAdmin(src, Nodes.ADMIN_PLAYERS))
                 .then(argument("targets", GameProfileArgument.gameProfile())
-                        .then(argument("amount", StringArgumentType.word())
+                        .then(argument("amount", StringArgumentType.greedyString())
                                 .executes(ctx -> {
                                     Long amount = parseAmount(ctx.getSource(), StringArgumentType.getString(ctx, "amount"), 1, EconomyManager.maxBalance());
                                     if (amount == null) return 0;
@@ -412,7 +412,7 @@ public final class EconomyCommands {
     private static LiteralArgumentBuilder<CommandSourceStack> buildSetMoney() {
         return literal("setmoney").requires(src -> EconomyPermissions.checkAdmin(src, Nodes.ADMIN_PLAYERS))
                 .then(argument("targets", GameProfileArgument.gameProfile())
-                        .then(argument("amount", StringArgumentType.word())
+                        .then(argument("amount", StringArgumentType.greedyString())
                                 .executes(ctx -> {
                                     Long amount = parseAmount(ctx.getSource(), StringArgumentType.getString(ctx, "amount"), 0, EconomyManager.maxBalance());
                                     if (amount == null) return 0;
@@ -430,7 +430,7 @@ public final class EconomyCommands {
                                 IdentityCompat.getArgAsPlayerRefs(ctx, "targets"),
                                 null,
                                 ctx.getSource()))
-                        .then(argument("amount", StringArgumentType.word())
+                        .then(argument("amount", StringArgumentType.greedyString())
                                 .executes(ctx -> {
                                     Long amount = parseAmount(ctx.getSource(), StringArgumentType.getString(ctx, "amount"), 1, EconomyManager.maxBalance());
                                     if (amount == null) return 0;
@@ -468,7 +468,7 @@ public final class EconomyCommands {
             }
 
             Component msg = Component.literal(
-                            "Added " + EconomyCraft.formatMoney(amount) + " to " + p.name() + "'s balance.")
+                            "Added " + EconomyCraft.formatMoneyChat(amount) + " to " + p.name() + "'s balance.")
                     .withStyle(ChatFormatting.GREEN);
 
             reply(source, executor, msg, true);
@@ -488,7 +488,7 @@ public final class EconomyCommands {
         }
 
         Component msg = Component.literal(
-                        "Added " + EconomyCraft.formatMoney(amount) + " to " + count + " player" + (count > 1 ? "s" : ""))
+                        "Added " + EconomyCraft.formatMoneyChat(amount) + " to " + count + " player" + (count > 1 ? "s" : ""))
                 .withStyle(ChatFormatting.GREEN);
 
         reply(source, executor, msg, true);
@@ -510,7 +510,7 @@ public final class EconomyCommands {
             manager.setMoney(p.id(), amount, EconomySources.ADMIN_SET);
 
             Component msg = Component.literal(
-                            "Set balance of " + p.name() + " to " + EconomyCraft.formatMoney(amount))
+                            "Set balance of " + p.name() + " to " + EconomyCraft.formatMoneyChat(amount))
                     .withStyle(ChatFormatting.GREEN);
 
             reply(source, executor, msg, true);
@@ -525,7 +525,7 @@ public final class EconomyCommands {
         int count = profiles.size();
 
         Component msg = Component.literal(
-                        "Set balance to " + EconomyCraft.formatMoney(amount) + " for " + count + " player" + (count > 1 ? "s" : ""))
+                        "Set balance to " + EconomyCraft.formatMoneyChat(amount) + " for " + count + " player" + (count > 1 ? "s" : ""))
                 .withStyle(ChatFormatting.GREEN);
 
         reply(source, executor, msg, true);
@@ -565,13 +565,13 @@ public final class EconomyCommands {
 
             if (!manager.removeMoney(id, amount, EconomySources.ADMIN_REMOVE).successful()) {
                 source.sendFailure(Component.literal(
-                                "Failed to remove " + EconomyCraft.formatMoney(amount) + " from " + p.name() + "'s balance due to insufficient funds.")
+                                "Failed to remove " + EconomyCraft.formatMoneyChat(amount) + " from " + p.name() + "'s balance due to insufficient funds.")
                         .withStyle(ChatFormatting.RED));
                 return 1;
             }
 
             Component msg = Component.literal(
-                            "Successfully removed " + EconomyCraft.formatMoney(amount) + " from " + p.name() + "'s balance.")
+                            "Successfully removed " + EconomyCraft.formatMoneyChat(amount) + " from " + p.name() + "'s balance.")
                     .withStyle(ChatFormatting.GREEN);
             reply(source, executor, msg, true);
             return 1;
@@ -593,7 +593,7 @@ public final class EconomyCommands {
                     success++;
                 } else {
                     source.sendFailure(Component.literal(
-                                    "Failed to remove " + EconomyCraft.formatMoney(amount) + " from " + p.name() + "'s balance due to insufficient funds.")
+                                    "Failed to remove " + EconomyCraft.formatMoneyChat(amount) + " from " + p.name() + "'s balance due to insufficient funds.")
                             .withStyle(ChatFormatting.RED));
                 }
             }
@@ -607,7 +607,7 @@ public final class EconomyCommands {
                         .withStyle(ChatFormatting.GREEN);
             } else {
                 msg = Component.literal(
-                                "Successfully removed " + EconomyCraft.formatMoney(amount) + " from " + success + " player" + (success > 1 ? "s" : "") + ".")
+                                "Successfully removed " + EconomyCraft.formatMoneyChat(amount) + " from " + success + " player" + (success > 1 ? "s" : "") + ".")
                         .withStyle(ChatFormatting.GREEN);
             }
             reply(source, executor, msg, true);
@@ -714,7 +714,7 @@ public final class EconomyCommands {
         if (price > EconomyManager.maxBalance()) {
             EconomySounds.failure(player);
             source.sendFailure(Component.literal("Price can't be more than "
-                    + EconomyCraft.formatMoney(EconomyManager.maxBalance()) + ".").withStyle(ChatFormatting.RED));
+                    + EconomyCraft.formatMoneyChat(EconomyManager.maxBalance()) + ".").withStyle(ChatFormatting.RED));
             return 0;
         }
         ItemStack hand = player.getMainHandItem();
@@ -749,8 +749,8 @@ public final class EconomyCommands {
 
         long tax = MoneyMath.tax(price);
 
-        Component msg = Component.literal("Listed item for " + EconomyCraft.formatMoney(price) +
-                        (tax > 0 ? " (buyers pay " + EconomyCraft.formatMoney(price + tax) + ")" : ""))
+        Component msg = Component.literal("Listed item for " + EconomyCraft.formatMoneyChat(price) +
+                        (tax > 0 ? " (buyers pay " + EconomyCraft.formatMoneyChat(price + tax) + ")" : ""))
                 .withStyle(ChatFormatting.GREEN);
 
         EconomySounds.success(player);
@@ -855,7 +855,7 @@ public final class EconomyCommands {
         if (price > EconomyManager.maxBalance()) {
             EconomySounds.failure(player);
             source.sendFailure(Component.literal("Price can't be more than "
-                    + EconomyCraft.formatMoney(EconomyManager.maxBalance()) + ".").withStyle(ChatFormatting.RED));
+                    + EconomyCraft.formatMoneyChat(EconomyManager.maxBalance()) + ".").withStyle(ChatFormatting.RED));
             return 0;
         }
         ItemStack item;
@@ -884,13 +884,13 @@ public final class EconomyCommands {
         OrderRequest r = OrderFulfillment.createEscrowedRequest(eco, player.getUUID(), item, amount, price);
         if (r == null) {
             EconomySounds.failure(player);
-            source.sendFailure(Component.literal("You can't afford to reserve " + EconomyCraft.formatMoney(price)).withStyle(ChatFormatting.RED));
+            source.sendFailure(Component.literal("You can't afford to reserve " + EconomyCraft.formatMoneyChat(price)).withStyle(ChatFormatting.RED));
             return 0;
         }
         long tax = MoneyMath.tax(price);
 
         Component msg = Component.literal("Created request" +
-                (tax > 0 ? " (fulfiller receives " + EconomyCraft.formatMoney(price - tax) + ")" : ""))
+                (tax > 0 ? " (fulfiller receives " + EconomyCraft.formatMoneyChat(price - tax) + ")" : ""))
                 .withStyle(ChatFormatting.GREEN);
         EconomySounds.success(player);
         player.sendSystemMessage(msg);
@@ -933,7 +933,7 @@ public final class EconomyCommands {
         boolean alreadyClaimed = manager.hasClaimedDailyToday(player.getUUID());
         if (manager.claimDaily(player.getUUID())) {
             EconomySounds.dailyReward(player);
-            Component msg = Component.literal("Claimed " + EconomyCraft.formatMoney(EconomyConfig.get().economy.dailyReward))
+            Component msg = Component.literal("Claimed " + EconomyCraft.formatMoneyChat(EconomyConfig.get().economy.dailyReward))
                     .withStyle(ChatFormatting.GREEN);
             player.sendSystemMessage(msg);
         } else if (alreadyClaimed) {

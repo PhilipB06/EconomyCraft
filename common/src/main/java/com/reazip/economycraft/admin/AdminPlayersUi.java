@@ -195,7 +195,7 @@ public final class AdminPlayersUi {
                         100, 1, EconomyManager.maxBalance(),
                         (p, amount) -> {
                             if (eco.addMoney(target.id(), amount, EconomySources.ADMIN_ADD).successful()) {
-                                announce(p, "Gave " + EconomyCraft.formatMoney(amount) + " to " + target.name());
+                                announce(p, "Gave " + EconomyCraft.formatMoneyChat(amount) + " to " + target.name());
                             } else {
                                 EconomySounds.failure(p);
                                 p.sendSystemMessage(MenuUiSupport.line(target.name() + " cannot receive that much.",
@@ -208,7 +208,7 @@ public final class AdminPlayersUi {
                         Math.min(100, Math.max(1, balance)), 1, Math.max(1, balance),
                         (p, amount) -> {
                             if (eco.removeMoney(target.id(), amount, EconomySources.ADMIN_REMOVE).successful()) {
-                                announce(p, "Took " + EconomyCraft.formatMoney(amount) + " from " + target.name());
+                                announce(p, "Took " + EconomyCraft.formatMoneyChat(amount) + " from " + target.name());
                             } else {
                                 EconomySounds.failure(p);
                                 p.sendSystemMessage(MenuUiSupport.line(target.name() + " does not have that much.",
@@ -221,7 +221,7 @@ public final class AdminPlayersUi {
                         balance, 0, EconomyManager.maxBalance(),
                         (p, amount) -> {
                             eco.setMoney(target.id(), amount, EconomySources.ADMIN_SET);
-                            announce(p, "Set " + target.name() + "'s balance to " + EconomyCraft.formatMoney(amount));
+                            announce(p, "Set " + target.name() + "'s balance to " + EconomyCraft.formatMoneyChat(amount));
                             openTarget(p, eco, target);
                         },
                         p -> openTarget(p, eco, target));

@@ -53,7 +53,7 @@ BalanceEvents events = api.balanceEvents();
 String displayed = api.formatMoney(125000);
 ```
 
-`formatMoney(...)` uses EconomyCraft's currency symbol and configured thousands separator. For example, the default separator formats `125000` as `$125.000`.
+`formatMoney(...)` uses the server's configured currency symbol, symbol position and thousands separator. For example, the defaults format `125000` as `$125.000`. It never includes the optional currency name.
 
 ---
 

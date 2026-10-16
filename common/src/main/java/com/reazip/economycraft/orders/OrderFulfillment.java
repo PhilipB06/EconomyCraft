@@ -198,7 +198,7 @@ public final class OrderFulfillment {
     private static void notifyExpired(EconomyManager eco, OrderRequest order, long refund) {
         String itemName = order.item.getHoverName().getString();
         String message = "Your order for " + order.amount + "x " + itemName + " expired"
-                + (refund > 0 ? " and " + EconomyCraft.formatMoney(refund) + " was refunded." : ".");
+                + (refund > 0 ? " and " + EconomyCraft.formatMoneyChat(refund) + " was refunded." : ".");
         eco.getNotifications().notify(order.requester, message);
     }
 
@@ -220,7 +220,7 @@ public final class OrderFulfillment {
     private static void notifyCleared(EconomyManager eco, OrderRequest order, long refund) {
         String itemName = order.item.getHoverName().getString();
         String message = "Your order for " + order.amount + "x " + itemName + " was cleared by an admin"
-                + (refund > 0 ? " and " + EconomyCraft.formatMoney(refund) + " was refunded." : ".");
+                + (refund > 0 ? " and " + EconomyCraft.formatMoneyChat(refund) + " was refunded." : ".");
         eco.getNotifications().notify(order.requester, message);
     }
 

@@ -145,7 +145,7 @@ public final class OrdersUi {
         OrderRequest request = OrderFulfillment.createEscrowedRequest(eco, player.getUUID(), prototype.copyWithCount(1), amount, price);
         if (request == null) {
             EconomySounds.failure(player);
-            player.sendSystemMessage(Component.literal("You can't afford to reserve " + EconomyCraft.formatMoney(price))
+            player.sendSystemMessage(Component.literal("You can't afford to reserve " + EconomyCraft.formatMoneyChat(price))
                     .withStyle(ChatFormatting.RED));
             open(player, eco);
             return;
@@ -154,8 +154,8 @@ public final class OrdersUi {
         long tax = MoneyMath.tax(price);
         EconomySounds.success(player);
         player.sendSystemMessage(Component.literal("Requested " + amount + "x "
-                        + prototype.getHoverName().getString() + " for " + EconomyCraft.formatMoney(price)
-                        + (tax > 0 ? " (fulfiller receives " + EconomyCraft.formatMoney(price - tax) + ")" : ""))
+                        + prototype.getHoverName().getString() + " for " + EconomyCraft.formatMoneyChat(price)
+                        + (tax > 0 ? " (fulfiller receives " + EconomyCraft.formatMoneyChat(price - tax) + ")" : ""))
                 .withStyle(ChatFormatting.GREEN));
         open(player, eco);
     }
@@ -489,7 +489,7 @@ public final class OrdersUi {
                             serverPlayer.sendSystemMessage(
                                     Component.literal("Fulfilled " + result.given() + "x " +
                                                     result.item().getHoverName().getString() + " (" + requesterName + ") and earned " +
-                                                    EconomyCraft.formatMoney(result.payout()) + extra)
+                                                    EconomyCraft.formatMoneyChat(result.payout()) + extra)
                                             .withStyle(ChatFormatting.GREEN));
                         }
                         case REQUESTER_CANT_PAY -> fail(serverPlayer, "Requester can't pay");

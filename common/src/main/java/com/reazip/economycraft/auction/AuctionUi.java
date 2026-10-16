@@ -167,8 +167,8 @@ public final class AuctionUi {
         long tax = MoneyMath.tax(price);
         EconomySounds.success(player);
         player.sendSystemMessage(Component.literal("Listed " + amount + "x " + prototype.getHoverName().getString()
-                        + " for " + EconomyCraft.formatMoney(price)
-                        + (tax > 0 ? " (buyers pay " + EconomyCraft.formatMoney(price + tax) + ")" : ""))
+                        + " for " + EconomyCraft.formatMoneyChat(price)
+                        + (tax > 0 ? " (buyers pay " + EconomyCraft.formatMoneyChat(price + tax) + ")" : ""))
                 .withStyle(ChatFormatting.GREEN));
         open(player, auctions);
     }
@@ -490,7 +490,7 @@ public final class AuctionUi {
                             sp.sendSystemMessage(
                                     Component.literal("Purchased " + result.item().getCount() + "x "
                                                     + result.item().getHoverName().getString() + " from " + sellerName +
-                                                    " for " + EconomyCraft.formatMoney(result.totalPaid()))
+                                                    " for " + EconomyCraft.formatMoneyChat(result.totalPaid()))
                                             .withStyle(ChatFormatting.GREEN));
                         }
                     }

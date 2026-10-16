@@ -98,13 +98,13 @@ public final class HubUi {
         var payment = eco.pay(player.getUUID(), target.id(), amount, EconomySources.PLAYER_PAYMENT);
         if (payment.successful()) {
             EconomySounds.success(player);
-            player.sendSystemMessage(Component.literal("Paid " + EconomyCraft.formatMoney(amount) + " to " + target.name())
+            player.sendSystemMessage(Component.literal("Paid " + EconomyCraft.formatMoneyChat(amount) + " to " + target.name())
                     .withStyle(ChatFormatting.GREEN));
             ServerPlayer online = player.level().getServer().getPlayerList().getPlayer(target.id());
             if (online != null) {
                 EconomySounds.moneyReceived(online);
                 online.sendSystemMessage(Component.literal(player.getName().getString() + " sent you "
-                        + EconomyCraft.formatMoney(amount)).withStyle(ChatFormatting.GREEN));
+                        + EconomyCraft.formatMoneyChat(amount)).withStyle(ChatFormatting.GREEN));
             }
         } else {
             EconomySounds.failure(player);
@@ -322,7 +322,7 @@ public final class HubUi {
                         if (eco.claimDaily(viewer.getUUID())) {
                             EconomySounds.dailyReward(viewer);
                             viewer.sendSystemMessage(Component.literal("Claimed "
-                                    + EconomyCraft.formatMoney(config.economy.dailyReward)).withStyle(ChatFormatting.GREEN));
+                                    + EconomyCraft.formatMoneyChat(config.economy.dailyReward)).withStyle(ChatFormatting.GREEN));
                         } else if (alreadyClaimed) {
                             EconomySounds.failure(viewer);
                             viewer.sendSystemMessage(MenuUiSupport.line("Already claimed today. Come back tomorrow.",

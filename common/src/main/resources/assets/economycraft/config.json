@@ -7,6 +7,9 @@
   },
   "display": {
     "balance_separator": ".",
+    "currency_symbol": "$",
+    "currency_symbol_position": "prefix",
+    "currency_name": "",
     "scoreboard_enabled": true
   },
   "commands": {

@@ -59,7 +59,7 @@ public final class AdminSettingsUi {
 
     private enum Category {
         ECONOMY("Economy", Items.GOLD_INGOT, "Starting money, daily reward and tax."),
-        DISPLAY("Display", Items.OAK_SIGN, "Number format and the balance sidebar."),
+        DISPLAY("Display", Items.OAK_SIGN, "Currency, number format and the sidebar."),
         COMMANDS("Commands", Items.COMMAND_BLOCK, "Short command aliases."),
         SHOP("Shop & Selling", Items.EMERALD, "Server shop, selling and item values."),
         DYNAMIC_PRICES("Dynamic Prices", Items.REDSTONE, "Shop buy prices that follow the economy."),
@@ -93,6 +93,11 @@ public final class AdminSettingsUi {
         TAX_RATE(Category.ECONOMY, "Tax Rate", "Tax on auctions and orders."),
         SEPARATOR(Category.DISPLAY, "Number Separator", "Thousands separator shown in prices.",
                 "Type \"space\" for a blank one."),
+        CURRENCY_SYMBOL(Category.DISPLAY, "Currency Symbol", "Shown with every amount.",
+                "Type \"none\" for no symbol."),
+        CURRENCY_POSITION(Category.DISPLAY, "Symbol Position", "Before or after the amount."),
+        CURRENCY_NAME(Category.DISPLAY, "Currency Name", "Used instead of the symbol in chat.",
+                "Type \"none\" to clear it."),
         SCOREBOARD(Category.DISPLAY, "Balance Sidebar", "The balance leaderboard on the right."),
         STANDALONE(Category.COMMANDS, "Short Commands", "Allow /pay, /shop and /ah without /eco."),
         STANDALONE_ADMIN(Category.COMMANDS, "Short Admin Commands", "Allow /addmoney without /eco."),
@@ -263,6 +268,14 @@ public final class AdminSettingsUi {
                 case TAX_RATE -> valueItem(setting, Items.PAPER, percent(config.economy.taxRate));
                 case SEPARATOR -> valueItem(setting, Items.NAME_TAG, "\"" + config.display.balanceSeparator + "\" gives "
                         + EconomyCraft.formatMoney(1234567));
+                case CURRENCY_SYMBOL -> valueItem(setting, Items.GOLD_NUGGET, config.display.currencySymbol.isEmpty()
+                        ? "None, gives " + EconomyCraft.formatMoney(1234567)
+                        : "\"" + config.display.currencySymbol + "\" gives " + EconomyCraft.formatMoney(1234567));
+                case CURRENCY_POSITION -> valueItem(setting, Items.ARROW,
+                        (config.display.currencySymbolPosition == EconomyConfig.CurrencyPosition.SUFFIX ? "After" : "Before")
+                                + ", gives " + EconomyCraft.formatMoney(1234567));
+                case CURRENCY_NAME -> valueItem(setting, Items.WRITABLE_BOOK, config.display.currencyName.isEmpty()
+                        ? "Not set" : "\"" + config.display.currencyName + "\" gives " + EconomyCraft.formatMoneyChat(1234567));
                 case SCOREBOARD -> toggleItem(setting, config.display.scoreboardEnabled);
                 case SHOP -> toggleItem(setting, config.shop.enabled);
                 case AUCTION -> toggleItem(setting, config.auction.enabled);
@@ -439,6 +452,30 @@ public final class AdminSettingsUi {
                     p -> open(p, eco, category));
         }
 
+        private void editCurrencyText(Setting setting, String current, Item icon, String placeholder,
+                                      java.util.function.Function<String, String> problem,
+                                      java.util.function.Consumer<String> apply) {
+            TextInputUi.open(viewer, setting.label, current, icon, "Use: ", placeholder,
+                    (p, text) -> {
+                        String value = text.equalsIgnoreCase("none") ? "" : text.trim();
+                        String error = problem.apply(value);
+                        if (error != null) {
+                            rejectText(p, setting, error);
+                        } else {
+                            apply.accept(value);
+                            save(p);
+                            EconomySounds.click(p);
+                        }
+                        open(p, eco, category);
+                    });
+        }
+
+        private static void rejectText(ServerPlayer player, Setting setting, String error) {
+            EconomySounds.failure(player);
+            player.sendSystemMessage(Component.literal(setting.label + " not changed: it " + error + ".")
+                    .withStyle(ChatFormatting.RED));
+        }
+
         private void editHours(Setting setting, long current, Item icon,
                                java.util.function.LongConsumer apply) {
             NumberInputUi.open(viewer, setting.label, new ItemStack(icon), setting.label, current,
@@ -498,12 +535,30 @@ public final class AdminSettingsUi {
                 case SEPARATOR -> TextInputUi.open(viewer, "Number separator", config.display.balanceSeparator,
                         Items.NAME_TAG, "Use: ", "Type one character",
                         (p, text) -> {
-                            EconomyConfig.get().display.balanceSeparator =
-                                    text.equalsIgnoreCase("space") ? " " : text.substring(0, 1);
-                            save(p);
-                            EconomySounds.click(p);
+                            String separator = text.equalsIgnoreCase("space") ? " " : text.substring(0, 1);
+                            String error = EconomyConfig.textProblem(separator);
+                            if (error != null) {
+                                rejectText(p, setting, error);
+                            } else {
+                                EconomyConfig.get().display.balanceSeparator = separator;
+                                save(p);
+                                EconomySounds.click(p);
+                            }
                             open(p, eco, category);
                         });
+                case CURRENCY_SYMBOL -> editCurrencyText(setting, config.display.currencySymbol, Items.GOLD_NUGGET,
+                        "Type a symbol", EconomyConfig::currencySymbolProblem,
+                        v -> EconomyConfig.get().display.currencySymbol = v);
+                case CURRENCY_POSITION -> {
+                    config.display.currencySymbolPosition =
+                            config.display.currencySymbolPosition == EconomyConfig.CurrencyPosition.SUFFIX
+                                    ? EconomyConfig.CurrencyPosition.PREFIX : EconomyConfig.CurrencyPosition.SUFFIX;
+                    save(viewer);
+                    render();
+                }
+                case CURRENCY_NAME -> editCurrencyText(setting, config.display.currencyName, Items.WRITABLE_BOOK,
+                        "Type a name", EconomyConfig::currencyNameProblem,
+                        v -> EconomyConfig.get().display.currencyName = v);
                 case SCOREBOARD -> {
                     eco.toggleScoreboard();
                     applyRuntimeSettings(viewer.level().getServer());

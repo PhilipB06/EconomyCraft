@@ -144,7 +144,7 @@ public final class AdminResetUi {
                 p -> {
                     int changed = eco.resetAllBalances();
                     announce(p, "Reset " + changed + " balance" + (changed == 1 ? "" : "s")
-                            + " to " + EconomyCraft.formatMoney(starting) + ".");
+                            + " to " + EconomyCraft.formatMoneyChat(starting) + ".");
                     open(p, eco);
                 },
                 p -> open(p, eco));

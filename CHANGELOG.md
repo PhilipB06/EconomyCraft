@@ -4,6 +4,7 @@
 - Raised the max balance to `$1Qi` (previously `$999B`), about a million times more.
 - Added an `economy.max_balance` setting to `config.json` and the admin settings panel.
 - Added a `dynamic_prices.update_minutes` setting to control how often dynamic prices update.
+- Configurable currency: `display.currency_symbol`, `display.currency_symbol_position` (`prefix`/`suffix`) and an optional `display.currency_name` for chat messages, also editable in the admin settings panel. Applies to menus, chat, placeholders, the sidebar, the webhook and the API.
 
 ### Improvements
 - `config.json` is now grouped into sections. Existing configs are converted automatically.

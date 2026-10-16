@@ -99,10 +99,10 @@ public final class WorthCommand {
 
     @Nullable
     private static String formatAmount(long unit, int amount) {
-        if (amount == 1) return EconomyCraft.formatMoney(unit);
+        if (amount == 1) return EconomyCraft.formatMoneyChat(unit);
         Long total = ShopDisplay.safeMultiply(unit, amount);
         if (total == null) return null;
-        return EconomyCraft.formatMoney(total) + " (" + EconomyCraft.formatMoney(unit) + " each)";
+        return EconomyCraft.formatMoneyChat(total) + " (" + EconomyCraft.formatMoneyChat(unit) + " each)";
     }
 
     @Nullable

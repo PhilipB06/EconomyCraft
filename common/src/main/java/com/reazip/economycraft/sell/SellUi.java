@@ -323,7 +323,7 @@ public final class SellUi {
                 EconomySounds.success(player);
                 long totalPayout = totals.orderPayout + totals.serverPayout;
                 player.sendSystemMessage(Component.literal("Successfully sold " + totalSold + " item" + (totalSold == 1 ? "" : "s") +
-                                " for " + EconomyCraft.formatMoney(totalPayout) +
+                                " for " + EconomyCraft.formatMoneyChat(totalPayout) +
                                 (totals.orderGiven > 0 ? " (" + totals.orderGiven + " to open orders for a better price)" : "") + ".")
                         .withStyle(ChatFormatting.GREEN));
             }
@@ -332,7 +332,7 @@ public final class SellUi {
                 long remaining = manager.getDailySellRemaining(player.getUUID());
                 player.sendSystemMessage(Component.literal(totals.limitBlocked + " item" + (totals.limitBlocked == 1 ? "" : "s") +
                                 " was not sold: daily sell limit reached" +
-                                (remaining > 0 ? " (" + EconomyCraft.formatMoney(remaining) + " left today)." : "."))
+                                (remaining > 0 ? " (" + EconomyCraft.formatMoneyChat(remaining) + " left today)." : "."))
                         .withStyle(ChatFormatting.RED));
             }
 
