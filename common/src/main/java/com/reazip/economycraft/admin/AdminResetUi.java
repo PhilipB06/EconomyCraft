@@ -31,12 +31,14 @@ public final class AdminResetUi {
     private AdminResetUi() {}
 
     private static final int SIZE = 27;
-    private static final int RESET_BALANCES = 2;
-    private static final int RESET_DAILY_REWARD = 4;
-    private static final int RESET_DAILY_SELL = 6;
-    private static final int CLEAR_AUCTIONS = 11;
-    private static final int CLEAR_ORDERS = 13;
-    private static final int RESET_EVERYTHING = 15;
+    private static final int RESET_BALANCES = 1;
+    private static final int RESET_DAILY_REWARD = 3;
+    private static final int RESET_DAILY_SELL = 5;
+    private static final int CLEAR_AUCTIONS = 7;
+    private static final int CLEAR_ORDERS = 10;
+    private static final int REMOVE_ALL_ITEMS = 12;
+    private static final int RESET_PRICES = 14;
+    private static final int RESET_EVERYTHING = 16;
     private static final int BACK = 22;
 
     public static void open(ServerPlayer player, EconomyManager eco) {
@@ -86,8 +88,17 @@ public final class AdminResetUi {
                     MenuUiSupport.hint("Cancels every open order."),
                     MenuUiSupport.hint("Escrowed money is refunded.")));
 
+            container.setItem(REMOVE_ALL_ITEMS, MenuUiSupport.button(Items.BARRIER, "Remove All Items", ChatFormatting.RED,
+                    MenuUiSupport.hint("Empties the shop.")));
+
+            container.setItem(RESET_PRICES, MenuUiSupport.button(Items.EMERALD, "Reset Shop Prices", ChatFormatting.RED,
+                    MenuUiSupport.hint("Puts every price and category"),
+                    MenuUiSupport.hint("back to the defaults.")));
+
             container.setItem(RESET_EVERYTHING, MenuUiSupport.button(Items.TNT, "Reset Entire Economy", ChatFormatting.DARK_RED,
-                    MenuUiSupport.line("Everything above, all at once.", ChatFormatting.RED)));
+                    MenuUiSupport.line("Balances, rewards, sell limits,", ChatFormatting.RED),
+                    MenuUiSupport.line("auctions and orders, all at once.", ChatFormatting.RED),
+                    MenuUiSupport.hint("Shop prices are not touched.")));
 
             container.setItem(BACK, MenuUiSupport.button(Items.NETHER_STAR, "Back", ChatFormatting.YELLOW));
             MenuUiSupport.fillBackground(container);
@@ -119,6 +130,14 @@ public final class AdminResetUi {
                 case CLEAR_ORDERS -> {
                     EconomySounds.click(viewer);
                     confirmClearOrders(viewer, eco);
+                }
+                case REMOVE_ALL_ITEMS -> {
+                    EconomySounds.click(viewer);
+                    confirmRemoveAllItems(viewer, eco);
+                }
+                case RESET_PRICES -> {
+                    EconomySounds.click(viewer);
+                    confirmResetPrices(viewer, eco);
                 }
                 case RESET_EVERYTHING -> {
                     EconomySounds.click(viewer);
@@ -197,6 +216,45 @@ public final class AdminResetUi {
                 p -> {
                     int cleared = OrderFulfillment.clearAll(eco);
                     announce(p, "Cleared " + cleared + " order" + (cleared == 1 ? "" : "s") + ".");
+                    open(p, eco);
+                },
+                p -> open(p, eco));
+    }
+
+    private static void confirmRemoveAllItems(ServerPlayer viewer, EconomyManager eco) {
+        ConfirmUi.open(viewer, "Remove all items?", warningIcon(Items.BARRIER, "Remove All Items"),
+                "Remove all",
+                List.of(MenuUiSupport.line("Empties the shop.", ChatFormatting.RED),
+                        MenuUiSupport.hint("Put items back from \"Removed items\".")),
+                p -> {
+                    int removed = eco.getPrices().removeAll();
+                    if (removed < 0) {
+                        EconomySounds.failure(p);
+                        p.sendSystemMessage(MenuUiSupport.line("Could not write prices.json. Check the server log.",
+                                ChatFormatting.RED));
+                    } else {
+                        announce(p, "Removed " + removed + " item" + (removed == 1 ? "" : "s") + " from the shop.");
+                    }
+                    open(p, eco);
+                },
+                p -> open(p, eco));
+    }
+
+    private static void confirmResetPrices(ServerPlayer viewer, EconomyManager eco) {
+        ConfirmUi.open(viewer, "Reset all shop prices?", warningIcon(Items.EMERALD, "Reset Shop Prices"),
+                "Reset prices",
+                List.of(MenuUiSupport.line("Every price, category and removed item", ChatFormatting.RED),
+                        MenuUiSupport.line("goes back to the defaults.", ChatFormatting.RED),
+                        MenuUiSupport.line("Custom items you added are deleted.", ChatFormatting.RED),
+                        MenuUiSupport.hint("A backup of prices.json is kept next to it.")),
+                p -> {
+                    if (eco.getPrices().resetToDefaults()) {
+                        announce(p, "Reset all shop prices to the defaults.");
+                    } else {
+                        EconomySounds.failure(p);
+                        p.sendSystemMessage(MenuUiSupport.line("Could not reset prices.json. Check the server log.",
+                                ChatFormatting.RED));
+                    }
                     open(p, eco);
                 },
                 p -> open(p, eco));

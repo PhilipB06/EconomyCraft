@@ -39,7 +39,8 @@ Browse categories and click an item to edit it.
 - **Dynamic Pricing**: opt this item out of dynamic pricing even while it's enabled server-wide.
 - **Bulk Amount**: how many a shift-click buys or sells.
 - **Category**: which shop page the item appears on. `blocks.wood` creates a sub-page.
-- **Delete**: removes the entry.
+- **Remove**: takes the item out of the shop. Its price is kept.
+- **Removed items**: every removed item. Click one to put it back with its old price. Adding a removed item through **Add item** does the same.
 
 ### Dynamic shop pricing
 
@@ -69,9 +70,11 @@ Select any player, online or not, to give, take or set their balance, remove the
 | **Reset Daily Sell Limits** | Everyone's daily sell limit resets to full immediately.                                     |
 | **Clear Auctions**          | Cancels every active listing. Items are returned to sellers' deliveries.                    |
 | **Clear Orders**            | Cancels every open order. Escrowed money is refunded to requesters.                         |
-| **Reset Entire Economy**    | All of the above, plus wipes the Leaderboards stats and deletes the entire transaction log. |
+| **Remove All Items**        | Removes every shop item, the same as **Remove** in the Shop editor. Put items back from **Removed items**. |
+| **Reset Shop Prices**       | Replaces `prices.json` with the defaults, including categories. Custom items are deleted. The old file is kept as `prices.json.before-reset-<time>`. |
+| **Reset Entire Economy**    | Every tool above except the two shop tools, plus wipes the Leaderboards stats and deletes the entire transaction log. |
 
-None of these touch shop prices/categories or permission settings.
+Only the two shop tools touch shop prices/categories. None of them touch permission settings.
 
 ### Admin commands
 
@@ -177,7 +180,7 @@ One entry per shop item, keyed by item id:
 The editor also writes a few extra keys:
 
 - `components`: NBT for custom items (name, enchantments, container contents). A `#label` suffix distinguishes duplicates of the same item, e.g. `minecraft:shulker_box#loot_rare`.
-- `"removed": true`: marks a deleted default so it isn't restored on the next start. Delete the entry to restore it.
+- `"removed": true`: takes the item out of the shop but keeps its other keys, so it can be put back from **Removed items**. Delete the `removed` key to put it back.
 - `"dynamic_price_enabled": false`: opts an item, or a category under `_categories`, out of dynamic pricing.
 
 ---

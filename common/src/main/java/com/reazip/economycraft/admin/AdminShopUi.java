@@ -127,7 +127,12 @@ public final class AdminShopUi {
         } else {
             title = "All Items";
         }
-        MenuUiSupport.openMenu(player, title, (id, inv) -> new ListMenu(id, inv, player, eco, origin, category, query, page));
+        MenuUiSupport.openMenu(player, title, (id, inv) -> new ListMenu(id, inv, player, eco, origin, category, query, page, false));
+    }
+
+    private static void openRemoved(ServerPlayer player, EconomyManager eco, Origin origin, @Nullable String query, int page) {
+        String title = query != null ? "Removed: " + query : "Removed Items";
+        MenuUiSupport.openMenu(player, title, (id, inv) -> new ListMenu(id, inv, player, eco, origin, null, query, page, true));
     }
 
     private static void openEditor(ServerPlayer player, EconomyManager eco, Origin origin, Draft draft,
@@ -166,6 +171,17 @@ public final class AdminShopUi {
                             openEditor(picker, eco, origin, toDraft(existing, picker), category);
                             return;
                         }
+                        if (prices.findRemovedByKey(id.asString()) != null) {
+                            PriceRegistry.PriceEntry restored = restore(picker, eco, id.asString());
+                            if (restored == null) {
+                                openList(picker, eco, origin, category, null, 0);
+                                return;
+                            }
+                            picker.sendSystemMessage(Component.literal("Restored " + prototype.getHoverName().getString()
+                                    + " with its previous price.").withStyle(ChatFormatting.GREEN));
+                            openEditor(picker, eco, origin, toDraft(restored, picker), category);
+                            return;
+                        }
                     }
 
                     String key = custom ? prices.uniqueKeyFor(id, labelFor(prototype)) : id.asString();
@@ -193,6 +209,18 @@ public final class AdminShopUi {
                     ChatFormatting.RED));
         }
         return ok;
+    }
+
+    @Nullable
+    private static PriceRegistry.PriceEntry restore(ServerPlayer player, EconomyManager eco, String key) {
+        PriceRegistry prices = eco.getPrices();
+        PriceRegistry.PriceEntry restored = prices.restore(key) ? prices.findByKey(key) : null;
+        if (restored == null) {
+            EconomySounds.failure(player);
+            player.sendSystemMessage(MenuUiSupport.line("Could not restore that item. Check the server log.",
+                    ChatFormatting.RED));
+        }
+        return restored;
     }
 
     private static String labelFor(ItemStack stack) {
@@ -393,7 +421,8 @@ public final class AdminShopUi {
 
             if (categories.isEmpty()) {
                 container.setItem(22, MenuUiSupport.button(Items.BOOK, "The shop is empty", ChatFormatting.YELLOW,
-                        MenuUiSupport.hint("Click \"Add item\" to start.")));
+                        MenuUiSupport.hint("Click \"Add item\" to start,"),
+                        MenuUiSupport.hint("or bring items back from \"Removed items\".")));
             }
 
             container.setItem(NAV, MenuUiSupport.backButton());
@@ -401,6 +430,11 @@ public final class AdminShopUi {
                     MenuUiSupport.hint("Pick any item, then set its price."),
                     MenuUiSupport.hint("Named or enchanted items keep"),
                     MenuUiSupport.hint("their name, enchants and contents.")));
+            container.setItem(NAV + 2, MenuUiSupport.button(Items.CAULDRON, "Removed items", ChatFormatting.RED,
+                    MenuUiSupport.hint("Items taken out of the shop."),
+                    MenuUiSupport.hint("Click one to put it back."),
+                    MenuUiSupport.labeledValue("Total", String.valueOf(prices.removedEntries().size()),
+                            MenuUiSupport.LABEL_PRIMARY_COLOR)));
 
             if (page > 0) container.setItem(NAV + 3, MenuUiSupport.prevPageButton());
             container.setItem(NAV + 4, MenuUiSupport.pageIndicator(page, totalPages));
@@ -443,6 +477,11 @@ public final class AdminShopUi {
                 startAdd(viewer, eco, origin, null);
                 return true;
             }
+            if (slot == NAV + 2) {
+                EconomySounds.click(viewer);
+                openRemoved(viewer, eco, origin, null, 0);
+                return true;
+            }
             if (slot == NAV + 3 && page > 0) { EconomySounds.page(viewer); page--; render(); return true; }
             if (slot == NAV + 5 && (page + 1) * GRID_SLOTS < categories.size()) { EconomySounds.page(viewer); page++; render(); return true; }
             if (slot == NAV + 7) {
@@ -467,17 +506,21 @@ public final class AdminShopUi {
         @Nullable private final String query;
         private final SimpleContainer container = new SimpleContainer(54);
         private final List<PriceRegistry.PriceEntry> entries;
+        private final boolean removed;
         private int page;
 
         ListMenu(int id, Inventory inv, ServerPlayer viewer, EconomyManager eco, Origin origin,
-                 @Nullable String category, @Nullable String query, int page) {
+                 @Nullable String category, @Nullable String query, int page, boolean removed) {
             super(MenuType.GENERIC_9x6, id);
             this.viewer = viewer;
             this.eco = eco;
             this.origin = origin;
             this.category = category;
             this.query = query;
-            this.entries = resolve(eco.getPrices(), category, query);
+            this.removed = removed;
+            this.entries = removed
+                    ? (query != null ? eco.getPrices().searchRemoved(query) : eco.getPrices().removedEntries())
+                    : resolve(eco.getPrices(), category, query);
             this.page = Math.clamp(page, 0, Math.max(0, MenuUiSupport.totalPages(entries.size(), GRID_SLOTS) - 1));
 
             for (Slot slot : MenuUiSupport.readOnlyGridSlots(container, 54)) {
@@ -513,22 +556,29 @@ public final class AdminShopUi {
                 display.setCount(1);
 
                 Draft itemDraft = toDraft(entry, viewer);
-                List<Component> lore = new ArrayList<>(draftLore(itemDraft, dynamicPriceLines(eco, itemDraft)));
-                lore.add(MenuUiSupport.labeledValue("Click", "Edit", MenuUiSupport.LABEL_SECONDARY_COLOR));
+                List<Component> lore = new ArrayList<>(draftLore(itemDraft,
+                        removed ? List.of() : dynamicPriceLines(eco, itemDraft)));
+                lore.add(MenuUiSupport.labeledValue("Click", removed ? "Put back in the shop" : "Edit",
+                        MenuUiSupport.LABEL_SECONDARY_COLOR));
                 display.set(DataComponents.LORE, new ItemLore(lore));
                 container.setItem(i, display);
             }
 
             if (entries.isEmpty()) {
-                container.setItem(22, MenuUiSupport.button(Items.BOOK, "Nothing here yet", ChatFormatting.YELLOW,
-                        MenuUiSupport.hint("Click \"Add item\" below.")));
+                container.setItem(22, removed
+                        ? MenuUiSupport.button(Items.BOOK, "Nothing removed", ChatFormatting.YELLOW,
+                                MenuUiSupport.hint("Every item is in the shop."))
+                        : MenuUiSupport.button(Items.BOOK, "Nothing here yet", ChatFormatting.YELLOW,
+                                MenuUiSupport.hint("Click \"Add item\" below.")));
             }
 
             container.setItem(NAV, MenuUiSupport.backButton());
-            container.setItem(NAV + 1, MenuUiSupport.button(Items.WRITABLE_BOOK, "Add item", ChatFormatting.GREEN,
-                    MenuUiSupport.hint(category != null
-                            ? "New items land in \"" + category + "\"."
-                            : "Pick any item, then set its price.")));
+            if (!removed) {
+                container.setItem(NAV + 1, MenuUiSupport.button(Items.WRITABLE_BOOK, "Add item", ChatFormatting.GREEN,
+                        MenuUiSupport.hint(category != null
+                                ? "New items land in \"" + category + "\"."
+                                : "Pick any item, then set its price.")));
+            }
 
             if (page > 0) container.setItem(NAV + 3, MenuUiSupport.prevPageButton());
             container.setItem(NAV + 4, MenuUiSupport.pageIndicator(page, totalPages));
@@ -549,8 +599,12 @@ public final class AdminShopUi {
             if (slot < GRID_SLOTS) {
                 int index = page * GRID_SLOTS + slot;
                 if (index < entries.size()) {
-                    EconomySounds.click(viewer);
-                    openEditor(viewer, eco, origin, toDraft(entries.get(index), viewer), category);
+                    if (removed) {
+                        restoreAt(index);
+                    } else {
+                        EconomySounds.click(viewer);
+                        openEditor(viewer, eco, origin, toDraft(entries.get(index), viewer), category);
+                    }
                 }
                 return true;
             }
@@ -559,7 +613,7 @@ public final class AdminShopUi {
                 openRoot(viewer, eco, origin, 0);
                 return true;
             }
-            if (slot == NAV + 1) {
+            if (slot == NAV + 1 && !removed) {
                 EconomySounds.click(viewer);
                 viewer.closeContainer();
                 startAdd(viewer, eco, origin, category);
@@ -570,16 +624,36 @@ public final class AdminShopUi {
             if (slot == NAV + 8) {
                 EconomySounds.click(viewer);
                 if (query != null) {
-                    openList(viewer, eco, origin, category, null, 0);
+                    reopen(viewer, null, 0);
                 } else {
-                    String title = category == null
+                    String title = removed
+                            ? "Search removed items"
+                            : category == null
                             ? "Search shop items"
                             : "Search " + ShopDisplay.getCategoryName(eco.getPrices(), category, category);
-                    TextInputUi.openSearch(viewer, title, (p, q) -> openList(p, eco, origin, category, q, 0));
+                    TextInputUi.openSearch(viewer, title, (p, q) -> reopen(p, q, 0));
                 }
                 return true;
             }
             return true;
+        }
+
+        private void reopen(ServerPlayer player, @Nullable String newQuery, int newPage) {
+            if (removed) {
+                openRemoved(player, eco, origin, newQuery, newPage);
+            } else {
+                openList(player, eco, origin, category, newQuery, newPage);
+            }
+        }
+
+        private void restoreAt(int index) {
+            PriceRegistry.PriceEntry entry = entries.get(index);
+            String name = ShopDisplay.createDisplayStack(entry, viewer).getHoverName().getString();
+            if (restore(viewer, eco, entry.key()) == null) return;
+            EconomySounds.click(viewer);
+            viewer.sendSystemMessage(Component.literal("Put " + name + " back in the shop.")
+                    .withStyle(ChatFormatting.GREEN));
+            reopen(viewer, query, page);
         }
     }
 
@@ -935,9 +1009,10 @@ public final class AdminShopUi {
             container.setItem(DYNAMIC_PRICE, dynamicPriceToggleButton(draft.dynamicPriceEnabled(),
                     "Whether this item's buy price scales with the server economy."));
 
-            container.setItem(DELETE, MenuUiSupport.button(ItemsCompat.redStainedGlassPane(), "Delete",
+            container.setItem(DELETE, MenuUiSupport.button(ItemsCompat.redStainedGlassPane(), "Remove",
                     ChatFormatting.DARK_RED,
-                    MenuUiSupport.hint("Removes it from the shop for good.")));
+                    MenuUiSupport.hint("Takes it out of the shop."),
+                    MenuUiSupport.hint("Put it back from \"Removed items\".")));
 
             container.setItem(BACK, MenuUiSupport.button(Items.BARRIER, "Back",
                     ChatFormatting.DARK_RED, MenuUiSupport.hint("Changes are already saved.")));
@@ -1014,9 +1089,9 @@ public final class AdminShopUi {
         List<Component> lore = new ArrayList<>(draftLore(draft, dynamicPriceLines(eco, draft)));
         lore.add(MenuUiSupport.line("Players will no longer see this item.", ChatFormatting.RED));
 
-        ConfirmUi.open(player, "Delete this item?", draft.display(), "Delete it", lore,
+        ConfirmUi.open(player, "Remove this item?", draft.display(), "Remove it", lore,
                 p -> {
-                    boolean ok = eco.getPrices().delete(draft.key());
+                    boolean ok = eco.getPrices().remove(draft.key());
                     if (ok) EconomySounds.click(p); else EconomySounds.failure(p);
                     p.sendSystemMessage(ok
                             ? Component.literal("Removed " + draft.display().getHoverName().getString()

@@ -496,7 +496,13 @@ public final class ShopUi {
             if (slot >= 0 && slot < navRowStart) {
                 int index = page * itemsPerPage + slot;
                 if (index < entries.size()) {
-                    PriceRegistry.PriceEntry entry = entries.get(index);
+                    PriceRegistry.PriceEntry entry = prices.findByKey(entries.get(index).key());
+                    if (entry == null) {
+                        EconomySounds.failure(viewer);
+                        viewer.sendSystemMessage(Component.literal("This item is no longer in the shop.")
+                                .withStyle(ChatFormatting.RED));
+                        return true;
+                    }
                     int amount = kind == ClickKind.QUICK_MOVE ? Math.max(1, entry.stack()) : 1;
                     if (dragType == 1) {
                         handleSell(entry, amount);
